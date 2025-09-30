@@ -1,2 +1,2 @@
 # ReLoop_RLive
-Demonstator für das Projekt ReLoop
+Demonstrator for the Projekt ReLoop
