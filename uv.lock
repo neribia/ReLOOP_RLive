@@ -2,7 +2,42 @@ version = 1
 revision = 3
 requires-python = "==3.10.*"
 
+[manifest]
+members = [
+    "reloop-rlive-dev",
+    "rlive-common",
+    "rlive-env",
+    "rlive-world",
+]
+
 [[package]]
 name = "reloop-rlive-dev"
 version = "0.1.0"
 source = { virtual = "." }
+
+[[package]]
+name = "rlive-common"
+version = "0.1.0"
+source = { editable = "packages/rlive-common" }
+
+[[package]]
+name = "rlive-env"
+version = "0.1.0"
+source = { editable = "packages/rlive-env" }
+dependencies = [
+    { name = "rlive-common" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "rlive-common", editable = "packages/rlive-common" }]
+
+[[package]]
+name = "rlive-world"
+version = "0.1.0"
+source = { editable = "packages/rlive-world" }
+dependencies = [
+    { name = "rlive-common" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "rlive-common", editable = "packages/rlive-common" }]
