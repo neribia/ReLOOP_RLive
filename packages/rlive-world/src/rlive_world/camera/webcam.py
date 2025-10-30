@@ -4,16 +4,28 @@ from rlive_world.camera import BaseCamera
 
 
 class Webcam(BaseCamera):
-    def __init__(self, cam_index: int = 0):
+    def __init__(self, cam_index: int = 0,  width: int = 640, height: int = 480):
         self.cam_index = cam_index
-        self.cam = None
+        self.cam: cv.VideoCapture | None = None
+        self.width = width
+        self.height = height
 
     def setup(self):
+        """
+        Initialisiert die Webcam.
+        """
         self.cam = cv.VideoCapture(self.cam_index)
         if not self.cam.isOpened():
-            raise RuntimeError(f"Kamera {self.cam_index} konnte nicht geöffnet werden")
+            raise RuntimeError(f"Camera {self.cam_index} could not be opened!")
 
-    def release(self):
+        self.cam.set(cv.CAP_PROP_FRAME_WIDTH, self.width)
+        self.cam.set(cv.CAP_PROP_FRAME_HEIGHT, self.height)
+
+    def release(self) -> None:
+        """
+        Releases the camera.
+        :return: None
+        """
         if self.cam:
             self.cam.release()
             self.cam = None
@@ -21,7 +33,5 @@ class Webcam(BaseCamera):
     def get_image(self):
         ret, frame = self.cam.read()
         if not ret:
-            return {"info": "Kein Frame erhalten"}
-        # OpenCV liefert BGR → GUI erwartet RGB/PIL-kompatibel
-        frame_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-        return frame_rgb
+            return None
+        return cv.cvtColor(frame, cv.COLOR_BGR2RGB)
