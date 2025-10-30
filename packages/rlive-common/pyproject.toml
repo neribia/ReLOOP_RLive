@@ -1,0 +1,11 @@
+[project]
+name = "rlive-common"
+version = "0.1.0"
+description = "Core functionality for ReLoop RLive"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9.6,<0.10.0"]
+build-backend = "uv_build"
