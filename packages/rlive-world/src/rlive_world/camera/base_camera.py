@@ -8,7 +8,7 @@ class BaseCamera(ABC):
         ...
 
     @abstractmethod
-    def setup(self):
+    def setup(self) -> None:
         ...
 
     @abstractmethod

@@ -4,7 +4,6 @@ from typing import Optional, Callable
 from rlive_world.camera import BaseCamera
 
 
-# --- Contracts & Config ----------------------------------------------------
 
 @dataclass(frozen=True)
 class CameraConfig:
@@ -14,7 +13,6 @@ class CameraConfig:
     height: int = 480
 
 
-# --- Factory ---------------------------------------------------------------
 
 class CameraFactory:
     """
@@ -28,7 +26,6 @@ class CameraFactory:
             "dummy": self._build_dummy_camera,  # auto versucht zuerst IDS, fällt sonst auf fake_vid
         }
 
-    # ---------- Öffentliche API ----------
     def build(self, cfg: CameraConfig) -> BaseCamera:
         cam_type = (cfg.type or "auto").strip().lower()
         # logger.info(f"CameraFactory: building camera type '{cam_type}'")
@@ -49,13 +46,11 @@ class CameraFactory:
                 return self._build_dummy_camera(cfg)
             raise  # für andere Typen weiterreichen
 
-    # ---------- Builder je Kameratyp ----------
     @staticmethod
     def _build_dummy_camera(cfg: CameraConfig) -> BaseCamera:
         """Erzeugt eine IDS Peak Kamera, konfiguriert sie aber NICHT startet sie."""
         from dummy_camera import DummyCamera
-        cam = DummyCamera(width=cfg.width, height=cfg.height)
-        return cam
+       return DummyCamera(width=cfg.width, height=cfg.height)
 
     @staticmethod
     def _build_pi_camera(cfg: CameraConfig) -> BaseCamera:
