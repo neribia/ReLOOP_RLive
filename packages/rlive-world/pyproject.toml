@@ -5,11 +5,19 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
+    "asyncio>=4.0.0",
     "fastapi>=0.120.2",
     "numpy>=2.2.6",
     "opencv-python>=4.12.0.88",
     "pydantic>=2.12.3",
     "rlive-common",
+]
+
+[dependency-groups]
+bolt = [
+    "bleak>=1.1.1",
+    "sphero-unsw>=0.1.8",
+    "spherov2>=0.12.1",
 ]
 
 [tool.uv.sources]
