@@ -1,0 +1,44 @@
+site_name: ReLoop RLive
+repo_url: https://github.com/neribia/ReLoop_RLive
+repo_name: ReLoop_RLive
+use_directory_urls: false
+
+theme:
+  name: material
+  language: en
+  highlightjs: true
+  # logo: ./attachments/images/logo.png
+  color_mode: auto
+  hljs_languages:
+    - python
+  navigation_depth: 3
+  include_sidebar: true
+  features:
+    - navigation.expand
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.preview
+
+plugins:
+  - mkdocstrings:
+      enable_inventory: true
+  - search
+  - mike:
+      canonical_version: latest
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - About: index.md
+
