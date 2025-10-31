@@ -1,6 +1,8 @@
+from typing import Optional
 import os
 import sys
 from os.path import abspath, dirname, join
+from pathlib import Path
 
 
 # --- base directories --------------------------------------------------------
@@ -22,4 +24,19 @@ enable debug mode (with: true, yes, 1)
 default: False
 """
 
-# ---  config ---------------------------------------------------
+# ---  logging ---------------------------------------------------
+
+LOGGING_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOGGING_FORMAT = os.getenv("LOG_FORMAT", "detailed").lower()
+LOGGING_DATE = os.getenv("LOG_DATE", "long").lower()
+LOGGING_STREAM = os.getenv("LOG_STREAM", "true").lower() in ("1", "true", "yes")
+
+# Default log file path (e.g., logs/app.log)
+LOGGING_TO_FILE = os.getenv("LOG_TO_FILE", "false").lower() in ("1", "true", "yes")
+EXECUTION_DIR = Path(sys.argv[0]).resolve().parent
+LOGGING_DIR = Path(os.getenv("LOG_DIR", EXECUTION_DIR / "logs"))
+LOGGING_DIR.mkdir(parents=True, exist_ok=True)
+LOGGING_FILE: Optional[str] = (
+    os.getenv("LOG_FILE", str(LOGGING_DIR / "app.log")) if LOGGING_TO_FILE else None
+)
+
