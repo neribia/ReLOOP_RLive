@@ -1,0 +1,42 @@
+name: deploy_docs
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+              ${{ runner.os }}-pip-
+
+      - name: Install uv and sync dependencies
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv sync --dev
+
+      - name: Build and test docs
+        run: |
+          if [ ${{ github.ref }} == "refs/heads/main" ]; then
+            uv run mkdocs gh-deploy --force
+          else
+            uv run mkdocs build --strict
+          fi
+        shell: bash
