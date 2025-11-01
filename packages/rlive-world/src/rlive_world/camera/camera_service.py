@@ -1,7 +1,7 @@
 from typing import Optional, Any
 
-from base_camera import BaseCamera
-from camera_factory import  CameraFactory, CameraConfig
+from rlive_world.camera.base_camera import BaseCamera
+from rlive_world.camera.camera_factory import CameraFactory, CameraConfig
 
 
 class CameraService:

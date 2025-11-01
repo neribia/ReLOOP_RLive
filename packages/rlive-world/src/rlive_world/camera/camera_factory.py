@@ -51,6 +51,7 @@ class CameraFactory:
         """Erzeugt eine IDS Peak Kamera, konfiguriert sie aber NICHT startet sie."""
         from dummy_camera import DummyCamera
        return DummyCamera(width=cfg.width, height=cfg.height)
+        from rlive_world.camera.dummy_camera import DummyCamera
 
     @staticmethod
     def _build_pi_camera(cfg: CameraConfig) -> BaseCamera:
@@ -58,6 +59,7 @@ class CameraFactory:
         from pi_camera import PICamera
         cam = PICamera()
         return cam
+        from rlive_world.camera.pi_camera import PICamera
 
     @staticmethod
     def _build_webcam(cfg: CameraConfig) -> BaseCamera:
@@ -65,3 +67,4 @@ class CameraFactory:
         from webcam import Webcam
         cam = Webcam(cam_index=cfg.id, width=cfg.width, height=cfg.height)
         return cam
+        from rlive_world.camera.webcam import Webcam

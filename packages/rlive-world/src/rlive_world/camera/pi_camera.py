@@ -1,4 +1,4 @@
-from rlive_world.camera import BaseCamera
+from rlive_world.camera.base_camera import BaseCamera
 
 
 class PICamera(BaseCamera):
