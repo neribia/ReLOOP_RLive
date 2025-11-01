@@ -5,7 +5,8 @@ import numpy as np
 class BaseCamera(ABC):
     @abstractmethod
     def __init__(self, width, height):
-        ...
+        self._width = width
+        self._height = height
 
     @abstractmethod
     def setup(self) -> None:

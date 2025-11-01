@@ -5,9 +5,8 @@ from rlive_world.camera.base_camera import BaseCamera
 
 class DummyCamera(BaseCamera):
     def __init__(self, width: int = 640, height: int = 480, channels: int = 3):
-        self.width = width
-        self.height = height
-        self.channels = channels
+        super().__init__(width=width, height=height)
+        self._channels = channels
 
     def setup(self):
         pass

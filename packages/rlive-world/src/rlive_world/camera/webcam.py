@@ -4,7 +4,8 @@ from rlive_world.camera.base_camera import BaseCamera
 
 
 class Webcam(BaseCamera):
-    def __init__(self, cam_index: int = 0,  width: int = 640, height: int = 480):
+    def __init__(self, cam_index: int = 0, width: int = 640, height: int = 480):
+        super().__init__(width, height)
         self.cam_index = cam_index
         self.cam: cv.VideoCapture | None = None
         self.width = width
@@ -18,8 +19,8 @@ class Webcam(BaseCamera):
         if not self.cam.isOpened():
             raise RuntimeError(f"Camera {self.cam_index} could not be opened!")
 
-        self.cam.set(cv.CAP_PROP_FRAME_WIDTH, self.width)
-        self.cam.set(cv.CAP_PROP_FRAME_HEIGHT, self.height)
+        self.cam.set(cv.CAP_PROP_FRAME_WIDTH, self._width)
+        self.cam.set(cv.CAP_PROP_FRAME_HEIGHT, self._height)
 
     def release(self) -> None:
         """
