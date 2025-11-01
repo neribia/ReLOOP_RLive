@@ -3,19 +3,15 @@ import numpy as np
 
 
 class BaseCamera(ABC):
-    @abstractmethod
     def __init__(self, width, height):
         self._width = width
         self._height = height
 
     @abstractmethod
-    def setup(self) -> None:
-        ...
+    def setup(self) -> None: ...
 
     @abstractmethod
-    def get_image(self) -> np.ndarray:
-        ...
+    def get_image(self) -> np.ndarray: ...
 
     @abstractmethod
-    def release(self):
-        ...
+    def release(self): ...

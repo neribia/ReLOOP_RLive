@@ -15,4 +15,6 @@ class DummyCamera(BaseCamera):
         pass
 
     def get_image(self):
-        return (np.random.rand(self.height, self.width, self.channels) * 255).astype(np.uint8)
+        return np.random.randint(
+            0, 256, (self._height, self._width, self._channels), dtype=np.uint8
+        )

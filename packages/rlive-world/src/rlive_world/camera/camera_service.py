@@ -23,7 +23,7 @@ class CameraService:
     def get_frame(self) -> Any:
         cam = self._cam
         if cam is None:
-            #logger.error("CameraService.get_frame: camera is not started")
+            logger.error("CameraService.get_frame: camera is not started")
             return None
         return cam.get_image()
 
@@ -31,7 +31,6 @@ class CameraService:
         if self._cam:
             try:
                 logger.info("CameraService: stopping camera")
-                # del self.cam
                 self._cam.release()
             except Exception as e:
                 logger.exception(f"Error stopping camera: {e}")
@@ -44,7 +43,10 @@ class CameraService:
 
 if __name__ == "__main__":
     import logging
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+    )
     logger = logging.getLogger(__name__)
 
     cfg = CameraConfig(type="dummy", width=320, height=240)

@@ -1,4 +1,5 @@
 import cv2 as cv
+import numpy as np
 
 from rlive_world.camera.base_camera import BaseCamera
 
@@ -8,10 +9,8 @@ class Webcam(BaseCamera):
         super().__init__(width, height)
         self.cam_index = cam_index
         self.cam: cv.VideoCapture | None = None
-        self.width = width
-        self.height = height
 
-    def setup(self):
+    def setup(self) -> None:
         """
         Initialisiert die Webcam.
         """
@@ -25,14 +24,16 @@ class Webcam(BaseCamera):
     def release(self) -> None:
         """
         Releases the camera.
-        :return: None
         """
         if self.cam:
             self.cam.release()
             self.cam = None
 
-    def get_image(self):
+    def get_image(self) -> np.ndarray:
+        """
+        Returns the image of the camera.
+        """
         ret, frame = self.cam.read()
         if not ret:
-            return None
+            raise RuntimeError(f"Could not get image from camera.")
         return cv.cvtColor(frame, cv.COLOR_BGR2RGB)
