@@ -26,7 +26,7 @@ default: False
 
 # ---  logging ---------------------------------------------------
 
-LOGGING_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOGGING_LEVEL = os.getenv("LOG_LEVEL", "INFO" if not DEBUG else "DEBUG").upper()
 LOGGING_FORMAT = os.getenv("LOG_FORMAT", "detailed").lower()
 LOGGING_DATE = os.getenv("LOG_DATE", "long").lower()
 LOGGING_STREAM = os.getenv("LOG_STREAM", "true").lower() in ("1", "true", "yes")
