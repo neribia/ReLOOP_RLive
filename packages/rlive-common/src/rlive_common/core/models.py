@@ -34,6 +34,8 @@ class Response(BaseModel):
     truncated: bool = False
     info: Dict[str, Any]
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
 
 class ResetResponse(Response):
     """Response body for POST /reset."""
@@ -50,8 +52,6 @@ class StepResponseMultipart(Response):
 
     image: Optional[np.ndarray] = Field(default=None, exclude=True)
     boundary: str = Field(default="world-step", exclude=True)
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def encode(self) -> tuple[bytes, str]:
         """
