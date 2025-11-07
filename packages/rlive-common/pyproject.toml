@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Core functionality for ReLoop RLive"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
-dependencies = []
+dependencies = [
+    "pydantic>=2.12.3",
+]
 
 [build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]

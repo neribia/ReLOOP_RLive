@@ -838,6 +838,12 @@ wheels = [
 name = "rlive-common"
 version = "0.1.0"
 source = { editable = "packages/rlive-common" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.12.3" }]
 
 [[package]]
 name = "rlive-env"
