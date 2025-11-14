@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Dict, Any, Tuple
 
 import asyncio
@@ -19,6 +18,7 @@ class World:
         self._lock = asyncio.Lock()  # lock ensures step/reset aren't interleaved across await points
         self.camera = None
         self.bolt = None
+        self._setup_world()
 
     def _setup_world(self):
         pass

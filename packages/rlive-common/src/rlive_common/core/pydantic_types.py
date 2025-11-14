@@ -16,8 +16,6 @@ def _encode_image(array: np.ndarray) -> Dict[str, Any]:
 
 def _decode_image(value: Any) -> np.ndarray:
     """Convert JSON/base64 dict back to NumPy array."""
-    if isinstance(value, np.ndarray):
-        return value
 
     if isinstance(value, dict) and {"shape", "dtype", "data"} <= value.keys():
         data = base64.b64decode(value["data"])
