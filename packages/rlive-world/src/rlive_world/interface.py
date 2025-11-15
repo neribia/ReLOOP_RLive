@@ -23,7 +23,7 @@ async def reset_endpoint(req: ResetRequest) -> ResetResponse:
         result = await world.reset(req)
         return result
     except Exception as e:  # pragma: no cover (defensive)
-        logger.exception("Reset JSON endpoint failed", exc_info=e)
+        logger.exception("Reset JSON endpoint failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -57,4 +57,5 @@ async def step_endpoint_binary(req: StepRequest) -> Response:
 
         return Response(content=body, media_type=content_type)
     except Exception as e:  # pragma: no cover (defensive)
+        logger.exception("Step multipart endpoint failed")
         raise HTTPException(status_code=500, detail=str(e))

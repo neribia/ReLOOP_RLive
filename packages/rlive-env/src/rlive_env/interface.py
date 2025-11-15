@@ -66,7 +66,7 @@ class WorldInterface:
 
     def step_multipart(self, action: int) -> StepResponseMultipart:
         """
-        Call POST /step_multipoint and decode multipart/mixed response.
+        Call POST /step_multipart and decode multipart/mixed response.
         """
         payload = StepRequest(action=action).model_dump()
         response = self._request("POST", "/step_multipart", json=payload, expect_json=False)

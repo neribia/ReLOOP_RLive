@@ -38,7 +38,7 @@ class World:
         """
         Reset the world and return an initial observation.
         """
-        logger.info(f"Resting the world.")
+        logger.info(f"Resetting the world.")
         async with self._lock:
             obs = await self._make_observation()
             info: Dict[str, Any] = {"msg": "reset", "status": "ok"}

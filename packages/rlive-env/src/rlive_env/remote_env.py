@@ -40,7 +40,7 @@ class RemoteWorldEnv(gym.Env):
         logger.info(f"step_json data: {data}")
 
         # data = self.iface.step_multipart(action)
-        # logger.info(f"step_json data: {data}")
+        # logger.info(f"step_multipart data: {data}")
 
         # Handle None gracefully
         obs = data.observation

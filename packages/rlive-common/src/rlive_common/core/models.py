@@ -9,9 +9,9 @@ from rlive_common.core.pydantic_types import ImageArray, NumpyArray
 
 
 class Request(BaseModel):
-    """Basic request body for POST ."""
+    """Basic request body for POST endpoints."""
 
-    model_config = dict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ResetRequest(Request):
@@ -48,7 +48,7 @@ class StepResponseJSON(Response):
 
 
 class StepResponseMultipart(Response):
-    """Response body for POST /step_json."""
+    """Response body for POST /step_multipart."""
 
     image: Optional[np.ndarray] = Field(default=None, exclude=True)
     boundary: str = Field(default="world-step", exclude=True)
@@ -64,7 +64,7 @@ class StepResponseMultipart(Response):
             # Encode np.ndarray as PNG bytes using OpenCV
             success, buf = cv.imencode(".png", self.image)
             if not success:
-                raise ValueError("cv2.imencode failed")
+                raise ValueError(f"cv2.imencode failed for image shape={self.image.shape}, dtype={self.image.dtype}")
             img_bytes = buf.tobytes()
 
         boundary = self.boundary
@@ -116,6 +116,8 @@ class StepResponseMultipart(Response):
             elif b"image/png" in headers:
                 np_arr = np.frombuffer(content.strip(), np.uint8)
                 image = cv.imdecode(np_arr, cv.IMREAD_COLOR)
+                if image is None:
+                    raise ValueError("Failed to decode PNG image from multipart body")
 
         if not meta:
             raise ValueError("Missing JSON metadata in multipart body")
