@@ -26,7 +26,7 @@ bolt = [
 rlive-common = { workspace = true }
 
 [project.scripts]
-rlive-world = "rlive_world.main_function:main" # "main:main"
+rlive-world = "rlive_world.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]

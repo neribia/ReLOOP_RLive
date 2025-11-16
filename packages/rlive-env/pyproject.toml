@@ -17,7 +17,7 @@ dependencies = [
 rlive-common = { workspace = true }
 
 [project.scripts]
-rlive-env = "rlive_env.main_function:main" # "main:main"
+rlive-env = "rlive_env.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]
