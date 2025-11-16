@@ -3,13 +3,11 @@ import signal
 import weakref
 
 import time
-from sphero_unsw.toys_scanner import toys_scanner
-from sphero_unsw.sphero_edu import SpheroEduAPI, EventType
-from sphero_unsw.types import Color
+from sphero_unsw.sphero_edu import SpheroEduAPI
 
 from rlive_world.bolt.base_robot import BaseRobot
 from rlive_world.bolt.bolt_finder import SpheroFinder
-
+from rlive_world.config import config as cfg
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -44,7 +42,7 @@ class SpheroBoltPlus(BaseRobot):
         # Fallback finalizer if object is GC'd
         weakref.finalize(self, self._cleanup)
 
-    def connect(self, bolt_name: str = "BP-D217"):
+    def connect(self, bolt_name: str = cfg.SPHEROBOLTPLUS_NAME) -> None:
         """Scan for and connect to a nearby Sphero BOLT."""
         self.scanner.scan_toys()
         self.toy = self.scanner.select_toy(name=bolt_name)
@@ -53,10 +51,10 @@ class SpheroBoltPlus(BaseRobot):
         self.api.__enter__()  # proper connection method
         logger.info(f"Connected to {self.toy.name}")
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         self._cleanup()
 
-    def _cleanup(self):
+    def _cleanup(self) -> None:
         """Disconnect from the robot safely."""
         if self.api:
             try:
@@ -67,14 +65,24 @@ class SpheroBoltPlus(BaseRobot):
             finally:
                 self.api = None
 
-    def _signal_cleanup(self, signum, frame):
-        print(f"\n⚠ Received signal {signum}, cleaning up...")
+    def _signal_cleanup(self, signum, frame) -> None:
+        logger.debug(f"Received signal {signum}, cleaning up...")
         self._cleanup()
         raise SystemExit(0)
 
     @requires_connection
-    def move(self, heading=0, speed=100, duration=2):
-        """Move the Sphero in a given direction."""
+    def move(
+        self, heading: int = 0, speed: int = cfg.SPHEROBOLTPLUS_SPEED, duration: float = cfg.SPHEROBOLTPLUS_DURATION
+    ) -> None:
+        """Move the Sphero in a given direction.
+
+        Arttributes:
+            - heading: Moving direktion (0-360°)
+            - speed: Moving speed (-255 - 255)
+            - duration: Moving duration (seconds)
+
+        Retrun: None
+        """
         logger.info(f"Moving at heading {heading}°, speed {speed}")
         self.api.roll(heading, speed, duration)
         time.sleep(duration)
