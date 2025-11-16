@@ -5,6 +5,7 @@ description = "Core functionality for ReLoop RLive"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
+    "numpy>=2.2.6",
     "pydantic>=2.12.3",
 ]
 
