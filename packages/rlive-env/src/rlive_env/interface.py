@@ -3,7 +3,7 @@ import time
 
 import httpx
 
-from rlive_common.core.models import (
+from rlive_common.core.response import (
     ResetResponse,
     ResetRequest,
     StepRequest,
@@ -39,6 +39,7 @@ class WorldInterface:
         self.base_url = (base_url or cfg.WORLD_BASE_URL).rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
+        self.max_retry_time = 30
         self.backoff_factor = backoff_factor
 
         # httpx.Client synchronous
@@ -92,16 +93,30 @@ class WorldInterface:
             # Return the full response object for manual decoding
             return response
 
-    def _request(self, method: str, path: str, expect_json: bool = True, **kwargs) -> Dict[str, Any] | Any:
+    def _request(self, method: str, path: str, expect_json: bool = True, **kwargs):
         """Retry wrapper with exponential backoff."""
+        start = time.monotonic()
+
         for attempt in range(self.max_retries + 1):
             try:
                 return self._send_once(method, path, expect_json, **kwargs)
+
             except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                elapsed = time.monotonic() - start
+                if elapsed > self.max_retry_time:
+                    logger.error(f"Retry timeout exceeded after {elapsed:.2f}s")
+                    raise
+
                 if attempt >= self.max_retries:
                     logger.error(f"Request failed after {self.max_retries} retries: {e}")
                     raise
+
                 delay = self.backoff_factor * (2**attempt)
                 logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay:.2f}s...")
                 time.sleep(delay)
+
+            except Exception:
+                logger.exception("Unexpected non-HTTP error during request, not retrying")
+                raise
+
         raise RuntimeError("Unreachable")

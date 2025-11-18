@@ -3,7 +3,8 @@ from typing import Dict, Any, Tuple
 import asyncio
 import numpy as np
 
-from rlive_common.core.models import Response, ResetResponse, ResetRequest, StepRequest
+from rlive_common.core.response import Response, ResetResponse
+from rlive_common.core.request import ResetRequest, StepRequest
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)

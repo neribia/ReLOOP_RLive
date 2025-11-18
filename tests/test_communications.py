@@ -2,7 +2,8 @@ import unittest
 import numpy as np
 import asyncio
 
-from rlive_common.core.models import Response, StepRequest, StepResponseJSON
+from rlive_common.core.response import Response, StepResponseJSON
+from rlive_common.core.request import StepRequest
 from rlive_world.world import World
 
 

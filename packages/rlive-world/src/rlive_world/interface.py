@@ -1,12 +1,7 @@
 from fastapi import FastAPI, HTTPException, Response
 
-from rlive_common.core.models import (
-    ResetResponse,
-    ResetRequest,
-    StepRequest,
-    StepResponseJSON,
-    StepResponseMultipart,
-)
+from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
+from rlive_common.core.request import ResetRequest, StepRequest
 from rlive_world.world import World
 from rlive_common.utils import get_logger
 
