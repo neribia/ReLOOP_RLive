@@ -4,7 +4,7 @@ import numpy as np
 import gymnasium as gym
 
 from rlive_env.config import config as cfg
-from rlive_env.interface import WorldInterface
+from rlive_env.world_client import WorldInterface
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)

@@ -33,7 +33,7 @@ def main() -> None:
         logger.info("Running in LOCAL mode (PC server on 127.0.0.1)")
 
     logger.info(f"Starting World server at http://{host}:{port} (debug={debug})")
-    uvicorn.run("rlive_world.interface:app", host=host, port=port, reload=debug, workers=1)
+    uvicorn.run("rlive_world.world_server:app", host=host, port=port, reload=debug, workers=1)
 
 
 if __name__ == "__main__":
