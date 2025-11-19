@@ -3,13 +3,8 @@ import time
 
 import httpx
 
-from rlive_common.core.response import (
-    ResetResponse,
-    ResetRequest,
-    StepRequest,
-    StepResponseJSON,
-    StepResponseMultipart,
-)
+from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
+from rlive_common.core.request import ResetRequest, StepRequest
 from rlive_env.config import config as cfg
 from rlive_common.utils import get_logger
 
