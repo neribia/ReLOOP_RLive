@@ -1,11 +1,11 @@
 import base64
 import numpy as np
-from typing import Annotated, Any, Dict
+from typing import Annotated, Any
 from pydantic import BeforeValidator, PlainSerializer
 
 
 # ---------- Annotated ImageArray type ----------
-def _encode_image(array: np.ndarray) -> Dict[str, Any]:
+def _encode_image(array: np.ndarray) -> dict[str, Any]:
     """Convert a NumPy image array to a base64 JSON object."""
     return {
         "shape": array.shape,
@@ -15,7 +15,12 @@ def _encode_image(array: np.ndarray) -> Dict[str, Any]:
 
 
 def _decode_image(value: Any) -> np.ndarray:
-    """Convert JSON/base64 dict back to NumPy array."""
+    """Convert JSON/base64 dict back to NumPy array.
+
+    Needs to check if the image is a np.ndarray, because this function is also called when the image is set.
+    """
+    if isinstance(value, np.ndarray):
+        return value
 
     if isinstance(value, dict) and {"shape", "dtype", "data"} <= value.keys():
         data = base64.b64decode(value["data"])
