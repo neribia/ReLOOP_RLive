@@ -1,95 +1,97 @@
 import atexit
 import signal
 import weakref
-
 import time
+from typing import Optional, Callable
+
 from sphero_unsw.sphero_edu import SpheroEduAPI
+from sphero_unsw.toy.boltplus import BOLTPLUS
 
 from rlive_world.bolt.base_robot import BaseRobot
-from rlive_world.bolt.bolt_finder import SpheroFinder
+from rlive_world.bolt.sphero_finder import SpheroFinder
 from rlive_world.config import config as cfg
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
 
-def requires_connection(func):
-    def wrapper(self, *args, **kwargs):
-        if not self.api:
-            logger.error("Not connected. Use _connect() first.")
-            # FIXME: Maybe raise Exception
-            return None
-        return func(self, *args, **kwargs)
-
-    return wrapper
-
-
 class SpheroBoltPlus(BaseRobot):
-    def __init__(self):
-        """Initialize the SpheroBoltPlus instance."""
-        self.scanner = SpheroFinder()
-        self.toy = None
-        self.api = None
-        self.name = None
+    """
+    Simple and testable robot class.
+    Optional arguments allow injecting mocks during tests without factories.
+    """
 
-        # Ensure cleanup at interpreter exit
-        atexit.register(self._cleanup)
+    def __init__(
+        self,
+        scanner: Optional[SpheroFinder] = None,
+        api: Optional[SpheroEduAPI] = None,
+        sleep_fn=time.sleep,
+        register_handlers=True,
+    ):
+        self.scanner: SpheroFinder = scanner or SpheroFinder()
+        self.api: SpheroEduAPI | None = api  # set after connect() normally
+        self.sleep: Callable[[float], None] = sleep_fn
+        self.toy: BOLTPLUS | None = None
+        self.name: str | None = None
 
-        # Handle Ctrl-C and kill gracefully
-        signal.signal(signal.SIGINT, self._signal_cleanup)
-        signal.signal(signal.SIGTERM, self._signal_cleanup)
+        if register_handlers:
+            atexit.register(self._cleanup)
+            signal.signal(signal.SIGINT, self._signal_cleanup)
+            signal.signal(signal.SIGTERM, self._signal_cleanup)
+            weakref.finalize(self, self._cleanup)
 
-        # Fallback finalizer if object is GC'd
-        weakref.finalize(self, self._cleanup)
+    # -----------------------------------------------------
 
-    def connect(self, bolt_name: str = cfg.SPHEROBOLTPLUS_NAME) -> None:
-        """Scan for and connect to a nearby Sphero BOLT."""
+    def connect(self, bolt_name: str = cfg.SPHEROBOLTPLUS_NAME):
+        logger.info("Scanning for Sphero BOLT...")
         self.scanner.scan_toys()
-        self.toy = self.scanner.select_toy(name=bolt_name)
-        self.name = self.toy.name if self.toy else None
-        self.api = SpheroEduAPI(self.toy)
-        self.api.__enter__()  # proper connection method
-        logger.info(f"Connected to {self.toy.name}")
 
-    def disconnect(self) -> None:
+        self.toy = self.scanner.select_toy(bolt_name)
+        if not self.toy:
+            raise RuntimeError(f"Sphero '{bolt_name}' not found")
+
+        self.name = str(self.toy.name)
+
+        # If api was not injected, create it now
+        self.api = self.api or SpheroEduAPI(self.toy)
+        self.api.__enter__()
+
+        logger.info(f"Connected to {self.name}")
+
+    # -----------------------------------------------------
+
+    def disconnect(self):
         self._cleanup()
 
-    def _cleanup(self) -> None:
-        """Disconnect from the robot safely."""
+    def _cleanup(self):
         if self.api:
             try:
-                self.api.__exit__(None, None, None)  # proper release method
+                self.api.__exit__(None, None, None)
                 logger.info("Disconnected from Sphero BOLT.")
-            except Exception as e:
-                logger.error(f"Error during disconnect: {e}")
             finally:
                 self.api = None
 
-    def _signal_cleanup(self, signum, frame) -> None:
-        logger.debug(f"Received signal {signum}, cleaning up...")
+    def _signal_cleanup(self, signum, frame):
+        logger.debug(f"Signal {signum} received. Cleaning up...")
         self._cleanup()
         raise SystemExit(0)
 
-    @requires_connection
-    def move(
-        self, heading: int = 0, speed: int = cfg.SPHEROBOLTPLUS_SPEED, duration: float = cfg.SPHEROBOLTPLUS_DURATION
-    ) -> None:
-        """Move the Sphero in a given direction.
+    # -----------------------------------------------------
 
-        Arttributes:
-            - heading: Moving direktion (0-360°)
-            - speed: Moving speed (-255 - 255)
-            - duration: Moving duration (seconds)
+    def _require_connection(self):
+        if not self.api:
+            raise RuntimeError("Robot is not connected.")
 
-        Retrun: None
-        """
-        logger.info(f"Moving at heading {heading}°, speed {speed}")
+    def move(self, heading: int, speed=cfg.SPHEROBOLTPLUS_SPEED, duration=cfg.SPHEROBOLTPLUS_DURATION):
+        self._require_connection()
+        logger.info(f"Moving: heading={heading}, speed={speed}, duration={duration}")
         self.api.roll(heading, speed, duration)
-        time.sleep(duration)
+        self.sleep(duration)
 
 
 if __name__ == "__main__":
-    bot = SpheroBoltPlus()
-    bot.connect()
-    bot.move(0, 100, 1)
-    bot.disconnect()
+    robot = SpheroBoltPlus()
+    robot.connect()
+    robot.move(heading=0)
+    robot.move(heading=90)
+    robot.disconnect()
