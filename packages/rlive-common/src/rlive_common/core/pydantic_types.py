@@ -39,14 +39,14 @@ ImageArray = Annotated[
 
 # ---------- Annotated NumpyArray type ----------
 def _ndarray_before_validator(x: Any) -> np.ndarray:
+    if isinstance(x, np.ndarray):
+        return x
+    if isinstance(x, (list, tuple)):
+        return np.array(x)
     if isinstance(x, str):
-        import ast
-
-        x_list = ast.literal_eval(x)
-        x = np.array(x_list)
-    elif isinstance(x, list):
-        x = np.array(x)
-    return x
+        import json
+        return np.array(json.loads(x))
+    raise TypeError(f"Cannot convert {type(x)} to numpy.ndarray")
 
 
 def _ndarray_serializer(x: np.ndarray) -> list:
