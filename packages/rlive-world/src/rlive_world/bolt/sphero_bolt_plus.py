@@ -2,7 +2,7 @@ import atexit
 import signal
 import weakref
 import time
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 
 from sphero_unsw.sphero_edu import SpheroEduAPI
 from sphero_unsw.toy.boltplus import BOLTPLUS
@@ -22,11 +22,11 @@ class SpheroBoltPlus(BaseRobot):
     """
 
     def __init__(
-        self,
-        scanner: Optional[SpheroFinder] = None,
-        api: Optional[SpheroEduAPI] = None,
-        sleep_fn=time.sleep,
-        register_handlers=True,
+            self,
+            scanner: Optional[SpheroFinder] = None,
+            api: Optional[SpheroEduAPI] = None,
+            sleep_fn=time.sleep,
+            register_handlers=True,
     ):
         self.scanner: SpheroFinder = scanner or SpheroFinder()
         self.api: SpheroEduAPI | None = api  # set after connect() normally
@@ -88,10 +88,41 @@ class SpheroBoltPlus(BaseRobot):
         self.api.roll(heading, speed, duration)
         self.sleep(duration)
 
+    def get_sensor_data(self) -> dict[str, Any]:
+        """
+        Returns a snapshot of all sensor readings.
+
+        Returns:
+            dict[str, Any]: A dictionary containing:
+                - ambient_light (float): Measured ambient light level.
+                - orientation (dict[str, float]): {"pitch", "roll", "yaw"} in degrees.
+                - velocity (dict[str, float]): {"x", "y"} velocity in m/s.
+                - location (dict[str, float]): {"x", "y"} position relative to start.
+                - gyroscope (dict[str, float]): {"x", "y", "z"} angular velocity in deg/s.
+                - acceleration ([str, float]): {"x", "y", "z"} linear acceleration.
+                - travel_distance (float): Total distance traveled in meters.
+                - heading (float): Heading angle in degrees (0–359).
+        """
+        self._require_connection()
+
+        return {
+            "ambient_light": self.api.get_luminosity()['ambient_light'],
+            "orientation": self.api.get_orientation(),
+            "velocity": self.api.get_velocity(),
+            "location": self.api.get_location(),
+            "gyroscope": self.api.get_gyroscope(),
+            "acceleration": self.api.get_acceleration(),
+            "travel_distance": self.api.get_distance(),
+            "heading": self.api.get_heading(),
+        }
+
 
 if __name__ == "__main__":
     robot = SpheroBoltPlus()
     robot.connect()
     robot.move(heading=0)
     robot.move(heading=90)
+    data = robot.get_sensor_data()
+    for key, value in data.items():
+        logger.info(f"{key.replace('_', ' ').title()}: {value}")
     robot.disconnect()
