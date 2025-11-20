@@ -44,5 +44,5 @@ class TestWorldAPI(unittest.TestCase):
 
         resp = self.client.post("/step_multipart", json={"action": 5})
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.headers["content-type"].startswith("multipart/mixed"))
+        self.assertTrue(resp.headers["content-type"].startswith("multipart/form-data"))
         self.assertIn(b"application/json", resp.content)

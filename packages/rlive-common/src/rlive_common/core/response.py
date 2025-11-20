@@ -36,6 +36,20 @@ class StepResponseMultipart(Response):
     boundary: str = Field(default="world-step", exclude=True)
 
     def encode(self) -> tuple[bytes, str]:
+        """
+        --boundary
+        Content-Type: application/json
+
+        {meta_data}
+        --boundary
+        Content-Type: image/png
+
+        <PNG_BYTES>
+        --boundary--
+
+        :return:
+        """
+
         meta_dict = self.model_dump(exclude={"image", "boundary"})
         if self.image is not None:
             meta_dict["image_ndim"] = int(self.image.ndim)
