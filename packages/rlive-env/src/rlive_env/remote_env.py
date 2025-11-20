@@ -5,6 +5,7 @@ import gymnasium as gym
 
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
+from rlive_common.core.response import ResetResponse, StepResponseJSON
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -26,7 +27,7 @@ class RemoteWorldEnv(gym.Env):
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None) -> Tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         logger.info(f"Resetting environment.")
-        data = self.iface.reset()
+        data: ResetResponse = self.iface.reset()
         logger.info(f"reset data: {data}")
 
         obs = data.observation
@@ -36,7 +37,7 @@ class RemoteWorldEnv(gym.Env):
     def step(self, action) -> Tuple[np.ndarray, float, bool, bool, dict]:
         logger.info(f"Making a step: {action}")
 
-        data = self.iface.step_json(action)
+        data: StepResponseJSON = self.iface.step_json(action)
         logger.info(f"step_json data: {data}")
 
         # data = self.iface.step_multipart(action)
