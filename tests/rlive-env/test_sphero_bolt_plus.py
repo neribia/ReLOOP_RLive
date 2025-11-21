@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
 from rlive_world.bolt.sphero_bolt_plus import SpheroBoltPlus
 
@@ -104,4 +104,7 @@ class TestBolt(unittest.TestCase):
         robot.connect("FakeBolt")
         robot.move(heading=90, speed=100, duration=1)
 
-        fake_api.roll.assert_called_once_with(90, 100, 1)
+        fake_api.roll.assert_has_calls([
+            call(90, 0, 1),
+            call(90, 100, 1),
+        ])
