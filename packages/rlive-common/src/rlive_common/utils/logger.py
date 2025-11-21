@@ -93,10 +93,42 @@ def setup_logger(
                 "level": logging.getLevelName(level),
                 "handlers": list(handlers.keys()),
                 "propagate": False,
-            }
+            },
+            "rlive_world": {
+                "level": logging.getLevelName(level),
+                "handlers": list(handlers.keys()),
+                "propagate": False,
+            },
+            "rlive_env": {
+                "level": logging.getLevelName(level),
+                "handlers": list(handlers.keys()),
+                "propagate": False,
+            },
+            # # Change the Unicorn logger
+            # "uvicorn": {
+            #     "level": "INFO",
+            #     "handlers": list(handlers.keys()),
+            # },
+            # "uvicorn.error": {
+            #     "level": "INFO",
+            #     "handlers": list(handlers.keys()),
+            #     "propagate": False,
+            # },
+            # "uvicorn.access": {
+            #     "level": "INFO",
+            #     "handlers": list(handlers.keys()),
+            #     "propagate": False,
+            # },
+            # "httpx": {"level": "WARNING", "propagate": False},
+            # "httpcore": {"level": "WARNING", "propagate": False},
+            # "asyncio": {"level": "WARNING", "propagate": False},
+            # "bleak": {"level": "WARNING", "propagate": False},
+            # "uvicorn.error": {"level": "INFO", "propagate": False},
+            # "uvicorn.access": {"level": "INFO", "propagate": False},
         },
+        # Root logger
         "root": {
-            "level": logging.getLevelName(level),
+            "level": "WARNING",
             "handlers": list(handlers.keys()) or ["console"],
         },
     }
