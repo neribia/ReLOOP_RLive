@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from fastapi import FastAPI, HTTPException, Response
 from contextlib import asynccontextmanager
 
@@ -8,17 +10,16 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-world: World | None = None
+resources = SimpleNamespace()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global world
-    world = World()
+    resources.world = World()
 
     yield
 
-    world.close()
+    resources.world.close()
 
 
 app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
@@ -27,7 +28,7 @@ app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
 @app.post("/reset", response_model=ResetResponse)
 def reset_endpoint(req: ResetRequest) -> ResetResponse:
     try:
-        result = world.reset(req)
+        result = resources.world.reset(req)
         return result
     except Exception as e:  # pragma: no cover (defensive)
         logger.exception("Reset JSON endpoint failed")
@@ -37,7 +38,7 @@ def reset_endpoint(req: ResetRequest) -> ResetResponse:
 @app.post("/step_json", response_model=StepResponseJSON)
 def step_endpoint_json(req: StepRequest) -> StepResponseJSON:
     try:
-        result, image = world.step(req)
+        result, image = resources.world.step(req)
         result_json = StepResponseJSON(
             image=image,
             observation=result.observation,
@@ -53,7 +54,7 @@ def step_endpoint_json(req: StepRequest) -> StepResponseJSON:
 @app.post("/step_multipart")
 def step_endpoint_binary(req: StepRequest) -> Response:
     try:
-        result, image = world.step(req)
+        result, image = resources.world.step(req)
         model = StepResponseMultipart(
             image=image,
             observation=result.observation,
