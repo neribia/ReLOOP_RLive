@@ -25,7 +25,6 @@ class SpheroBoltPlus(BaseRobot):
             self,
             scanner: Optional[SpheroFinder] = None,
             api: Optional[SpheroEduAPI] = None,
-            sleep_fn=time.sleep,
             register_handlers=True,
     ):
         self.scanner: SpheroFinder = scanner or SpheroFinder()
