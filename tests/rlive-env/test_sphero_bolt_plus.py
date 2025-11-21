@@ -95,12 +95,9 @@ class TestBolt(unittest.TestCase):
         fake_api = MockAPI.return_value
         fake_api.__enter__.return_value = fake_api
 
-        fake_sleep = MagicMock()
-
         robot = SpheroBoltPlus(
             scanner=fake_scanner,
             api=None,
-            sleep_fn=fake_sleep,
             register_handlers=False
         )
 
@@ -108,4 +105,3 @@ class TestBolt(unittest.TestCase):
         robot.move(heading=90, speed=100, duration=1)
 
         fake_api.roll.assert_called_once_with(90, 100, 1)
-        fake_sleep.assert_called_once_with(1)

@@ -30,7 +30,6 @@ class SpheroBoltPlus(BaseRobot):
     ):
         self.scanner: SpheroFinder = scanner or SpheroFinder()
         self.api: SpheroEduAPI | None = api  # set after connect() normally
-        self.sleep: Callable[[float], None] = sleep_fn
         self.toy: BOLTPLUS | None = None
         self.name: str | None = None
 
@@ -51,7 +50,7 @@ class SpheroBoltPlus(BaseRobot):
             raise RuntimeError(f"Sphero '{bolt_name}' not found")
 
         self.name = str(self.toy.name)
-
+        self.heading = 0
         # If api was not injected, create it now
         self.api = self.api or SpheroEduAPI(self.toy)
         self.api.__enter__()
@@ -77,16 +76,30 @@ class SpheroBoltPlus(BaseRobot):
         raise SystemExit(0)
 
     # -----------------------------------------------------
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._cleanup()
 
     def _require_connection(self):
         if not self.api:
             raise RuntimeError("Robot is not connected.")
 
     def move(self, heading: int, speed=cfg.SPHEROBOLTPLUS_SPEED, duration=cfg.SPHEROBOLTPLUS_DURATION):
+        """
+        Move the Sphero in a relative direction.
+
+        Arttributes:
+            - heading: Moving direktion (0-360°)
+            - speed: Moving speed (-255 - 255)
+            - duration: Moving duration (seconds)
+
+        Return: None
+        """
         self._require_connection()
+
+        self.heading = (self.heading + heading) % 360
         logger.info(f"Moving: heading={heading}, speed={speed}, duration={duration}")
-        self.api.roll(heading, speed, duration)
-        self.sleep(duration)
+        self.api.roll(self.heading, 0, duration)
+        self.api.roll(self.heading, speed, duration)
 
     def get_sensor_data(self) -> dict[str, Any]:
         """
@@ -122,6 +135,7 @@ if __name__ == "__main__":
     robot.connect()
     robot.move(heading=0)
     robot.move(heading=90)
+    robot.move(heading=0)
     data = robot.get_sensor_data()
     for key, value in data.items():
         logger.info(f"{key.replace('_', ' ').title()}: {value}")
