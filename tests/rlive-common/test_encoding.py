@@ -1,5 +1,5 @@
 import unittest
-from rlive_common.core.pydantic_types import (
+from rlive_common.core.types import (
     _encode_image,
     _decode_image,
     _ndarray_serializer,

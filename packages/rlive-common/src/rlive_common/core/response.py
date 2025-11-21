@@ -6,7 +6,18 @@ import numpy as np
 import cv2 as cv
 from email.message import Message
 
-from rlive_common.core.pydantic_types import ImageArray, NumpyArray
+from rlive_common.core.types import ImageArray, NumpyArray
+
+
+class ConnectResponse(BaseModel):
+    """Response body for POST /connect."""
+    info: Dict[str, Any]
+
+
+class DisconnectResponse(BaseModel):
+    """Response body for POST /disconnect."""
+
+    info: Dict[str, Any]
 
 
 class Response(BaseModel):

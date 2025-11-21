@@ -27,14 +27,14 @@ class WorldInterface:
     def __init__(
         self,
         base_url: Optional[str] = None,
-        timeout: float = 5.0,
+        timeout: float = 30.0,
         max_retries: int = 3,
         backoff_factor: float = 0.3,
     ) -> None:
         self.base_url = (base_url or cfg.WORLD_BASE_URL).rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
-        self.max_retry_time = 30
+        self.max_retry_time = 180
         self.backoff_factor = backoff_factor
 
         # httpx.Client synchronous

@@ -4,7 +4,6 @@ from typing import Annotated, Any
 from pydantic import BeforeValidator, PlainSerializer
 
 
-# ---------- Annotated ImageArray type ----------
 def _encode_image(array: np.ndarray) -> dict[str, Any]:
     """Convert a NumPy image array to a base64 JSON object."""
     return {
@@ -37,7 +36,6 @@ ImageArray = Annotated[
 ]
 
 
-# ---------- Annotated NumpyArray type ----------
 def _ndarray_before_validator(x: Any) -> np.ndarray:
     if isinstance(x, np.ndarray):
         return x

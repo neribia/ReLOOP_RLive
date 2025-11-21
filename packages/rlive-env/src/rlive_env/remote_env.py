@@ -18,9 +18,15 @@ class RemoteWorldEnv(gym.Env):
 
     metadata = {"render_modes": []}
 
-    def __init__(self, base_url: Optional[str] = None, timeout: float = 5.0) -> None:
+    def __init__(self, **kwargs) -> None:
+        """
+        Initialize the environment.
+        Attributes:
+            - base_url (Optional[str]): Base URL for remote environment.
+            - timeout (Optional[float]): Time in seconds to wait for the server to send data
+        """
         super().__init__()
-        self.iface = WorldInterface(base_url=base_url or cfg.WORLD_BASE_URL, timeout=timeout)
+        self.iface = WorldInterface(**kwargs)
 
         self.action_space = gym.spaces.Discrete(1)  # placeholder (one valid action)
 

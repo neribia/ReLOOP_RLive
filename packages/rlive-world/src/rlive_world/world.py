@@ -43,6 +43,10 @@ class World:
             info: Dict[str, Any] = {"msg": "reset", "status": "ok"}
             return ResetResponse(observation=obs, info=info)
 
+        obs = self._make_observation()
+        info: Dict[str, Any] = {"msg": "reset", "status": "ok"}
+        return ResetResponse(observation=obs, info=info)
+
     def step(self, req: StepRequest) -> Tuple[Response, np.ndarray]:
         """
         Make a step in the world with a given action.
