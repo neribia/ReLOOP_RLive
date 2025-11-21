@@ -13,9 +13,9 @@ app: FastAPI = FastAPI(title="World API", version="1.0.0")
 
 
 @app.post("/reset", response_model=ResetResponse)
-async def reset_endpoint(req: ResetRequest) -> ResetResponse:
+def reset_endpoint(req: ResetRequest) -> ResetResponse:
     try:
-        result = await world.reset(req)
+        result = world.reset(req)
         return result
     except Exception as e:  # pragma: no cover (defensive)
         logger.exception("Reset JSON endpoint failed")
@@ -23,9 +23,9 @@ async def reset_endpoint(req: ResetRequest) -> ResetResponse:
 
 
 @app.post("/step_json", response_model=StepResponseJSON)
-async def step_endpoint_json(req: StepRequest) -> StepResponseJSON:
+def step_endpoint_json(req: StepRequest) -> StepResponseJSON:
     try:
-        result, image = await world.step(req)
+        result, image = world.step(req)
         result_json = StepResponseJSON(
             image=image,
             observation=result.observation,
@@ -39,9 +39,9 @@ async def step_endpoint_json(req: StepRequest) -> StepResponseJSON:
 
 
 @app.post("/step_multipart")
-async def step_endpoint_binary(req: StepRequest) -> Response:
+def step_endpoint_binary(req: StepRequest) -> Response:
     try:
-        result, image = await world.step(req)
+        result, image = world.step(req)
         model = StepResponseMultipart(
             image=image,
             observation=result.observation,
