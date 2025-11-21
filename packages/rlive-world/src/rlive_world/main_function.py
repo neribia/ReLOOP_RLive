@@ -20,6 +20,11 @@ def main() -> None:
         action="store_true",
         help="Run locally (bind to 127.0.0.1 instead of 0.0.0.0).",
     )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        help="Enable auto-reload (DO NOT USE with real hardware!)"
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug/reload mode.")
     args = parser.parse_args()
 
@@ -32,8 +37,8 @@ def main() -> None:
         host = "127.0.0.1"
         logger.info("Running in LOCAL mode (PC server on 127.0.0.1)")
 
-    logger.info(f"Starting World server at http://{host}:{port} (debug={debug})")
-    uvicorn.run("rlive_world.world_server:app", host=host, port=port, reload=debug, workers=1)
+    logger.info(f"Starting World server at http://{host}:{port} (debug={debug}, reload={args.reload})")
+    uvicorn.run("rlive_world.world_server:app", host=host, port=port, reload=args.reload, workers=1)
 
 
 if __name__ == "__main__":
