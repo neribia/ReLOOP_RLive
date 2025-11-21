@@ -1,6 +1,14 @@
 from pydantic import BaseModel, Field, ConfigDict
 
 
+class AttachHardwareRequest(BaseModel):
+    """Request body for POST /connect."""
+
+
+class DetachHardwareRequest(BaseModel):
+    """Request body for POST /disconnect."""
+
+
 class Request(BaseModel):
     """Basic request body for POST endpoints."""
 

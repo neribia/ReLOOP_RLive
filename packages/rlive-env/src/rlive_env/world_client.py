@@ -3,8 +3,8 @@ import time
 
 import httpx
 
-from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
-from rlive_common.core.request import ResetRequest, StepRequest
+from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
+from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_env.config import config as cfg
 from rlive_common.utils import get_logger
 
@@ -47,6 +47,17 @@ class WorldInterface:
         self._client.close()
 
     # -------------------------------------------------------------
+    def attach_hardware(self) -> AttachHardwareResponse:
+        """Call POST /reset on the world server with retries."""
+        payload = AttachHardwareRequest().model_dump()
+        data = self._request("POST", "/attach_hardware", json=payload)
+        return AttachHardwareResponse(**data)
+
+    def detach_hardware(self) -> DetachHardwareResponse:
+        """Call POST /reset on the world server with retries."""
+        payload = DetachHardwareRequest().model_dump()
+        data = self._request("POST", "/detach_hardware", json=payload)
+        return DetachHardwareResponse(**data)
 
     def reset(self) -> ResetResponse:
         """Call POST /reset on the world server with retries."""

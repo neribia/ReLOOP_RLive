@@ -26,9 +26,31 @@ class RemoteWorldEnv(gym.Env):
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
         """
         super().__init__()
-        self.iface = WorldInterface(**kwargs)
 
         self.action_space = gym.spaces.Discrete(1)  # placeholder (one valid action)
+
+        self._connect(**kwargs)
+
+    def _connect(self, **kwargs):
+        """Create iface and attach hardware."""
+        self.iface = WorldInterface(**kwargs)
+
+        resp = self.iface.attach_hardware()
+        if not resp.success:
+            raise RuntimeError("Failed to connect the hardware")
+
+        return resp
+
+    def _disconnect(self):
+        """Detach hardware and close HTTP interface."""
+        if hasattr(self, "iface") and self.iface is not None:
+            try:
+                self.iface.detach_hardware()
+            finally:
+                self.iface.close()
+
+        self.iface = None
+
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None) -> Tuple[np.ndarray, dict]:
         super().reset(seed=seed)
@@ -44,7 +66,7 @@ class RemoteWorldEnv(gym.Env):
         logger.info(f"Making a step: {action}")
 
         data: StepResponseJSON = self.iface.step_json(action)
-        logger.info(f"step_json data: {data}")
+        logger.info(f"step_json data: {data.model_dump(exclude={'image'})} | image: {data.image.shape}")
 
         # data = self.iface.step_multipart(action)
         # logger.info(f"step_multipart data: {data}")
@@ -59,4 +81,4 @@ class RemoteWorldEnv(gym.Env):
 
     def close(self) -> None:
         logger.info(f"Closing environment.")
-        self.iface.close()
+        self._disconnect()

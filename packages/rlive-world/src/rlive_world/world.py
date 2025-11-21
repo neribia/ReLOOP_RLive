@@ -3,8 +3,8 @@ from typing import Dict, Any, Tuple
 import asyncio
 import numpy as np
 
-from rlive_common.core.response import Response, ResetResponse
-from rlive_common.core.request import ResetRequest, StepRequest
+from rlive_common.core.response import Response, ResetResponse, AttachHardwareResponse, DetachHardwareResponse
+from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -19,6 +19,22 @@ class World:
         self.camera = None
         self.bolt = None
         self._setup_world()
+
+    def attach_hardware(self, request: AttachHardwareRequest) -> AttachHardwareResponse:
+        logger.debug(f"Attaching hardware to the world.")
+        logger.info(f"request: {request}")
+
+        async def fake_scan():
+            await asyncio.sleep(5)  # simulate a 5-second BLE scan
+
+        asyncio.run(fake_scan())
+
+        return AttachHardwareResponse(success=False, info={"status": "ok", "msg": ""})
+
+    def detach_hardware(self, request: DetachHardwareRequest) -> DetachHardwareResponse:
+        logger.debug(f"Detaching hardware from the world.")
+        logger.info(f"request: {request}")
+        return DetachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
 
     def _setup_world(self):
         pass
@@ -38,10 +54,6 @@ class World:
         Reset the world and return an initial observation.
         """
         logger.info(f"Resetting the world.")
-        async with self._lock:
-            obs = await self._make_observation()
-            info: Dict[str, Any] = {"msg": "reset", "status": "ok"}
-            return ResetResponse(observation=obs, info=info)
 
         obs = self._make_observation()
         info: Dict[str, Any] = {"msg": "reset", "status": "ok"}

@@ -3,8 +3,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI, HTTPException, Response
 from contextlib import asynccontextmanager
 
-from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
-from rlive_common.core.request import ResetRequest, StepRequest
+from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
+from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_world.world import World
 from rlive_common.utils import get_logger
 
@@ -23,6 +23,26 @@ async def lifespan(app: FastAPI):
 
 
 app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
+
+
+@app.post("/attach_hardware", response_model=AttachHardwareResponse)
+def attach_hardware(req: AttachHardwareRequest) -> AttachHardwareResponse:
+    try:
+        response = resources.world.attach_hardware(req)
+        return response
+    except Exception as e:  # pragma: no cover (defensive)
+        logger.exception("Reset JSON endpoint failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/detach_hardware", response_model=DetachHardwareResponse)
+def detach_hardware(req: DetachHardwareRequest) -> DetachHardwareResponse:
+    try:
+        response = resources.world.detach_hardware(req)
+        return response
+    except Exception as e:  # pragma: no cover (defensive)
+        logger.exception("Reset JSON endpoint failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/reset", response_model=ResetResponse)

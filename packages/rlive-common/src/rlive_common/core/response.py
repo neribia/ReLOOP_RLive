@@ -9,14 +9,17 @@ from email.message import Message
 from rlive_common.core.types import ImageArray, NumpyArray
 
 
-class ConnectResponse(BaseModel):
+class AttachHardwareResponse(BaseModel):
     """Response body for POST /connect."""
+
+    success: bool
     info: Dict[str, Any]
 
 
-class DisconnectResponse(BaseModel):
+class DetachHardwareResponse(BaseModel):
     """Response body for POST /disconnect."""
 
+    success: bool
     info: Dict[str, Any]
 
 
@@ -123,7 +126,7 @@ class StepResponseMultipart(Response):
                 image = cv.imdecode(arr, flag)
 
         if meta is None:
-                raise ValueError("Missing JSON metadata")
+            raise ValueError("Missing JSON metadata")
 
         meta.pop("image_ndim", None)
 

@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 import httpx
 
-from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
+from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
 from rlive_env.world_client import WorldInterface  # replace with actual import path
 
 
@@ -73,6 +73,22 @@ class TestWorldInterface(unittest.TestCase):
         result = self.iface._request("GET", "/path")
         self.assertEqual(result, {"ok": True})
         self.assertTrue(mock_sleep.called)
+
+    def test_attach_hardware_returns_attackhardware(self):
+        self.mock_client.request.return_value = MagicMock(
+            raise_for_status=lambda: None,
+            json=lambda: {"success": True , "info": {"status":"ok"}},
+        )
+        result = self.iface.attach_hardware()
+        self.assertIsInstance(result, AttachHardwareResponse)
+
+    def test_detach_hardware_returns_detachhardware(self):
+        self.mock_client.request.return_value = MagicMock(
+            raise_for_status=lambda: None,
+            json=lambda: {"success": True , "info": {"status":"ok"}},
+        )
+        result = self.iface.detach_hardware()
+        self.assertIsInstance(result, DetachHardwareResponse)
 
     def test_reset_returns_resetresponse(self):
         self.mock_client.request.return_value = MagicMock(
