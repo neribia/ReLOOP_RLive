@@ -32,6 +32,8 @@ class SpheroBoltPlus(BaseRobot):
         self.toy: BOLTPLUS | None = None
         self.name: str | None = None
 
+        self.heading = 0
+
         if register_handlers:
             atexit.register(self._cleanup)
             signal.signal(signal.SIGINT, self._signal_cleanup)
@@ -49,7 +51,6 @@ class SpheroBoltPlus(BaseRobot):
             raise RuntimeError(f"Sphero '{bolt_name}' not found")
 
         self.name = str(self.toy.name)
-        self.heading = 0
         # If api was not injected, create it now
         self.api = self.api or SpheroEduAPI(self.toy)
         self.api.__enter__()
