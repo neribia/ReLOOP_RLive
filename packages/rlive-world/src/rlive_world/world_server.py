@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Response
+from contextlib import asynccontextmanager
 
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
 from rlive_common.core.request import ResetRequest, StepRequest
@@ -7,9 +8,20 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
+world: World | None = None
 
-world: World = World()
-app: FastAPI = FastAPI(title="World API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global world
+    world = World()
+
+    yield
+
+    world.close()
+
+
+app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
 
 
 @app.post("/reset", response_model=ResetResponse)
