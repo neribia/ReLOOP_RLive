@@ -35,8 +35,8 @@ LOGGING_STREAM = os.getenv("LOG_STREAM", "true").lower() in ("1", "true", "yes")
 LOGGING_TO_FILE = os.getenv("LOG_TO_FILE", "false").lower() in ("1", "true", "yes")
 EXECUTION_DIR = Path(sys.argv[0]).resolve().parent
 LOGGING_DIR = Path(os.getenv("LOG_DIR", EXECUTION_DIR / "logs"))
-LOGGING_DIR.mkdir(parents=True, exist_ok=True)
 LOGGING_FILE: Optional[str] = (
     os.getenv("LOG_FILE", str(LOGGING_DIR / "app.log")) if LOGGING_TO_FILE else None
 )
-
+if LOGGING_TO_FILE:
+    LOGGING_DIR.mkdir(parents=True, exist_ok=True)
