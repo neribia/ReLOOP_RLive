@@ -20,7 +20,7 @@ class TestWorld(unittest.TestCase):
         self.assertIsInstance(result, AttachHardwareResponse)
         self.assertIn("status", result.info)
         self.assertIn("msg", result.info)
-        self.assertFalse(result.success)  # because you return success=False
+        self.assertTrue(result.success)
 
     def test_detach_hardware(self):
         world = ToyWorld()

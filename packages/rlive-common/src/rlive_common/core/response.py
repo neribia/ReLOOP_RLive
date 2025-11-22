@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 import json
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -13,14 +13,14 @@ class AttachHardwareResponse(BaseModel):
     """Response body for POST /connect."""
 
     success: bool
-    info: Dict[str, Any]
+    info: dict[str, Any]
 
 
 class DetachHardwareResponse(BaseModel):
     """Response body for POST /disconnect."""
 
     success: bool
-    info: Dict[str, Any]
+    info: dict[str, Any]
 
 
 class Response(BaseModel):
@@ -28,7 +28,7 @@ class Response(BaseModel):
 
     observation: NumpyArray
     truncated: bool = False
-    info: Dict[str, Any]
+    info: dict[str, Any]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -40,7 +40,7 @@ class ResetResponse(Response):
 class StepResponseJSON(Response):
     """Response body for POST /step_json."""
 
-    image: ImageArray | None = None
+    image: Optional[ImageArray] = None
 
 
 class StepResponseMultipart(Response):

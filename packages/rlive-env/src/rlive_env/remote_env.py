@@ -26,6 +26,8 @@ class RemoteWorldEnv(gym.Env):
         """
         super().__init__()
 
+        self.iface: Optional[WorldInterface] = None
+
         self.action_space = gym.spaces.Discrete(1)  # placeholder (one valid action)
 
         self._connect(**kwargs)
@@ -41,42 +43,56 @@ class RemoteWorldEnv(gym.Env):
         return resp
 
     def _disconnect(self):
-        """Detach hardware and close HTTP interface."""
-        if hasattr(self, "iface") and self.iface is not None:
-            try:
-                self.iface.detach_hardware()
-            finally:
-                self.iface.close()
+        """Detach hardware and close HTTP interface (robust gegen Fehler)."""
+        iface = getattr(self, "iface", None)
+        if iface is None:
+            return
+
+        try:
+            iface.detach_hardware()
+        except Exception:
+            logger.exception("Failed to detach hardware (ignored).")
+
+        try:
+            iface.close()
+        except Exception:
+            logger.exception("Failed to close iface (ignored).")
 
         self.iface = None
-
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None) -> Tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         logger.info(f"Resetting environment.")
-        data: ResetResponse = self.iface.reset()
-        logger.info(f"reset data: {data}")
 
-        obs = data.observation
-        info = data.info
-        return obs, info
+        try:
+            data: ResetResponse = self.iface.reset()
+            logger.info(f"reset data: {data}")
+
+            obs = data.observation
+            info = data.info
+            return obs, info
+        except Exception as e:
+            logger.exception(f"Failed to reset environment")
+            self._disconnect()
+            raise RuntimeError(f"Failed to reset environment: {e}")
 
     def step(self, action) -> Tuple[np.ndarray, float, bool, bool, dict]:
         logger.info(f"Making a step: {action}")
 
-        data: StepResponseJSON = self.iface.step_json(action)
-        logger.info(f"step_json data: {data.model_dump(exclude={'image'})} | image: {data.image.shape}")
+        try:
+            data: StepResponseJSON = self.iface.step_json(action) # self.iface.step_multipart(action)
+            logger.info(f"step_json data: {data.model_dump(exclude={'image'})} | image: {data.image.shape}")
 
-        # data = self.iface.step_multipart(action)
-        # logger.info(f"step_multipart data: {data}")
-
-        # Handle None gracefully
-        obs = data.observation
-        reward = 0.0
-        terminated = False
-        truncated = data.truncated
-        info = data.info
-        return obs, reward, terminated, truncated, info
+            obs = data.observation
+            reward = 0.0
+            terminated = False
+            truncated = data.truncated
+            info = data.info
+            return obs, reward, terminated, truncated, info
+        except Exception as e:
+            logger.exception(f"Failed to step environment")
+            self._disconnect()
+            raise RuntimeError(f"Failed to step environment: {e}")
 
     def close(self) -> None:
         logger.info(f"Closing environment.")

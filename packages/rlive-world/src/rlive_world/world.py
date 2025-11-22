@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple
+from typing import Any, Tuple
 
 import asyncio
 import numpy as np
@@ -37,6 +37,7 @@ class World:
         return DetachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
 
     def _setup_world(self):
+        # TODO: implement world setup
         pass
         # camera_cfg = CameraConfig()
         # self.camera = CameraService(camera_cfg)
@@ -56,7 +57,7 @@ class World:
         logger.info(f"Resetting the world.")
 
         obs = self._make_observation()
-        info: Dict[str, Any] = {"msg": "reset", "status": "ok"}
+        info: dict[str, Any] = {"msg": "reset", "status": "ok"}
         return ResetResponse(observation=obs, info=info)
 
     def step(self, req: StepRequest) -> Tuple[Response, np.ndarray]:
@@ -68,7 +69,7 @@ class World:
 
         obs = self._make_observation()
 
-        info: Dict[str, Any] = {"status": "ok"}
+        info: dict[str, Any] = {"status": "ok"}
         image = np.random.randint(0, 255, size=(2, 4, 3), dtype=np.uint8)
 
         return Response(

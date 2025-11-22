@@ -1,8 +1,9 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 import time
 
 import httpx
 
+from rlive_world.config import config as cfg
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
 from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_env.config import config as cfg
@@ -25,16 +26,17 @@ class WorldInterface:
     """
 
     def __init__(
-        self,
-        base_url: Optional[str] = None,
-        timeout: float = 30.0,
-        max_retries: int = 3,
-        backoff_factor: float = 0.3,
+            self,
+            base_url: Optional[str] = cfg.WORLD_BASE_URL,
+            timeout: float = cfg.WORLD_INTERFACE_TIMEOUT,
+            max_retries: int = cfg.WORLD_INTERFACE_MAX_RETRIES,
+            backoff_factor: float = cfg.WORLD_INTERFACE_BACKOFF_FACTOR,
+            max_retry_time: float = cfg.WORLD_INTERFACE_MAX_RETRIES_TIME,
     ) -> None:
-        self.base_url = (base_url or cfg.WORLD_BASE_URL).rstrip("/")
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
-        self.max_retry_time = 180
+        self.max_retry_time = max_retry_time
         self.backoff_factor = backoff_factor
 
         # httpx.Client synchronous
@@ -83,7 +85,7 @@ class WorldInterface:
 
     # -------------------------------------------------------------
 
-    def _send_once(self, method: str, path: str, expect_json: bool = True, **kwargs) -> Dict[str, Any] | Any:
+    def _send_once(self, method: str, path: str, expect_json: bool = True, **kwargs) -> dict[str, Any] | httpx.Response:
         """Send a single HTTP request and return parsed JSON."""
         url = f"{self.base_url}{path}"
         response = self._client.request(method, url, **kwargs)
@@ -117,7 +119,7 @@ class WorldInterface:
                     logger.error(f"Request failed after {self.max_retries} retries: {e}")
                     raise
 
-                delay = self.backoff_factor * (2**attempt)
+                delay = self.backoff_factor * (2 ** attempt)
                 logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay:.2f}s...")
                 time.sleep(delay)
 
