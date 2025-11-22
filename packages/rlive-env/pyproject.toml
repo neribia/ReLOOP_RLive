@@ -8,6 +8,7 @@ dependencies = [
     "asyncio>=4.0.0",
     "gymnasium>=1.2.1",
     "httpx>=0.28.1",
+    "numpy>=2.2.6",
     "python-dotenv>=1.2.1",
     "rlive-common",
 ]
@@ -16,7 +17,7 @@ dependencies = [
 rlive-common = { workspace = true }
 
 [project.scripts]
-rlive-env = "rlive_env.main_function:main" # "main:main"
+rlive-env = "rlive_env.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]

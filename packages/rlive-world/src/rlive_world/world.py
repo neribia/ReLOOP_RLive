@@ -1,0 +1,85 @@
+from typing import Any, Tuple
+
+import asyncio
+import numpy as np
+
+from rlive_common.core.response import Response, ResetResponse, AttachHardwareResponse, DetachHardwareResponse
+from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
+from rlive_common.utils import get_logger
+
+logger = get_logger(__name__)
+
+
+class World:
+    """
+    A minimal World class.
+    """
+
+    def __init__(self) -> None:
+        self.camera = None
+        self.bolt = None
+        self._setup_world()
+
+    def attach_hardware(self, request: AttachHardwareRequest) -> AttachHardwareResponse:
+        logger.debug(f"Attaching hardware to the world.")
+        logger.info(f"request: {request}")
+
+        async def fake_scan():
+            await asyncio.sleep(5)  # simulate a 5-second BLE scan
+
+        asyncio.run(fake_scan())
+
+        return AttachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
+
+    def detach_hardware(self, request: DetachHardwareRequest) -> DetachHardwareResponse:
+        logger.debug(f"Detaching hardware from the world.")
+        logger.info(f"request: {request}")
+        return DetachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
+
+    def _setup_world(self):
+        # TODO: implement world setup
+        pass
+        # camera_cfg = CameraConfig()
+        # self.camera = CameraService(camera_cfg)
+        # self.bolt = Bolt()
+
+    def _make_observation(self) -> np.ndarray:
+        """
+        Make observation vector.
+        """
+        logger.debug(f"Making observation")
+        return np.zeros(3, dtype=np.float32)  # (480, 640))
+
+    def reset(self, req: ResetRequest) -> ResetResponse:
+        """
+        Reset the world and return an initial observation.
+        """
+        logger.info(f"Resetting the world.")
+
+        obs = self._make_observation()
+        info: dict[str, Any] = {"msg": "reset", "status": "ok"}
+        return ResetResponse(observation=obs, info=info)
+
+    def step(self, req: StepRequest) -> Tuple[Response, np.ndarray]:
+        """
+        Make a step in the world with a given action.
+        """
+        action = req.action
+        logger.info(f"Make a step in the world with action {action}")
+
+        obs = self._make_observation()
+
+        info: dict[str, Any] = {"status": "ok"}
+        image = np.random.randint(0, 255, size=(2, 4, 3), dtype=np.uint8)
+
+        return Response(
+            observation=obs,
+            truncated=False,
+            info=info,
+        ), image
+
+    def close(self) -> None:
+        """
+        Placeholder/stub: would close the world and disconnect still open connections.
+        """
+        pass

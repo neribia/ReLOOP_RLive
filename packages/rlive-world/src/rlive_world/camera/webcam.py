@@ -1,3 +1,5 @@
+from typing import Optional
+
 import cv2 as cv
 import numpy as np
 
@@ -8,7 +10,7 @@ class Webcam(BaseCamera):
     def __init__(self, cam_index: int = 0, width: int = 640, height: int = 480):
         super().__init__(width, height)
         self.cam_index = cam_index
-        self.cam: cv.VideoCapture | None = None
+        self.cam: Optional[cv.VideoCapture] = None
 
     def setup(self) -> None:
         """

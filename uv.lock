@@ -838,6 +838,18 @@ wheels = [
 name = "rlive-common"
 version = "0.1.0"
 source = { editable = "packages/rlive-common" }
+dependencies = [
+    { name = "numpy" },
+    { name = "opencv-python" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "numpy", specifier = ">=2.2.6" },
+    { name = "opencv-python", specifier = ">=4.12.0.88" },
+    { name = "pydantic", specifier = ">=2.12.3" },
+]
 
 [[package]]
 name = "rlive-env"
@@ -847,6 +859,7 @@ dependencies = [
     { name = "asyncio" },
     { name = "gymnasium" },
     { name = "httpx" },
+    { name = "numpy" },
     { name = "python-dotenv" },
     { name = "rlive-common" },
 ]
@@ -856,6 +869,7 @@ requires-dist = [
     { name = "asyncio", specifier = ">=4.0.0" },
     { name = "gymnasium", specifier = ">=1.2.1" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "numpy", specifier = ">=2.2.6" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "rlive-common", editable = "packages/rlive-common" },
 ]
