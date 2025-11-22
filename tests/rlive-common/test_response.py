@@ -1,9 +1,6 @@
 import unittest
-import pytest
 import numpy as np
-import cv2 as cv
-
-from rlive_common.core.response import Response, ResetResponse, StepResponseJSON, StepResponseMultipart
+from rlive_common.core.response import StepResponseJSON, StepResponseMultipart
 
 
 class TestRequests(unittest.TestCase):

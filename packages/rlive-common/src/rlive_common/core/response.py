@@ -124,7 +124,8 @@ class StepResponseMultipart(Response):
 
                 arr = np.frombuffer(content.strip(), np.uint8)
                 image = cv.imdecode(arr, flag)
-
+                if image is None:
+                    raise ValueError("Failed to decode image from PNG data")
         if meta is None:
             raise ValueError("Missing JSON metadata")
 

@@ -48,13 +48,13 @@ class WorldInterface:
 
     # -------------------------------------------------------------
     def attach_hardware(self) -> AttachHardwareResponse:
-        """Call POST /reset on the world server with retries."""
+        """Call POST /attach_hardware on the world server with retries."""
         payload = AttachHardwareRequest().model_dump()
         data = self._request("POST", "/attach_hardware", json=payload)
         return AttachHardwareResponse(**data)
 
     def detach_hardware(self) -> DetachHardwareResponse:
-        """Call POST /reset on the world server with retries."""
+        """Call POST /detach_hardware on the world server with retries."""
         payload = DetachHardwareRequest().model_dump()
         data = self._request("POST", "/detach_hardware", json=payload)
         return DetachHardwareResponse(**data)

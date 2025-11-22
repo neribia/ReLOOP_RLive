@@ -29,7 +29,7 @@ class World:
 
         asyncio.run(fake_scan())
 
-        return AttachHardwareResponse(success=False, info={"status": "ok", "msg": ""})
+        return AttachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
 
     def detach_hardware(self, request: DetachHardwareRequest) -> DetachHardwareResponse:
         logger.debug(f"Detaching hardware from the world.")
@@ -79,6 +79,6 @@ class World:
 
     def close(self) -> None:
         """
-        Closes the world and disconnects still open connections
+        Placeholder/stub: would close the world and disconnect still open connections.
         """
         pass
