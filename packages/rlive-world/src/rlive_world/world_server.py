@@ -31,7 +31,7 @@ def attach_hardware(req: AttachHardwareRequest) -> AttachHardwareResponse:
         response = resources.world.attach_hardware(req)
         return response
     except Exception as e:  # pragma: no cover (defensive)
-        logger.exception("Reset JSON endpoint failed")
+        logger.exception("Attach hardware endpoint failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -41,7 +41,7 @@ def detach_hardware(req: DetachHardwareRequest) -> DetachHardwareResponse:
         response = resources.world.detach_hardware(req)
         return response
     except Exception as e:  # pragma: no cover (defensive)
-        logger.exception("Reset JSON endpoint failed")
+        logger.exception("Detach hardware endpoint failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 

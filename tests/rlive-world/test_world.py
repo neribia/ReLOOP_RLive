@@ -1,7 +1,5 @@
 import unittest
 import numpy as np
-import asyncio
-
 from rlive_common.core.response import Response, AttachHardwareResponse, DetachHardwareResponse
 from rlive_common.core.request import StepRequest, ResetRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_world.world import World
@@ -40,8 +38,8 @@ class TestWorld(unittest.TestCase):
         obs = world._make_observation()
 
         self.assertIsInstance(obs, np.ndarray)
-        self.assertTrue(obs.dtype == np.float32)
-        self.assertTrue(obs.ndim in (1, 2, 3))  # FIXME: remove 1 when camera is implemented in this function
+        self.assertEqual(obs.dtype, np.float32)
+        self.assertIn(obs.ndim, (1, 2, 3))  # FIXME: remove 1 when camera is implemented in this function
 
     def test_reset(self):
         world = ToyWorld()
@@ -57,5 +55,5 @@ class TestWorld(unittest.TestCase):
 
         self.assertIsInstance(result, Response)
         self.assertIsInstance(img, np.ndarray)
-        self.assertTrue(img.dtype == np.uint8)
-        self.assertTrue(img.ndim in (2, 3))
+        self.assertEqual(img.dtype, np.uint8)
+        self.assertIn(img.ndim, (2, 3))

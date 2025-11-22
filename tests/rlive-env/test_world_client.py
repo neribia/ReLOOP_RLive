@@ -74,7 +74,7 @@ class TestWorldInterface(unittest.TestCase):
         self.assertEqual(result, {"ok": True})
         self.assertTrue(mock_sleep.called)
 
-    def test_attach_hardware_returns_attackhardware(self):
+    def test_attach_hardware_returns_attachhardware(self):
         self.mock_client.request.return_value = MagicMock(
             raise_for_status=lambda: None,
             json=lambda: {"success": True , "info": {"status":"ok"}},
