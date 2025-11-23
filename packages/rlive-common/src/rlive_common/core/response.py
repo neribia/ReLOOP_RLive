@@ -23,30 +23,28 @@ class DetachHardwareResponse(BaseModel):
     info: dict[str, Any]
 
 
-class Response(BaseModel):
+class BaseResponse(BaseModel):
     """Basic response body for POST."""
 
-    observation: NumpyArray
+    observation: ImageArray  # Options to encode the image/obs: NumpyArray, ImageArray or over Multipart
     truncated: bool = False
     info: dict[str, Any]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class ResetResponse(Response):
+class ResetResponse(BaseResponse):
     """Response body for POST /reset."""
 
 
-class StepResponseJSON(Response):
+class StepResponseJSON(BaseResponse):
     """Response body for POST /step_json."""
 
-    image: Optional[ImageArray] = None
 
-
-class StepResponseMultipart(Response):
+class StepResponseMultipart(BaseResponse):
     """Response body for POST /step_multipart."""
 
-    image: Optional[np.ndarray] = Field(default=None, exclude=True)
+    observation: Optional[np.ndarray] = Field(default=None, exclude=True)
     boundary: str = Field(default="world-step", exclude=True)
 
     def encode(self) -> tuple[bytes, str]:
@@ -64,9 +62,9 @@ class StepResponseMultipart(Response):
         :return:
         """
 
-        meta_dict = self.model_dump(exclude={"image", "boundary"})
-        if self.image is not None:
-            meta_dict["image_ndim"] = int(self.image.ndim)
+                meta_dict = self.model_dump(exclude={"observation", "boundary"})
+        if self.observation is not None:
+            meta_dict["image_ndim"] = int(self.observation.ndim)
 
         meta_json = json.dumps(meta_dict)
 
@@ -80,10 +78,10 @@ class StepResponseMultipart(Response):
             ).encode()
         ]
 
-        if self.image is not None:
-            ok, buf = cv.imencode(".png", self.image)
+        if self.observation is not None:
+            ok, buf = cv.imencode(".png", self.observation)
             if not ok:
-                raise ValueError(f"cv2.imencode failed for image shape={self.image.shape}, dtype={self.image.dtype}")
+                raise ValueError(f"cv2.imencode failed for image shape={self.observation.shape}, dtype={self.observation.dtype}")
             parts.append(
                 f"--{boundary}\r\nContent-Type: image/png\r\n\r\n".encode()
                 + buf.tobytes() + b"\r\n"
@@ -131,4 +129,4 @@ class StepResponseMultipart(Response):
 
         meta.pop("image_ndim", None)
 
-        return cls(**meta, image=image, boundary=boundary)
+        return cls(**meta, observation=image, boundary=boundary)

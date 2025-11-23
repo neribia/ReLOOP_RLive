@@ -2,6 +2,7 @@ from typing import Any, Optional
 import time
 
 import httpx
+from httpx import Response
 
 from rlive_world.config import config as cfg
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
@@ -32,6 +33,7 @@ class WorldInterface:
             max_retries: int = cfg.WORLD_INTERFACE_MAX_RETRIES,
             backoff_factor: float = cfg.WORLD_INTERFACE_BACKOFF_FACTOR,
             max_retry_time: float = cfg.WORLD_INTERFACE_MAX_RETRIES_TIME,
+            client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -40,7 +42,7 @@ class WorldInterface:
         self.backoff_factor = backoff_factor
 
         # httpx.Client synchronous
-        self._client = httpx.Client(timeout=self.timeout)
+        self._client = client or httpx.Client(timeout=self.timeout)
 
     # -------------------------------------------------------------
 
@@ -78,7 +80,7 @@ class WorldInterface:
         Call POST /step_multipart and decode multipart/mixed response.
         """
         payload = StepRequest(action=action).model_dump()
-        response = self._request("POST", "/step_multipart", json=payload, expect_json=False)
+        response: Response = self._request("POST", "/step_multipart", json=payload, expect_json=False)
 
         content_type = response.headers.get("content-type", "")
         return StepResponseMultipart.decode(response.content, content_type)

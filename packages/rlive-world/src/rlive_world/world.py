@@ -3,11 +3,15 @@ from typing import Any, Tuple
 import asyncio
 import numpy as np
 
-from rlive_common.core.response import Response, ResetResponse, AttachHardwareResponse, DetachHardwareResponse
+from rlive_common.core.response import BaseResponse, ResetResponse, AttachHardwareResponse, DetachHardwareResponse
 from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
+
+
+async def fake_scan(timeout: int = 5):
+    await asyncio.sleep(timeout)  # simulate a 5-second BLE scan
 
 
 class World:
@@ -24,9 +28,7 @@ class World:
         logger.debug(f"Attaching hardware to the world.")
         logger.info(f"request: {request}")
 
-        async def fake_scan():
-            await asyncio.sleep(5)  # simulate a 5-second BLE scan
-
+        # Simulate asynchronous hardware scanning
         asyncio.run(fake_scan())
 
         return AttachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
@@ -48,7 +50,10 @@ class World:
         Make observation vector.
         """
         logger.debug(f"Making observation")
-        return np.zeros(3, dtype=np.float32)  # (480, 640))
+
+        # Simulate asynchronous observation gathering
+        asyncio.run(fake_scan(timeout=1))
+        return np.zeros((480, 640, 3), dtype=np.uint8)
 
     def reset(self, req: ResetRequest) -> ResetResponse:
         """
@@ -60,7 +65,7 @@ class World:
         info: dict[str, Any] = {"msg": "reset", "status": "ok"}
         return ResetResponse(observation=obs, info=info)
 
-    def step(self, req: StepRequest) -> Tuple[Response, np.ndarray]:
+    def step(self, req: StepRequest) -> BaseResponse:
         """
         Make a step in the world with a given action.
         """
@@ -72,11 +77,11 @@ class World:
         info: dict[str, Any] = {"status": "ok"}
         image = np.random.randint(0, 255, size=(2, 4, 3), dtype=np.uint8)
 
-        return Response(
+        return BaseResponse(
             observation=obs,
             truncated=False,
             info=info,
-        ), image
+        )
 
     def close(self) -> None:
         """

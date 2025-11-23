@@ -1,13 +1,13 @@
 import unittest
 import numpy as np
-from rlive_common.core.response import Response, AttachHardwareResponse, DetachHardwareResponse
+from rlive_common.core.response import BaseResponse, AttachHardwareResponse, DetachHardwareResponse
 from rlive_common.core.request import StepRequest, ResetRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_world.world import World
 
 
 class ToyWorld(World):
     def _make_observation(self) -> np.ndarray:
-        return np.zeros((100, 100), dtype=np.uint32)  # (480, 640))
+        return np.zeros((480, 640, 3), dtype=np.uint8)
 
 
 class TestWorld(unittest.TestCase):
@@ -38,22 +38,21 @@ class TestWorld(unittest.TestCase):
         obs = world._make_observation()
 
         self.assertIsInstance(obs, np.ndarray)
-        self.assertEqual(obs.dtype, np.float32)
-        self.assertIn(obs.ndim, (1, 2, 3))  # FIXME: remove 1 when camera is implemented in this function
+        self.assertEqual(obs.shape, (480, 640, 3))
+        self.assertEqual(obs.dtype, np.uint8)
 
     def test_reset(self):
         world = ToyWorld()
         request = ResetRequest()
         result = world.reset(request)
 
-        self.assertIsInstance(result, Response)
+        self.assertIsInstance(result, BaseResponse)
 
     def test_step(self):
         world = ToyWorld()
         request = StepRequest(action=5)
-        result, img = world.step(request)
+        result = world.step(request)
 
-        self.assertIsInstance(result, Response)
-        self.assertIsInstance(img, np.ndarray)
-        self.assertEqual(img.dtype, np.uint8)
-        self.assertIn(img.ndim, (2, 3))
+        self.assertIsInstance(result, BaseResponse)
+        self.assertEqual(result.observation.shape, (480, 640, 3))
+        self.assertEqual(result.observation.dtype, np.uint8)

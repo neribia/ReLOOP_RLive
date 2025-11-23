@@ -1,121 +1,195 @@
 import unittest
-from unittest.mock import MagicMock, patch
+import json
+import numpy as np
 import httpx
+from httpx import Response
 
-from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
-from rlive_env.world_client import WorldInterface  # replace with actual import path
+from rlive_env.world_client import WorldInterface  # adjust if needed
+from rlive_common.core.request import (
+    StepRequest,
+    ResetRequest,
+    AttachHardwareRequest,
+    DetachHardwareRequest,
+)
+from rlive_common.core.response import (
+    StepResponseMultipart,
+    StepResponseJSON,
+    ResetResponse,
+    AttachHardwareResponse,
+    DetachHardwareResponse,
+)
 
 
 class TestWorldInterface(unittest.TestCase):
 
     def setUp(self):
-        # Patch httpx.Client so we can inject a fake client
-        patcher = patch("httpx.Client")
-        self.addCleanup(patcher.stop)
-        self.mock_client_class = patcher.start()
-        self.mock_client = MagicMock()
-        self.mock_client_class.return_value = self.mock_client
+        self.base_url = "http://test-world"
+        self.zero_image = np.zeros((480, 640, 3), dtype=np.uint8)
 
-        self.iface = WorldInterface(base_url="http://test")
+        # Helper: Create interface using transport handler
+        def make_iface(handler):
+            transport = httpx.MockTransport(handler)
+            client = httpx.Client(base_url=self.base_url, transport=transport)
+            return WorldInterface(base_url=self.base_url, client=client)
 
-    def test_send_once_success_json(self):
-        mock_response = MagicMock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {"ok": True}
-        self.mock_client.request.return_value = mock_response
+        self.make_iface = make_iface
 
-        result = self.iface._send_once("GET", "/path")
-        self.assertEqual(result, {"ok": True})
-        self.mock_client.request.assert_called_once_with("GET", "http://test/path")
+        def make_json_handler(path, expected_request, response_model):
+            def handler(req):
+                self.assertEqual(req.method, "POST")
+                self.assertEqual(req.url.path, path)
+                self.assert_json_body(req, expected_request)
+                return Response(200, json=response_model.model_dump())
 
-    def test_send_once_invalid_json(self):
-        mock_response = MagicMock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.side_effect = ValueError("bad json")
-        mock_response.text = "not-json"
-        self.mock_client.request.return_value = mock_response
+            return handler
 
-        with self.assertRaises(ValueError):
-            self.iface._send_once("GET", "/path")
+        self.make_handler = make_json_handler
 
-    def test_request_retries_and_succeeds(self):
-        mock_response = MagicMock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {"ok": True}
+        def assert_json_body(req, expected_model):
+            self.assertEqual(json.loads(req.content), expected_model.model_dump())
 
-        self.mock_client.request.side_effect = [
-            httpx.RequestError("boom"),
-            mock_response,
-        ]
+        self.assert_json_body = assert_json_body
 
-        result = self.iface._request("GET", "/path")
-        self.assertEqual(result, {"ok": True})
-        self.assertEqual(self.mock_client.request.call_count, 2)
+        def assert_numpy_image(image, expected_image):
+            np.testing.assert_array_equal(image, expected_image)
+            self.assertEqual(image.dtype, np.uint8)
+            self.assertEqual(image.shape, expected_image.shape)
 
-    def test_request_exceeds_retries(self):
-        self.mock_client.request.side_effect = httpx.RequestError("fail")
+        self.assert_numpy_image = assert_numpy_image
 
-        with self.assertRaises(httpx.RequestError):
-            self.iface._request("GET", "/path")
-
-    @patch("time.sleep", return_value=None)
-    def test_request_backoff(self, mock_sleep):
-        mock_response = MagicMock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {"ok": True}
-
-        self.mock_client.request.side_effect = [
-            httpx.RequestError("fail1"),
-            httpx.RequestError("fail2"),
-            mock_response,
-        ]
-
-        result = self.iface._request("GET", "/path")
-        self.assertEqual(result, {"ok": True})
-        self.assertTrue(mock_sleep.called)
-
-    def test_attach_hardware_returns_attachhardware(self):
-        self.mock_client.request.return_value = MagicMock(
-            raise_for_status=lambda: None,
-            json=lambda: {"success": True , "info": {"status":"ok"}},
-        )
-        result = self.iface.attach_hardware()
-        self.assertIsInstance(result, AttachHardwareResponse)
-
-    def test_detach_hardware_returns_detachhardware(self):
-        self.mock_client.request.return_value = MagicMock(
-            raise_for_status=lambda: None,
-            json=lambda: {"success": True , "info": {"status":"ok"}},
-        )
-        result = self.iface.detach_hardware()
-        self.assertIsInstance(result, DetachHardwareResponse)
-
+    # -------------------------------------------------------------
+    # /reset
+    # -------------------------------------------------------------
     def test_reset_returns_resetresponse(self):
-        self.mock_client.request.return_value = MagicMock(
-            raise_for_status=lambda: None,
-            json=lambda: {"observation": [1, 2, 3], "truncated": False, "info": {}},
+        expected = ResetResponse(
+            observation=self.zero_image,
+            truncated=False,
+            info={"debug": True},
         )
-        result = self.iface.reset()
+
+        def handler(req: httpx.Request) -> Response:
+            self.assertEqual(req.method, "POST")
+            self.assertEqual(req.url.path, "/reset")
+
+            self.assert_json_body(req, ResetRequest())
+
+            return Response(200, json=expected.model_dump())
+
+        iface = self.make_iface(handler)
+        result = iface.reset()
+
         self.assertIsInstance(result, ResetResponse)
+        self.assert_numpy_image(result.observation, expected.observation)
+        self.assertEqual(result.info, expected.info)
 
+    def test_reset_raises_on_http_error(self):
+        def handler(req):
+            return Response(500, json={"error": "server"})
+
+        iface = self.make_iface(handler)
+        with self.assertRaises(httpx.HTTPStatusError):
+            iface.reset()
+
+    # -------------------------------------------------------------
+    # /step_json
+    # -------------------------------------------------------------
     def test_step_json_returns_stepresponsejson(self):
-        self.mock_client.request.return_value = MagicMock(
-            raise_for_status=lambda: None,
-            json=lambda: {"observation": [1, 2, 3], "truncated": False, "info": {}, "image": None},
+        expected = StepResponseJSON(
+            observation=self.zero_image,
+            truncated=False,
+            info={"foo": "bar"},
         )
-        result = self.iface.step_json(action=5)
+
+        def handler(req: httpx.Request) -> Response:
+            self.assertEqual(req.method, "POST")
+            self.assertEqual(req.url.path, "/step_json")
+
+            self.assert_json_body(req, StepRequest(action=7))
+
+            return Response(200, json=expected.model_dump())
+
+        iface = self.make_iface(handler)
+        result = iface.step_json(action=7)
+
         self.assertIsInstance(result, StepResponseJSON)
+        self.assert_numpy_image(result.observation, expected.observation)
+        self.assertEqual(result.info, expected.info)
 
+    # -------------------------------------------------------------
+    # /step_multipart
+    # -------------------------------------------------------------
     def test_step_multipart_returns_stepresponsemultipart(self):
-        fake_response = MagicMock()
-        fake_response.raise_for_status.return_value = None
-        fake_response.headers = {"content-type": "multipart/mixed; boundary=world-step"}
-        fake_response.content = (
-            b"--world-step\r\nContent-Type: application/json\r\n\r\n"
-            b'{"observation":[1,2,3],"truncated":false,"info":{}}'
-            b"\r\n--world-step--\r\n"
+        expected = StepResponseMultipart(
+            observation=self.zero_image,
+            truncated=False,
+            info={},
         )
-        self.mock_client.request.return_value = fake_response
 
-        result = self.iface.step_multipart(action=5)
+        body, content_type = expected.encode()
+
+        def handler(req: httpx.Request) -> Response:
+            self.assertEqual(req.method, "POST")
+            self.assertEqual(req.url.path, "/step_multipart")
+
+            self.assert_json_body(req, StepRequest(action=5))
+
+            return Response(
+                status_code=200,
+                content=body,
+                headers={"Content-Type": content_type},
+            )
+
+        iface = self.make_iface(handler)
+        result = iface.step_multipart(5)
+
         self.assertIsInstance(result, StepResponseMultipart)
+        self.assert_numpy_image(result.observation, expected.observation)
+        self.assertEqual(result.info, expected.info)
+
+    def test_step_multipart_invalid_content_type(self):
+        def handler(req):
+            return Response(200, content=b"junk", headers={"Content-Type": "text/plain"})
+
+        iface = self.make_iface(handler)
+        with self.assertRaises(ValueError):
+            iface.step_multipart(5)
+
+    # -------------------------------------------------------------
+    # /attach_hardware
+    # -------------------------------------------------------------
+    def test_attach_hardware_returns_attachhardwareresponse(self):
+        expected = AttachHardwareResponse(success=True, info={"status": "ok"})
+
+        def handler(req: httpx.Request) -> Response:
+            self.assertEqual(req.method, "POST")
+            self.assertEqual(req.url.path, "/attach_hardware")
+
+            self.assert_json_body(req, AttachHardwareRequest())
+
+            return Response(200, json=expected.model_dump())
+
+        iface = self.make_iface(handler)
+        result = iface.attach_hardware()
+
+        self.assertIsInstance(result, AttachHardwareResponse)
+        self.assertTrue(result.success)
+
+    # -------------------------------------------------------------
+    # /detach_hardware
+    # -------------------------------------------------------------
+    def test_detach_hardware_returns_detachhardwareresponse(self):
+        expected = DetachHardwareResponse(success=True, info={"status": "ok"})
+
+        def handler(req: httpx.Request) -> Response:
+            self.assertEqual(req.method, "POST")
+            self.assertEqual(req.url.path, "/detach_hardware")
+
+            self.assert_json_body(req, DetachHardwareRequest())
+
+            return Response(200, json=expected.model_dump())
+
+        iface = self.make_iface(handler)
+        result = iface.detach_hardware()
+
+        self.assertIsInstance(result, DetachHardwareResponse)
+        self.assertTrue(result.success)

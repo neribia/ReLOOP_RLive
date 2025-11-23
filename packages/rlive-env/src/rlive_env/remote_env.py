@@ -1,10 +1,11 @@
 from typing import Tuple, Optional
 
 import numpy as np
+import cv2 as cv
 import gymnasium as gym
 
 from rlive_env.world_client import WorldInterface
-from rlive_common.core.response import ResetResponse, StepResponseJSON
+from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -15,9 +16,9 @@ class RemoteWorldEnv(gym.Env):
     Gymnasium-compatible environment that communicates with a remote World server over HTTP.
     """
 
-    metadata = {"render_modes": []}
+    metadata = {"render_modes": ["opencv"]}
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, render_mode: str | None = None, **kwargs) -> None:
         """
         Initialize the environment.
         Attributes:
@@ -26,7 +27,9 @@ class RemoteWorldEnv(gym.Env):
         """
         super().__init__()
 
+        self.render_mode = render_mode
         self.iface: Optional[WorldInterface] = None
+        self.obs = None
 
         self.action_space = gym.spaces.Discrete(1)  # placeholder (one valid action)
 
@@ -66,11 +69,11 @@ class RemoteWorldEnv(gym.Env):
 
         try:
             data: ResetResponse = self.iface.reset()
-            logger.info(f"reset data: {data}")
+            logger.info(f"reset data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
-            obs = data.observation
+            self.obs = data.observation
             info = data.info
-            return obs, info
+            return self.obs, info
         except Exception as e:
             logger.exception(f"Failed to reset environment")
             self._disconnect()
@@ -80,20 +83,29 @@ class RemoteWorldEnv(gym.Env):
         logger.info(f"Making a step: {action}")
 
         try:
-            data: StepResponseJSON = self.iface.step_json(action) # self.iface.step_multipart(action)
-            logger.info(f"step_json data: {data.model_dump(exclude={'image'})} | image: {data.image.shape}")
+            data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(action) # self.iface.step_multipart(action)
+            logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
-            obs = data.observation
+            self.obs = data.observation
             reward = 0.0
             terminated = False
             truncated = data.truncated
             info = data.info
-            return obs, reward, terminated, truncated, info
+            return self.obs, reward, terminated, truncated, info
         except Exception as e:
             logger.exception(f"Failed to step environment")
             self._disconnect()
             raise RuntimeError(f"Failed to step environment: {e}")
 
+    def render(self):
+        logger.debug(f"OpenCV rendering mode: {self.render_mode}")
+        if self.render_mode == "opencv":
+                        if self.obs is not None:
+                cv.imshow("Environment", self.obs)
+                cv.waitKey(1)
+
+
     def close(self) -> None:
         logger.info(f"Closing environment.")
         self._disconnect()
+        cv.destroyAllWindows()

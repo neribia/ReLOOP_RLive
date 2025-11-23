@@ -50,17 +50,16 @@ class TestRemoteWorldEnv(unittest.TestCase):
         self.mock_iface.reset.assert_called_once()
 
     def test_step(self):
-        # Mock step_json default output
         mock_data = MagicMock()
-        mock_data.observation = np.array([5, 6])
+        mock_data.observation = np.zeros((480, 640, 3), dtype=np.uint8)
         mock_data.truncated = False
         mock_data.info = {"step": "ok"}
-        mock_data.image = np.zeros((2, 2, 3), dtype=np.uint8)
+
         self.mock_iface.step_json.return_value = mock_data
 
         obs, reward, terminated, truncated, info = self.env.step(action=0)
 
-        np.testing.assert_array_equal(obs, np.array([5, 6]))
+        np.testing.assert_array_equal(obs, mock_data.observation)
         self.assertEqual(reward, 0.0)
         self.assertFalse(terminated)
         self.assertFalse(truncated)

@@ -7,12 +7,12 @@ from rlive_world.world_server import app, resources  # adjust import to where yo
 
 def fake_reset(req):
     from rlive_common.core.response import ResetResponse
-    return ResetResponse(observation=np.array([1, 2, 3]), truncated=False, info={})
+    return ResetResponse(observation=np.zeros((2, 2, 3), dtype=np.uint8) , truncated=False, info={})
 
 
 def fake_step(req):
-    from rlive_common.core.response import Response
-    return Response(observation=np.array([1, 2, 3]), truncated=False, info={}), np.zeros((2, 2, 3), dtype=np.uint8)
+    from rlive_common.core.response import BaseResponse
+    return BaseResponse(observation=np.zeros((2, 2, 3), dtype=np.uint8), truncated=False, info={})
 
 def fake_attach(req):
     from rlive_common.core.response import AttachHardwareResponse
@@ -61,8 +61,9 @@ class TestWorldAPI(unittest.TestCase):
             resp = client.post("/step_json", json={"action": 5})
             self.assertEqual(resp.status_code, 200)
             data = resp.json()
-            self.assertIn("image", data)
             self.assertIn("observation", data)
+            self.assertEqual(np.uint8, np.array(data["observation"]).dtype)
+            self.assertEqual((2, 2, 3), np.array(data["observation"]).shape)
 
     def test_step_multipart_endpoint(self):
         with TestClient(app) as client:

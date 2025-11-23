@@ -58,9 +58,8 @@ def reset_endpoint(req: ResetRequest) -> ResetResponse:
 @app.post("/step_json", response_model=StepResponseJSON)
 def step_endpoint_json(req: StepRequest) -> StepResponseJSON:
     try:
-        result, image = resources.world.step(req)
+        result = resources.world.step(req)
         result_json = StepResponseJSON(
-            image=image,
             observation=result.observation,
             truncated=result.truncated,
             info=result.info,
@@ -74,9 +73,8 @@ def step_endpoint_json(req: StepRequest) -> StepResponseJSON:
 @app.post("/step_multipart")
 def step_endpoint_binary(req: StepRequest) -> Response:
     try:
-        result, image = resources.world.step(req)
+        result = resources.world.step(req)
         model = StepResponseMultipart(
-            image=image,
             observation=result.observation,
             truncated=result.truncated,
             info=result.info,

@@ -8,14 +8,15 @@ logger = get_logger(__name__)
 
 def main() -> None:
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
-    env = RemoteWorldEnv(base_url=base_url)
+    env = RemoteWorldEnv(base_url=base_url, render_mode="opencv")
 
     obs, info = env.reset()
-    logger.info(f"reset -> obs={obs}, info={info}")
+    logger.info(f"reset -> obs={obs.shape}, info={info}")
 
     for t in range(3):
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
+        env.render()
         logger.info(f"t={t:02d} action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
         if terminated or truncated:
             obs, info = env.reset()
