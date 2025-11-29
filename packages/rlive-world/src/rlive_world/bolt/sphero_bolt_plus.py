@@ -23,12 +23,13 @@ class SpheroBoltPlus(BaseRobot):
 
     def __init__(
             self,
-            scanner: Optional[SpheroFinder] = None,
-            api: Optional[SpheroEduAPI] = None,
-            register_handlers=True,
+            scanner: SpheroFinder | None = SpheroFinder, # FIXME: get class not instance
+            api_class: SpheroEduAPI = SpheroEduAPI,
+            register_handlers=False,
     ):
-        self.scanner: SpheroFinder = scanner or SpheroFinder()
-        self.api: SpheroEduAPI | None = api  # set after connect() normally
+        self.scanner: SpheroFinder = scanner or SpheroFinder() # FIXME: get class not instance
+        self.api_class: SpheroEduAPI | None = api_class
+        self.api: SpheroEduAPI | None = None
         self.toy: BOLTPLUS | None = None
         self.name: str | None = None
 
@@ -44,15 +45,15 @@ class SpheroBoltPlus(BaseRobot):
 
     def connect(self, bolt_name: str = cfg.SPHEROBOLTPLUS_NAME):
         logger.info("Scanning for Sphero BOLT...")
-        self.scanner.scan_toys()
+        toys = self.scanner.scan_toys()
 
         self.toy = self.scanner.select_toy(bolt_name)
         if not self.toy:
-            raise RuntimeError(f"Sphero '{bolt_name}' not found")
+            raise RuntimeError(f"Sphero '{bolt_name}' not found, avalible Toys: {[toy.name for toy in toys]}")
 
         self.name = str(self.toy.name)
         # If api was not injected, create it now
-        self.api = self.api or SpheroEduAPI(self.toy)
+        self.api = self.api_class(self.toy)
         self.api.__enter__()
 
         logger.info(f"Connected to {self.name}")
@@ -96,7 +97,7 @@ class SpheroBoltPlus(BaseRobot):
         """
         self._require_connection()
 
-        self.heading = (self.heading + heading) % 360
+        self.heading = (self.heading + heading + 360) % 360
         logger.info(f"Moving: heading={heading}, speed={speed}, duration={duration}")
         self.api.roll(self.heading, 0, duration)
         self.api.roll(self.heading, speed, duration)
@@ -131,12 +132,14 @@ class SpheroBoltPlus(BaseRobot):
 
 
 if __name__ == "__main__":
-    robot = SpheroBoltPlus()
-    robot.connect()
+    from rlive_world.bolt.boltdummys import DummySpheroEduAPI, DummyFinder
+
+    robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
+    robot.connect("DummyBolt")
     robot.move(heading=0)
     robot.move(heading=90)
     robot.move(heading=0)
-    data = robot.get_sensor_data()
-    for key, value in data.items():
-        logger.info(f"{key.replace('_', ' ').title()}: {value}")
+    # data = robot.get_sensor_data()
+    # for key, value in data.items():
+    #     logger.info(f"{key.replace('_', ' ').title()}: {value}")
     robot.disconnect()
