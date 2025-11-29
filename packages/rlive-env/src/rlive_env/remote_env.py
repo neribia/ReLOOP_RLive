@@ -31,14 +31,16 @@ class RemoteWorldEnv(gym.Env):
         self.iface: Optional[WorldInterface] = None
         self.obs = None
 
-        self.action_space = gym.spaces.Discrete(1)  # placeholder (one valid action)
+        self.action_space = gym.spaces.Discrete(360, start=-179)  # placeholder (one valid action)
 
         self._connect(**kwargs)
 
     def _connect(self, **kwargs):
         """Create iface and attach hardware."""
+        logger.info(f"Setting up interface to RemoteWorld.")
         self.iface = WorldInterface(**kwargs)
 
+        logger.info(f"Attaching hardware in RemoteWorld.")
         resp = self.iface.attach_hardware()
         if not resp.success:
             raise RuntimeError("Failed to connect the hardware")
@@ -51,6 +53,7 @@ class RemoteWorldEnv(gym.Env):
         if iface is None:
             return
 
+        logger.info(f"Detaching hardware in RemoteWorld and closing connection.")
         try:
             iface.detach_hardware()
         except Exception:
@@ -80,7 +83,7 @@ class RemoteWorldEnv(gym.Env):
             raise RuntimeError(f"Failed to reset environment: {e}")
 
     def step(self, action) -> Tuple[np.ndarray, float, bool, bool, dict]:
-        logger.info(f"Making a step: {action}")
+        logger.info(f"Making a step with action: {action}")
 
         try:
             data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(action) # self.iface.step_multipart(action)
@@ -100,7 +103,7 @@ class RemoteWorldEnv(gym.Env):
     def render(self):
         logger.debug(f"OpenCV rendering mode: {self.render_mode}")
         if self.render_mode == "opencv":
-                        if self.obs is not None:
+            if self.obs is not None:
                 cv.imshow("Environment", self.obs)
                 cv.waitKey(1)
 

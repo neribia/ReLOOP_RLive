@@ -3,6 +3,9 @@ from typing import Any, Tuple
 import asyncio
 import numpy as np
 
+from rlive_world.camera import CameraService, CameraConfig
+from rlive_world.bolt.sphero_bolt_plus import SpheroBoltPlus  # FIXME: make daccessible over bolt(__init__)
+from rlive_world.bolt.boltdummys import DummySpheroEduAPI, DummyFinder
 from rlive_common.core.response import BaseResponse, ResetResponse, AttachHardwareResponse, DetachHardwareResponse
 from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_common.utils import get_logger
@@ -21,7 +24,7 @@ class World:
 
     def __init__(self) -> None:
         self.camera = None
-        self.bolt = None
+        self.robot = None
         self._setup_world()
 
     def attach_hardware(self, request: AttachHardwareRequest) -> AttachHardwareResponse:
@@ -31,19 +34,33 @@ class World:
         # Simulate asynchronous hardware scanning
         asyncio.run(fake_scan())
 
+        # Setup Camera
+        self.camera = CameraService(CameraConfig())
+        self.camera.setup()
+
+        # Setup Robot/Bolt
+        self.robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
+        self.robot.connect("DummyBolt")
+
         return AttachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
 
     def detach_hardware(self, request: DetachHardwareRequest) -> DetachHardwareResponse:
         logger.debug(f"Detaching hardware from the world.")
         logger.info(f"request: {request}")
+        if self.camera:
+            self.camera.release()
+            self.camera = None
+
+        if self.robot:
+            self.robot.disconnect()
+            self.robot = None
+
         return DetachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
 
     def _setup_world(self):
-        # TODO: implement world setup
+        # TODO: implement world setup from reset()
         pass
-        # camera_cfg = CameraConfig()
-        # self.camera = CameraService(camera_cfg)
-        # self.bolt = Bolt()
+
 
     def _make_observation(self) -> np.ndarray:
         """
@@ -53,7 +70,9 @@ class World:
 
         # Simulate asynchronous observation gathering
         asyncio.run(fake_scan(timeout=1))
-        return np.zeros((480, 640, 3), dtype=np.uint8)
+        image = np.zeros((480, 640, 3), dtype=np.uint8)
+        image = self.camera.get_image() # FIXME: refactor CameraService  class to get_image()
+        return image
 
     def reset(self, req: ResetRequest) -> ResetResponse:
         """
@@ -72,6 +91,8 @@ class World:
         action = req.action
         logger.info(f"Make a step in the world with action {action}")
 
+        self.robot.move(action)
+
         obs = self._make_observation()
 
         info: dict[str, Any] = {"status": "ok"}
@@ -87,4 +108,5 @@ class World:
         """
         Placeholder/stub: would close the world and disconnect still open connections.
         """
+        logger.debug(f"Closing the world.")
         pass

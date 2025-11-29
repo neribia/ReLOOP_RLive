@@ -1,14 +1,17 @@
 from types import SimpleNamespace
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Request
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
-from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
+from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest, BaseRequest
 from rlive_world.world import World
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
+
+# FIXME: Give back the internal Server error in Info or ...
 
 resources = SimpleNamespace()
 
@@ -25,63 +28,57 @@ async def lifespan(app: FastAPI):
 app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
 
 
+@app.exception_handler(Exception)
+async def internal_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled server exception")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "InternalServerError",
+                 "message": str(exc),
+                 "endpoint": request.url.path,
+                 "method": request.method
+                 }
+    )
+
+
 @app.post("/attach_hardware", response_model=AttachHardwareResponse)
 def attach_hardware(req: AttachHardwareRequest) -> AttachHardwareResponse:
-    try:
-        response = resources.world.attach_hardware(req)
-        return response
-    except Exception as e:  # pragma: no cover (defensive)
-        logger.exception("Attach hardware endpoint failed")
-        raise HTTPException(status_code=500, detail=str(e))
+    response = resources.world.attach_hardware(req)
+    return response
 
 
 @app.post("/detach_hardware", response_model=DetachHardwareResponse)
 def detach_hardware(req: DetachHardwareRequest) -> DetachHardwareResponse:
-    try:
-        response = resources.world.detach_hardware(req)
-        return response
-    except Exception as e:  # pragma: no cover (defensive)
-        logger.exception("Detach hardware endpoint failed")
-        raise HTTPException(status_code=500, detail=str(e))
+    response = resources.world.detach_hardware(req)
+    return response
 
 
 @app.post("/reset", response_model=ResetResponse)
 def reset_endpoint(req: ResetRequest) -> ResetResponse:
-    try:
-        result = resources.world.reset(req)
-        return result
-    except Exception as e:  # pragma: no cover (defensive)
-        logger.exception("Reset JSON endpoint failed")
-        raise HTTPException(status_code=500, detail=str(e))
+    result = resources.world.reset(req)
+    return result
 
 
 @app.post("/step_json", response_model=StepResponseJSON)
 def step_endpoint_json(req: StepRequest) -> StepResponseJSON:
-    try:
-        result = resources.world.step(req)
-        result_json = StepResponseJSON(
-            observation=result.observation,
-            truncated=result.truncated,
-            info=result.info,
-        )
-        return result_json
-    except Exception as e:
-        logger.exception("Step JSON endpoint failed")
-        raise HTTPException(status_code=500, detail=str(e))
+    result = resources.world.step(req)
+    result_json = StepResponseJSON(
+        observation=result.observation,
+        truncated=result.truncated,
+        info=result.info,
+    )
+    return result_json
+
 
 
 @app.post("/step_multipart")
 def step_endpoint_binary(req: StepRequest) -> Response:
-    try:
-        result = resources.world.step(req)
-        model = StepResponseMultipart(
-            observation=result.observation,
-            truncated=result.truncated,
-            info=result.info,
-        )
-        body, content_type = model.encode()
+    result = resources.world.step(req)
+    model = StepResponseMultipart(
+        observation=result.observation,
+        truncated=result.truncated,
+        info=result.info,
+    )
+    body, content_type = model.encode()
 
-        return Response(content=body, media_type=content_type)
-    except Exception as e:  # pragma: no cover (defensive)
-        logger.exception("Step multipart endpoint failed")
-        raise HTTPException(status_code=500, detail=str(e))
+    return Response(content=body, media_type=content_type)

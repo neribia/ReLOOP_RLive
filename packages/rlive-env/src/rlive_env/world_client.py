@@ -12,6 +12,19 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
+# FIXME: Shutdown if the server throws an error and maybe print that error
+
+class ApiError(Exception):
+    def __init__(self, method, path, status, message):
+        self.method = method
+        self.path = path
+        self.status = status
+        self.message = message
+        logger.debug(f"ApiError information:")
+        logger.debug(f"method: {method}, path: {path}, status: {status}, message: {message}")
+        super().__init__(f"{status} {method} {path}: {message}")
+
+
 
 class WorldInterface:
     """
@@ -104,29 +117,53 @@ class WorldInterface:
             return response
 
     def _request(self, method: str, path: str, expect_json: bool = True, **kwargs):
-        """Retry wrapper with exponential backoff."""
-        start = time.monotonic()
-
         for attempt in range(self.max_retries + 1):
             try:
                 return self._send_once(method, path, expect_json, **kwargs)
 
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
-                elapsed = time.monotonic() - start
-                if elapsed > self.max_retry_time:
-                    logger.error(f"Retry timeout exceeded after {elapsed:.2f}s")
+            except httpx.HTTPStatusError as e:
+                retry = self._handle_http_error(method, path, e, attempt)
+                if not retry:
                     raise
 
+                time.sleep(self.backoff_factor * (2 ** attempt))
+
+            except httpx.RequestError as e:  # network errors → retry
                 if attempt >= self.max_retries:
-                    logger.error(f"Request failed after {self.max_retries} retries: {e}")
-                    raise
+                    raise ApiError(method, path, None, str(e))
 
-                delay = self.backoff_factor * (2 ** attempt)
-                logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay:.2f}s...")
-                time.sleep(delay)
-
-            except Exception:
-                logger.exception("Unexpected non-HTTP error during request, not retrying")
-                raise
+                time.sleep(self.backoff_factor * (2 ** attempt))
 
         raise RuntimeError("Unreachable")
+
+    def _handle_http_error(self, method, path, exc, attempt):
+        status = exc.response.status_code
+        detail = self.parse_error(exc.response)
+
+        # no retry for server logic errors
+        if not self.is_retryable_status(status):
+            raise ApiError(method, path, status, detail)
+
+        # retryable: only if attempts left
+        if attempt >= self.max_retries:
+            raise ApiError(method, path, status, detail)
+
+        # return delay (so caller can sleep)
+        return True  # meaning: "retry"
+
+    @staticmethod
+    def parse_error(response):
+        try:
+            data = response.json()
+        except Exception:
+            return response.text
+        return data.get("message", data)
+
+    @staticmethod
+    def is_retryable_status(status: int) -> bool:
+        return status in {502, 503, 504}
+
+
+
+
+

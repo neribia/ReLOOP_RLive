@@ -62,7 +62,7 @@ class StepResponseMultipart(BaseResponse):
         :return:
         """
 
-                meta_dict = self.model_dump(exclude={"observation", "boundary"})
+        meta_dict = self.model_dump(exclude={"observation", "boundary"})
         if self.observation is not None:
             meta_dict["image_ndim"] = int(self.observation.ndim)
 
