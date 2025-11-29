@@ -14,7 +14,7 @@ CONFIGURED = False
 # -------------------------------------------------------------
 FORMAT_STYLES = {
     "simple": "[%(asctime)s] %(levelname)-8s - %(message)s",
-    "detailed": "[%(asctime)s] %(levelname)-8s - %(name)s.py:%(lineno)d - %(message)s",
+    "detailed": "[%(asctime)s.%(msecs)03d] %(levelname)-8s - %(name)s.py:%(lineno)d - %(message)s",
     "color": "\033[1;36m%(asctime)s\033[0m \033[1;33m[%(levelname)-8s]\033[0m %(name)s: %(message)s",
     "thread": "%(asctime)s (%(threadName)-22s) %(name)s:%(lineno)d - %(levelname)s - %(message)s",
     "json": (
