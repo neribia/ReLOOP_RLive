@@ -2,6 +2,9 @@ from typing import Optional, Any
 
 from rlive_world.camera.base_camera import BaseCamera
 from rlive_world.camera.camera_factory import CameraFactory, CameraConfig
+from rlive_common.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class CameraService:
