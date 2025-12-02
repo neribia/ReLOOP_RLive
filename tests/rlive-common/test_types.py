@@ -1,4 +1,6 @@
 import unittest
+import base64
+import json
 import numpy as np
 
 from rlive_common.core.types import (
@@ -32,7 +34,6 @@ class TestImageEncodingDecoding(unittest.TestCase):
         self.assertEqual(result["dtype"], "uint8")
 
     def test_encode_image_data_is_base64(self):
-        import base64
         array = np.ones((2, 2), dtype=np.uint8)
         result = _encode_image(array)
 
@@ -111,7 +112,6 @@ class TestNdarrayValidatorSerializer(unittest.TestCase):
         np.testing.assert_array_equal(result, np.array([1, 2, 3]))
 
     def test_validator_from_json_string(self):
-        import json
         data = json.dumps([1, 2, 3])
         result = _ndarray_before_validator(data)
 
