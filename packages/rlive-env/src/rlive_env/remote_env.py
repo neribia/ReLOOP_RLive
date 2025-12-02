@@ -1,4 +1,3 @@
-from typing import Tuple, Optional
 
 import numpy as np
 import cv2 as cv
@@ -12,15 +11,14 @@ logger = get_logger(__name__)
 
 
 class RemoteWorldEnv(gym.Env):
-    """
-    Gymnasium-compatible environment that communicates with a remote World server over HTTP.
+    """Gymnasium-compatible environment that communicates with a remote World server over HTTP.
     """
 
     metadata = {"render_modes": ["opencv"]}
 
     def __init__(self, render_mode: str | None = None, **kwargs) -> None:
-        """
-        Initialize the environment.
+        """Initialize the environment.
+
         Attributes:
             - base_url (Optional[str]): Base URL for remote environment.
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
@@ -28,7 +26,7 @@ class RemoteWorldEnv(gym.Env):
         super().__init__()
 
         self.render_mode = render_mode
-        self.iface: Optional[WorldInterface] = None
+        self.iface: WorldInterface | None = None
         self.obs = None
 
         self.action_space = gym.spaces.Discrete(360, start=-179)  # placeholder (one valid action)
@@ -37,10 +35,10 @@ class RemoteWorldEnv(gym.Env):
 
     def _connect(self, **kwargs):
         """Create iface and attach hardware."""
-        logger.info(f"Setting up interface to RemoteWorld.")
+        logger.info("Setting up interface to RemoteWorld.")
         self.iface = WorldInterface(**kwargs)
 
-        logger.info(f"Attaching hardware in RemoteWorld.")
+        logger.info("Attaching hardware in RemoteWorld.")
         resp = self.iface.attach_hardware()
         if not resp.success:
             raise RuntimeError("Failed to connect the hardware")
@@ -53,7 +51,7 @@ class RemoteWorldEnv(gym.Env):
         if iface is None:
             return
 
-        logger.info(f"Detaching hardware in RemoteWorld and closing connection.")
+        logger.info("Detaching hardware in RemoteWorld and closing connection.")
         try:
             iface.detach_hardware()
         except Exception:
@@ -66,9 +64,9 @@ class RemoteWorldEnv(gym.Env):
 
         self.iface = None
 
-    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None) -> Tuple[np.ndarray, dict]:
+    def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
-        logger.info(f"Resetting environment.")
+        logger.info("Resetting environment.")
 
         try:
             data: ResetResponse = self.iface.reset()
@@ -78,11 +76,11 @@ class RemoteWorldEnv(gym.Env):
             info = data.info
             return self.obs, info
         except Exception as e:
-            logger.exception(f"Failed to reset environment")
+            logger.exception("Failed to reset environment")
             self._disconnect()
             raise RuntimeError(f"Failed to reset environment: {e}")
 
-    def step(self, action) -> Tuple[np.ndarray, float, bool, bool, dict]:
+    def step(self, action) -> tuple[np.ndarray, float, bool, bool, dict]:
         logger.info(f"Making a step with action: {action}")
 
         try:
@@ -96,7 +94,7 @@ class RemoteWorldEnv(gym.Env):
             info = data.info
             return self.obs, reward, terminated, truncated, info
         except Exception as e:
-            logger.exception(f"Failed to step environment")
+            logger.exception("Failed to step environment")
             self._disconnect()
             raise RuntimeError(f"Failed to step environment: {e}")
 
@@ -109,6 +107,6 @@ class RemoteWorldEnv(gym.Env):
 
 
     def close(self) -> None:
-        logger.info(f"Closing environment.")
+        logger.info("Closing environment.")
         self._disconnect()
         cv.destroyAllWindows()

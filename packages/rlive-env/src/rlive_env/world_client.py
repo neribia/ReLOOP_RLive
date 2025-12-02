@@ -1,11 +1,18 @@
-from typing import Any, Optional
+"""HTTP client interface for communicating with the World server."""
+
+from typing import Any
 import time
 
 import httpx
 from httpx import Response
 
-from rlive_world.config import config as cfg
-from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
+from rlive_common.core.response import (
+    ResetResponse,
+    StepResponseJSON,
+    StepResponseMultipart,
+    AttachHardwareResponse,
+    DetachHardwareResponse,
+)
 from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_env.config import config as cfg
 from rlive_common.utils import get_logger
@@ -20,15 +27,14 @@ class ApiError(Exception):
         self.path = path
         self.status = status
         self.message = message
-        logger.debug(f"ApiError information:")
+        logger.debug("ApiError information:")
         logger.debug(f"method: {method}, path: {path}, status: {status}, message: {message}")
         super().__init__(f"{status} {method} {path}: {message}")
 
 
 
 class WorldInterface:
-    """
-    Synchronous HTTP interface to the remote World server.
+    """Synchronous HTTP interface to the remote World server.
 
     Uses httpx.Client with retry/backoff for robustness.
 
@@ -41,7 +47,7 @@ class WorldInterface:
 
     def __init__(
             self,
-            base_url: Optional[str] = cfg.WORLD_BASE_URL,
+            base_url: str | None = cfg.WORLD_BASE_URL,
             timeout: float = cfg.WORLD_INTERFACE_TIMEOUT,
             max_retries: int = cfg.WORLD_INTERFACE_MAX_RETRIES,
             backoff_factor: float = cfg.WORLD_INTERFACE_BACKOFF_FACTOR,
@@ -89,8 +95,7 @@ class WorldInterface:
         return StepResponseJSON(**data)
 
     def step_multipart(self, action: int) -> StepResponseMultipart:
-        """
-        Call POST /step_multipart and decode multipart/mixed response.
+        """Call POST /step_multipart and decode multipart/mixed response.
         """
         payload = StepRequest(action=action).model_dump()
         response: Response = self._request("POST", "/step_multipart", json=payload, expect_json=False)

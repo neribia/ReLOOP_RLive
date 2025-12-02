@@ -1,3 +1,5 @@
+"""Tests for the SpheroFinder class."""
+
 import unittest
 from unittest.mock import MagicMock
 
@@ -5,16 +7,23 @@ from rlive_world.bolt.sphero_finder import SpheroFinder
 
 
 class FakeToy:
-    def __init__(self, name):
+    """Fake toy object for testing."""
+
+    def __init__(self, name: str) -> None:
+        """Initialize fake toy with a name."""
         self.name = name
 
 
 class TestSpheroFinder(unittest.TestCase):
+    """Test suite for SpheroFinder class."""
+
     def setUp(self):
+        """Set up test fixtures with fake toys."""
         self.fake_toy_x = FakeToy("Bolt-X")
         self.fake_toy_y = FakeToy("Bolt-Y")
 
     def test_scan_toys_returns_list(self):
+        """Test that scan_toys returns a list of found toys."""
         mock_scan = MagicMock(return_value=[self.fake_toy_x, self.fake_toy_y])
 
         finder = SpheroFinder(scan_fn=mock_scan)
@@ -29,6 +38,7 @@ class TestSpheroFinder(unittest.TestCase):
         self.assertEqual(finder.toys, toys)
 
     def test_scan_toys_empty(self):
+        """Test that scan_toys handles empty result correctly."""
         mock_scan = MagicMock(return_value=[])
 
         finder = SpheroFinder(scan_fn=mock_scan)
@@ -39,6 +49,7 @@ class TestSpheroFinder(unittest.TestCase):
         self.assertEqual(finder.toys, [])
 
     def test_select_toy_found(self):
+        """Test that select_toy returns the correct toy when found."""
         finder = SpheroFinder(scan_fn=MagicMock())
 
         finder.toys = [self.fake_toy_x]
@@ -51,6 +62,7 @@ class TestSpheroFinder(unittest.TestCase):
     # ---------------------------------------------------------
 
     def test_select_toy_not_found(self):
+        """Test that select_toy returns None when toy not found."""
         finder = SpheroFinder(scan_fn=MagicMock())
 
         finder.toys = [self.fake_toy_x]

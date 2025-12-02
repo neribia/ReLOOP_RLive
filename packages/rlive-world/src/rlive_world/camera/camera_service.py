@@ -1,5 +1,4 @@
 import threading
-from typing import Optional, Any
 
 import numpy as np
 
@@ -12,11 +11,11 @@ logger = get_logger(__name__)
 
 
 class CameraService:
-    def __init__(self, config: CameraConfig, factory: Optional[CameraFactory] = None):
+    def __init__(self, config: CameraConfig, factory: CameraFactory | None = None):
         self._cfg = config
         self._factory = factory or CameraFactory()
         self._lock = threading.RLock()
-        self._cam: Optional[BaseCamera] = None
+        self._cam: BaseCamera | None = None
 
     def setup(self) -> None:
         with self._lock:

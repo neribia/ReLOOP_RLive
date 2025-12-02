@@ -1,4 +1,3 @@
-from typing import List, Optional
 from rlive_world.bolt.boltdummys.dummy_ble_adapter import DummyBleakAdapter, DummyBLEDevice
 from rlive_common.utils import get_logger
 
@@ -23,10 +22,10 @@ class DummyToy:
 
 class DummyFinder:
     def __init__(self):
-        self.toys: List[DummyToy] = []
+        self.toys: list[DummyToy] = []
         self.selected_toy: DummyToy | None = None
 
-    def scan_toys(self, timeout=3) -> List[DummyToy]:
+    def scan_toys(self, timeout=3) -> list[DummyToy]:
         devices = DummyBleakAdapter.scan_toys(timeout)
         self.toys = [DummyToy(d) for d in devices]
         logger.debug(f"[DUMMY] Scan result: {[t.name for t in self.toys]}")

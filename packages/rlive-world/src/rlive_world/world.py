@@ -1,4 +1,4 @@
-from typing import Any, Tuple
+from typing import Any
 
 import asyncio
 import numpy as np
@@ -18,8 +18,7 @@ async def fake_scan(timeout: int = 5):
 
 
 class World:
-    """
-    A minimal World class.
+    """A minimal World class.
     """
 
     def __init__(self) -> None:
@@ -28,7 +27,7 @@ class World:
         self._setup_world()
 
     def attach_hardware(self, request: AttachHardwareRequest) -> AttachHardwareResponse:
-        logger.debug(f"Attaching hardware to the world.")
+        logger.debug("Attaching hardware to the world.")
         logger.info(f"request: {request}")
 
         # Simulate asynchronous hardware scanning
@@ -45,7 +44,7 @@ class World:
         return AttachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
 
     def detach_hardware(self, request: DetachHardwareRequest) -> DetachHardwareResponse:
-        logger.debug(f"Detaching hardware from the world.")
+        logger.debug("Detaching hardware from the world.")
         logger.info(f"request: {request}")
         if self.camera:
             self.camera.release()
@@ -63,10 +62,9 @@ class World:
 
 
     def _make_observation(self) -> np.ndarray:
+        """Make observation vector.
         """
-        Make observation vector.
-        """
-        logger.debug(f"Making observation")
+        logger.debug("Making observation")
 
         # Simulate asynchronous observation gathering
         asyncio.run(fake_scan(timeout=1))
@@ -75,18 +73,16 @@ class World:
         return image
 
     def reset(self, req: ResetRequest) -> ResetResponse:
+        """Reset the world and return an initial observation.
         """
-        Reset the world and return an initial observation.
-        """
-        logger.info(f"Resetting the world.")
+        logger.info("Resetting the world.")
 
         obs = self._make_observation()
         info: dict[str, Any] = {"msg": "reset", "status": "ok"}
         return ResetResponse(observation=obs, info=info)
 
     def step(self, req: StepRequest) -> BaseResponse:
-        """
-        Make a step in the world with a given action.
+        """Make a step in the world with a given action.
         """
         action = req.action
         logger.info(f"Make a step in the world with action {action}")
@@ -96,7 +92,6 @@ class World:
         obs = self._make_observation()
 
         info: dict[str, Any] = {"status": "ok"}
-        image = np.random.randint(0, 255, size=(2, 4, 3), dtype=np.uint8)
 
         return BaseResponse(
             observation=obs,
@@ -105,8 +100,7 @@ class World:
         )
 
     def close(self) -> None:
+        """Placeholder/stub: would close the world and disconnect still open connections.
         """
-        Placeholder/stub: would close the world and disconnect still open connections.
-        """
-        logger.debug(f"Closing the world.")
+        logger.debug("Closing the world.")
         pass
