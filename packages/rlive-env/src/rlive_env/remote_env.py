@@ -100,7 +100,7 @@ class RemoteWorldEnv(gym.Env):
     def render(self):
         logger.debug(f"OpenCV rendering mode: {self.render_mode}")
         if self.render_mode == "opencv":
-                        if self.obs is not None:
+            if self.obs is not None:
                 cv.imshow("Environment", self.obs)
                 cv.waitKey(1)
 
