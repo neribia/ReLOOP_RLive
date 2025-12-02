@@ -62,19 +62,17 @@ class World:
 
 
     def _make_observation(self) -> np.ndarray:
-        """Make observation vector.
-        """
+        """Make observation vector."""
         logger.debug("Making observation")
 
         # Simulate asynchronous observation gathering
         asyncio.run(fake_scan(timeout=1))
         image = np.zeros((480, 640, 3), dtype=np.uint8)
-        image = self.camera.get_image() # FIXME: refactor CameraService  class to get_image()
+        image = self.camera.get_image()  # FIXME: refactor CameraService class to get_image()
         return image
 
     def reset(self, req: ResetRequest) -> ResetResponse:
-        """Reset the world and return an initial observation.
-        """
+        """Reset the world and return an initial observation."""
         logger.info("Resetting the world.")
 
         obs = self._make_observation()
@@ -82,8 +80,7 @@ class World:
         return ResetResponse(observation=obs, info=info)
 
     def step(self, req: StepRequest) -> BaseResponse:
-        """Make a step in the world with a given action.
-        """
+        """Make a step in the world with a given action."""
         action = req.action
         logger.info(f"Make a step in the world with action {action}")
 
@@ -100,7 +97,5 @@ class World:
         )
 
     def close(self) -> None:
-        """Placeholder/stub: would close the world and disconnect still open connections.
-        """
+        """Close the world and disconnect any open connections."""
         logger.debug("Closing the world.")
-        pass
