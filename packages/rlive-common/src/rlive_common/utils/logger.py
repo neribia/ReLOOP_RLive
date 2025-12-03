@@ -88,6 +88,11 @@ def setup_logger(
         "formatters": formatters,
         "handlers": handlers,
         "loggers": {
+            "__main__": {
+                "level": logging.getLevelName(level),
+                "handlers": list(handlers.keys()),
+                "propagate": False,
+            },
             "rlive_common": {
                 "level": logging.getLevelName(level),
                 "handlers": list(handlers.keys()),
