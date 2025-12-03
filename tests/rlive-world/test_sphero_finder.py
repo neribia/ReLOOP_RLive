@@ -28,9 +28,9 @@ class TestSpheroFinder(unittest.TestCase):
 
         finder = SpheroFinder(scan_fn=mock_scan)
 
-        toys = finder.scan_toys(scanning_time=5)
+        toys = finder.scan_toys(timeout=0.01)
 
-        mock_scan.assert_called_once_with(timeout=5)
+        mock_scan.assert_called_once_with(timeout=0.01)
 
         self.assertEqual(len(toys), 2)
         self.assertEqual(toys[0].name, "Bolt-X")
@@ -42,9 +42,9 @@ class TestSpheroFinder(unittest.TestCase):
         mock_scan = MagicMock(return_value=[])
 
         finder = SpheroFinder(scan_fn=mock_scan)
-        toys = finder.scan_toys(scanning_time=2)
+        toys = finder.scan_toys(timeout=0.01)
 
-        mock_scan.assert_called_once_with(timeout=2)
+        mock_scan.assert_called_once_with(timeout=0.01)
         self.assertEqual(toys, [])
         self.assertEqual(finder.toys, [])
 
@@ -52,14 +52,12 @@ class TestSpheroFinder(unittest.TestCase):
         """Test that select_toy returns the correct toy when found."""
         finder = SpheroFinder(scan_fn=MagicMock())
 
-        finder.toys = [self.fake_toy_x]
+        finder.toys = [self.fake_toy_x]  # Assuming FakeToy is compatible with the expected type
 
         selected = finder.select_toy("Bolt-X")
 
         self.assertIs(selected, self.fake_toy_x)
         self.assertEqual(finder.get_selected_toy(), self.fake_toy_x)
-
-    # ---------------------------------------------------------
 
     def test_select_toy_not_found(self):
         """Test that select_toy returns None when toy not found."""

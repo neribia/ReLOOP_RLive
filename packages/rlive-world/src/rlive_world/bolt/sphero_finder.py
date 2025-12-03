@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 from sphero_unsw.toy.boltplus import BOLTPLUS
 
+from rlive_world.config import config as cfg
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -21,16 +22,16 @@ class SpheroFinder:
         self.toys: list[BOLTPLUS] = []
         self.selected_toy: BOLTPLUS | None = None
 
-    def scan_toys(self, scanning_time: int = 3) -> list:
+    def scan_toys(self, timeout: float = cfg.SPHEROBOLTPLUS_SCANNING_TIME) -> list:
         """Scan for Sphero toys (mockable).
 
         Args:
-            scanning_time (int): How many seconds to scan for toys (default: 3).
+            timeout (float): How many seconds to scan for toys (default: cfg.SPHEROBOLTPLUS_SCANNING_TIME).
 
         Returns:
             object: The selected toy object, or None if not selected.
         """
-        self.toys = self.scan4toys(timeout=scanning_time)
+        self.toys = self.scan4toys(timeout=timeout)
 
         if not self.toys:
             logger.info("No Sphero toys found.")
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     finder = SpheroFinder()
 
     logger.info("Scanning for Sphero robots...")
-    toys = finder.scan_toys(scanning_time=3)
+    toys = finder.find_toys(scanning_time=3)
 
     if not toys:
         logger.info("No toys found.")

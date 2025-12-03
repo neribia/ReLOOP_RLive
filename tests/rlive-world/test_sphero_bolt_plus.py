@@ -45,7 +45,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
             register_handlers=False
         )
 
-        robot.connect("DummyBolt")
+        robot.connect("DummyBolt", timeout=0.01)
 
         # Assertions
         self.assertEqual(robot.name, "DummyBolt")
@@ -64,7 +64,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
         )
 
         with self.assertRaises(RuntimeError) as context:
-            robot.connect("NonExistentBolt")
+            robot.connect("NonExistentBolt", timeout=0.01)
 
         self.assertIn("not found", str(context.exception))
 
@@ -78,7 +78,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
             register_handlers=False
         )
 
-        robot.connect("DummyBolt")
+        robot.connect("DummyBolt", timeout=0.01)
         self.assertIsNotNone(robot.api)
 
         # Call disconnect
@@ -122,7 +122,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
             register_handlers=False
         )
 
-        robot.connect("DummyBolt")
+        robot.connect("DummyBolt", timeout=0.01)
         robot._require_connection()  # should NOT raise
         robot.disconnect()
 
@@ -136,7 +136,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
             register_handlers=False
         )
 
-        robot.connect("DummyBolt")
+        robot.connect("DummyBolt", timeout=0.01)
 
         # Test first move
         robot.move(heading=90, speed=100, duration=1)
@@ -173,7 +173,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
             register_handlers=False
         )
 
-        robot.connect("DummyBolt")
+        robot.connect("DummyBolt", timeout=0.01)
 
         # Test positive wrapping
         robot.heading = 350
@@ -197,7 +197,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
             register_handlers=False
         )
 
-        robot.connect("DummyBolt")
+        robot.connect("DummyBolt", timeout=0.01)
 
         # Mock the sensor methods that don't exist in DummySpheroEduAPI
         robot.api.get_luminosity = MagicMock(return_value={"ambient_light": 100})

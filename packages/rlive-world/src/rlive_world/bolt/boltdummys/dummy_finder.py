@@ -25,8 +25,8 @@ class DummyFinder:
         self.toys: list[DummyToy] = []
         self.selected_toy: DummyToy | None = None
 
-    def scan_toys(self, timeout: int = 3) -> list[DummyToy]:
-        devices = DummyBleakAdapter.scan_toys(timeout)
+    def scan_toys(self, **kwargs) -> list[DummyToy]:
+        devices = DummyBleakAdapter.scan_toys(**kwargs)
         self.toys = [DummyToy(d) for d in devices]
         logger.debug(f"[DUMMY] Scan result: {[t.name for t in self.toys]}")
         return self.toys

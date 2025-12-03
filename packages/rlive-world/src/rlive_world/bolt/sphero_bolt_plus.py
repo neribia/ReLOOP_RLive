@@ -42,9 +42,17 @@ class SpheroBoltPlus(BaseRobot):
 
     # -----------------------------------------------------
 
-    def connect(self, bolt_name: str = cfg.SPHEROBOLTPLUS_NAME):
+    def connect(self, bolt_name: str = cfg.SPHEROBOLTPLUS_NAME, **kwargs):
+        """Connect to the Sphero BOLT robot by name.
+
+        Args:
+            - bolt_name: str: Name of the Sphero BOLT to connect to.
+            - timeout: float: Time to scan for the robot (seconds).
+
+        Returns: None
+        """
         logger.info("Scanning for Sphero BOLT...")
-        toys = self.scanner.scan_toys()
+        toys = self.scanner.scan_toys(**kwargs)
 
         self.toy = self.scanner.select_toy(bolt_name)
         if not self.toy:

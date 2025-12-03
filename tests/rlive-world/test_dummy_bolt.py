@@ -35,12 +35,12 @@ class TestDummyBleakAdapter(unittest.TestCase):
         self.assertEqual(devices[0].name, "DummyBolt")
 
     def test_scan_toy_found(self):
-        device = DummyBleakAdapter.scan_toy("DummyBolt", timeout=0.1)
+        device = DummyBleakAdapter.scan_toy("DummyBolt")
         self.assertIsNotNone(device)
         self.assertEqual(device.name, "DummyBolt")
 
     def test_scan_toy_not_found(self):
-        device = DummyBleakAdapter.scan_toy("NonExistent", timeout=0.1)
+        device = DummyBleakAdapter.scan_toy("NonExistent")
         self.assertIsNone(device)
 
     def test_adapter_connection(self):
@@ -73,7 +73,7 @@ class TestDummyFinder(unittest.TestCase):
 
     def test_scan_toys(self):
         finder = DummyFinder()
-        toys = finder.scan_toys(timeout=1)
+        toys = finder.scan_toys(timeout=0.01)
         self.assertIsInstance(toys, list)
         self.assertEqual(len(toys), 1)
         self.assertIsInstance(toys[0], DummyToy)
@@ -81,7 +81,7 @@ class TestDummyFinder(unittest.TestCase):
 
     def test_select_toy_success(self):
         finder = DummyFinder()
-        finder.scan_toys(timeout=1)
+        finder.scan_toys(timeout=0.01)
         toy = finder.select_toy("DummyBolt")
         self.assertIsNotNone(toy)
         self.assertEqual(toy.name, "DummyBolt")
@@ -89,7 +89,7 @@ class TestDummyFinder(unittest.TestCase):
 
     def test_select_toy_not_found(self):
         finder = DummyFinder()
-        finder.scan_toys(timeout=1)
+        finder.scan_toys(timeout=0.01)
         toy = finder.select_toy("NonExistent")
         self.assertIsNone(toy)
 
@@ -169,63 +169,64 @@ class TestDummySpheroEduAPI(unittest.TestCase):
 class TestSpheroBoltPlusWithDummies(unittest.TestCase):
     """Test SpheroBoltPlus with dummy components."""
 
+    def setUp(self):
+        # Create a fresh robot before each test
+        self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
+
+    def tearDown(self):
+        # Make sure we clean up if a test fails
+        self.robot.disconnect()
+
     def test_init(self):
-        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
-        self.assertIsInstance(robot, BaseRobot)
-        self.assertEqual(robot.heading, 0)
-        self.assertIsNone(robot.name)
-        self.assertIsNone(robot.api)
+        self.assertIsInstance(self.robot, BaseRobot)
+        self.assertEqual(self.robot.heading, 0)
+        self.assertIsNone(self.robot.name)
+        self.assertIsNone(self.robot.api)
 
     def test_connect(self):
-        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
-        robot.connect("DummyBolt")
+        self.robot.connect("DummyBolt", timeout=0.01)
 
-        self.assertEqual(robot.name, "DummyBolt")
-        self.assertIsNotNone(robot.api)
-        self.assertIsNotNone(robot.toy)
+        self.assertEqual(self.robot.name, "DummyBolt")
+        self.assertIsNotNone(self.robot.api)
+        self.assertIsNotNone(self.robot.toy)
 
-        robot.disconnect()
+        self.robot.disconnect()
 
     def test_connect_not_found(self):
-        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
-
         with self.assertRaises(RuntimeError) as context:
-            robot.connect("NonExistentBolt")
+            self.robot.connect("NonExistentBolt")
 
         self.assertIn("not found", str(context.exception))
 
     def test_move(self):
-        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
-        robot.connect("DummyBolt")
+        self.robot.connect("DummyBolt", timeout=0.01)
 
         # Should not raise
-        robot.move(heading=90, speed=100, duration=1)
-        self.assertEqual(robot.heading, 90)
+        self.robot.move(heading=90, speed=100, duration=1)
+        self.assertEqual(self.robot.heading, 90)
 
-        robot.move(heading=90, speed=100, duration=1)
-        self.assertEqual(robot.heading, 180)
+        self.robot.move(heading=90, speed=100, duration=1)
+        self.assertEqual(self.robot.heading, 180)
 
-        robot.disconnect()
+        self.robot.disconnect()
 
     def test_move_not_connected(self):
-        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
 
         with self.assertRaises(RuntimeError) as context:
-            robot.move(heading=90)
+            self.robot.move(heading=90)
 
         self.assertIn("not connected", str(context.exception))
 
     def test_disconnect(self):
-        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
-        robot.connect("DummyBolt")
-        robot.disconnect()
+        self.robot.connect("DummyBolt", timeout=0.01)
+        self.robot.disconnect()
 
-        self.assertIsNone(robot.api)
+        self.assertIsNone(self.robot.api)
 
     def test_disconnect_when_not_connected(self):
-        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
+        self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
         # Should not raise
-        robot.disconnect()
+        self.robot.disconnect()
 
 
 class TestBaseRobot(unittest.TestCase):
@@ -238,7 +239,11 @@ class TestBaseRobot(unittest.TestCase):
 
     def test_subclass_must_implement_methods(self):
         class IncompleteRobot(BaseRobot):
-            pass
+            def connect(self):
+                pass
+
+            def disconnect(self):
+                pass
 
         with self.assertRaises(TypeError):
             IncompleteRobot()

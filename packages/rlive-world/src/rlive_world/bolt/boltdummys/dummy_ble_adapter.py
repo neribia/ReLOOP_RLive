@@ -2,6 +2,7 @@ import threading
 
 import asyncio
 
+from rlive_world.config import config as cfg
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -20,7 +21,7 @@ class DummyBLEDevice:
 
 class DummyBleakAdapter:
     @staticmethod
-    def scan_toys(timeout: float = 3.0):
+    def scan_toys(timeout: float = cfg.SPHEROBOLTPLUS_SCANNING_TIME):
         """Simulated BLE scan → always returns 1 dummy device."""
 
         async def fake_scan():
@@ -30,9 +31,8 @@ class DummyBleakAdapter:
         return asyncio.run(fake_scan())
 
     @staticmethod
-    def scan_toy(name: str, timeout: float = 3.0):
+    def scan_toy(name: str):
         async def fake_find():
-            await asyncio.sleep(timeout)
             if name == "DummyBolt":
                 return DummyBLEDevice("DummyBolt", "FA:KE:00:00:01")
             return None
