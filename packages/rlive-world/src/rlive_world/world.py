@@ -13,10 +13,6 @@ from rlive_common.utils import get_logger
 logger = get_logger(__name__)
 
 
-async def fake_scan(timeout: int = 5):
-    await asyncio.sleep(timeout)  # simulate a 5-second BLE scan
-
-
 class World:
     """
     A minimal World class.
@@ -39,9 +35,6 @@ class World:
                 success=True,
                 info={"status": "already_attached", "msg": "Hardware was already attached"}
             )
-
-        # Simulate asynchronous hardware scanning
-        asyncio.run(fake_scan())
 
         # Setup Camera
         self.camera = CameraService(CameraConfig())
