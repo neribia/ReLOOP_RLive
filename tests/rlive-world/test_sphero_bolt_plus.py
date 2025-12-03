@@ -26,7 +26,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_init_with_dummy_components(self):
         """Test that robot initializes with dummy components."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -40,7 +40,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_connect_with_dummy_components(self):
         """Test that robot connects using dummy components."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -58,7 +58,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_connect_toy_not_found(self):
         """Test that connect raises RuntimeError when toy not found."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -73,7 +73,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_disconnect_calls_cleanup_and_closes_api(self):
         """Test that disconnect calls cleanup and closes the API."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -90,7 +90,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_disconnect_when_not_connected(self):
         """Test that disconnect works when not connected."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -104,7 +104,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_require_connection_not_connected(self):
         """Test that _require_connection raises when not connected."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -117,7 +117,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_require_connection_connected(self):
         """Test that _require_connection does not raise when connected."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -131,7 +131,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_move_with_dummy_components(self):
         """Test that robot move command works correctly with dummy components."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -155,7 +155,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_move_not_connected(self):
         """Test that move raises when not connected."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -168,7 +168,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_move_heading_wrapping(self):
         """Test that heading wraps correctly at 360 degrees."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -192,7 +192,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_get_sensor_data(self):
         """Test that get_sensor_data returns expected structure."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
@@ -224,7 +224,7 @@ class TestSpheroBoltPlus(unittest.TestCase):
     def test_get_sensor_data_not_connected(self):
         """Test that get_sensor_data raises when not connected."""
         robot = SpheroBoltPlus(
-            scanner=DummyFinder(),
+            scanner_class=DummyFinder,
             api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )

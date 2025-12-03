@@ -22,7 +22,14 @@ class SpheroFinder:
         self.selected_toy: BOLTPLUS | None = None
 
     def scan_toys(self, scanning_time: int = 3) -> list:
-        """Scan for Sphero toys (mockable)."""
+        """Scan for Sphero toys (mockable).
+
+        Args:
+            scanning_time (int): How many seconds to scan for toys (default: 3).
+
+        Returns:
+            object: The selected toy object, or None if not selected.
+        """
         self.toys = self.scan4toys(timeout=scanning_time)
 
         if not self.toys:
@@ -43,11 +50,15 @@ class SpheroFinder:
         return self.selected_toy
 
     def get_selected_toy(self) -> object | None:
-        """Get the currently selected toy."""
+        """Get the currently selected toy.
+        Returns:
+            object: The selected toy object, or None if no toy is selected.
+        """
         return self.selected_toy
 
 
 if __name__ == "__main__":
+    logger.info("Scanning for Sphero robots...")
     finder = SpheroFinder()
 
     logger.info("Scanning for Sphero robots...")
@@ -60,6 +71,5 @@ if __name__ == "__main__":
         for toy in toys:
             logger.info(f" - {toy.name}")
 
-        # Example: select the first toy (or replace with a known name)
         selected = finder.select_toy(toys[0].name)
-        logger.info(f"\nSelected toy: {selected}({type(selected)})")
+        logger.info(f"\nSelected toy: {selected} ({type(selected)})")

@@ -170,14 +170,14 @@ class TestSpheroBoltPlusWithDummies(unittest.TestCase):
     """Test SpheroBoltPlus with dummy components."""
 
     def test_init(self):
-        robot = SpheroBoltPlus(scanner=DummyFinder(), api_class=DummySpheroEduAPI)  # type: ignore
+        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
         self.assertIsInstance(robot, BaseRobot)
         self.assertEqual(robot.heading, 0)
         self.assertIsNone(robot.name)
         self.assertIsNone(robot.api)
 
     def test_connect(self):
-        robot = SpheroBoltPlus(scanner=DummyFinder(), api_class=DummySpheroEduAPI)  # type: ignore
+        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
         robot.connect("DummyBolt")
 
         self.assertEqual(robot.name, "DummyBolt")
@@ -187,7 +187,7 @@ class TestSpheroBoltPlusWithDummies(unittest.TestCase):
         robot.disconnect()
 
     def test_connect_not_found(self):
-        robot = SpheroBoltPlus(scanner=DummyFinder(), api_class=DummySpheroEduAPI)  # type: ignore
+        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
 
         with self.assertRaises(RuntimeError) as context:
             robot.connect("NonExistentBolt")
@@ -195,7 +195,7 @@ class TestSpheroBoltPlusWithDummies(unittest.TestCase):
         self.assertIn("not found", str(context.exception))
 
     def test_move(self):
-        robot = SpheroBoltPlus(scanner=DummyFinder(), api_class=DummySpheroEduAPI)  # type: ignore
+        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
         robot.connect("DummyBolt")
 
         # Should not raise
@@ -208,7 +208,7 @@ class TestSpheroBoltPlusWithDummies(unittest.TestCase):
         robot.disconnect()
 
     def test_move_not_connected(self):
-        robot = SpheroBoltPlus(scanner=DummyFinder(), api_class=DummySpheroEduAPI)  # type: ignore
+        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
 
         with self.assertRaises(RuntimeError) as context:
             robot.move(heading=90)
@@ -216,14 +216,14 @@ class TestSpheroBoltPlusWithDummies(unittest.TestCase):
         self.assertIn("not connected", str(context.exception))
 
     def test_disconnect(self):
-        robot = SpheroBoltPlus(scanner=DummyFinder(), api_class=DummySpheroEduAPI)  # type: ignore
+        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
         robot.connect("DummyBolt")
         robot.disconnect()
 
         self.assertIsNone(robot.api)
 
     def test_disconnect_when_not_connected(self):
-        robot = SpheroBoltPlus(scanner=DummyFinder(), api_class=DummySpheroEduAPI)  # type: ignore
+        robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)  # type: ignore
         # Should not raise
         robot.disconnect()
 

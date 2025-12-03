@@ -39,8 +39,10 @@ class World:
         self.camera.setup()
 
         # Setup Robot/Bolt
-        self.robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
-        self.robot.connect("DummyBolt")
+        # self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)
+        # self.robot.connect(bolt_name="DummyBolt")
+        self.robot = SpheroBoltPlus()
+        self.robot.connect()
 
         return AttachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
 

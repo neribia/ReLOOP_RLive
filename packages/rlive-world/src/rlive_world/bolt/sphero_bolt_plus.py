@@ -22,12 +22,12 @@ class SpheroBoltPlus(BaseRobot):
 
     def __init__(
             self,
-            scanner: SpheroFinder | None = SpheroFinder, # FIXME: get class not instance
+            scanner_class: SpheroFinder = SpheroFinder,
             api_class: SpheroEduAPI = SpheroEduAPI,
             register_handlers=False,
     ):
-        self.scanner: SpheroFinder = scanner or SpheroFinder() # FIXME: get class not instance
-        self.api_class: SpheroEduAPI | None = api_class
+        self.scanner: SpheroFinder = scanner_class()
+        self.api_class: SpheroEduAPI = api_class
         self.api: SpheroEduAPI | None = None
         self.toy: BOLTPLUS | None = None
         self.name: str | None = None
@@ -130,9 +130,11 @@ class SpheroBoltPlus(BaseRobot):
 
 if __name__ == "__main__":
     from rlive_world.bolt.boltdummys import DummySpheroEduAPI, DummyFinder
-
-    robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
-    robot.connect("DummyBolt")
+    logger.info("Connecting to Sphero BOLT...")
+    # robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
+    # robot.connect("DummyBolt")
+    robot = SpheroBoltPlus()
+    robot.connect()
     robot.move(heading=0)
     robot.move(heading=90)
     robot.move(heading=0)
