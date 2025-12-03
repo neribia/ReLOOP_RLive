@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 import json
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -6,7 +6,7 @@ import numpy as np
 import cv2 as cv
 from email.message import Message
 
-from rlive_common.core.types import ImageArray, NumpyArray
+from rlive_common.core.types import ImageArray
 
 
 class AttachHardwareResponse(BaseModel):
@@ -44,7 +44,7 @@ class StepResponseJSON(BaseResponse):
 class StepResponseMultipart(BaseResponse):
     """Response body for POST /step_multipart."""
 
-    observation: Optional[np.ndarray] = Field(default=None, exclude=True)
+    observation: np.ndarray | None = Field(default=None, exclude=True)
     boundary: str = Field(default="world-step", exclude=True)
 
     def encode(self) -> tuple[bytes, str]:
@@ -59,7 +59,8 @@ class StepResponseMultipart(BaseResponse):
         <PNG_BYTES>
         --boundary--
 
-        :return:
+        Returns:
+            A tuple containing (body_bytes, content_type).
         """
 
         meta_dict = self.model_dump(exclude={"observation", "boundary"})
@@ -81,7 +82,9 @@ class StepResponseMultipart(BaseResponse):
         if self.observation is not None:
             ok, buf = cv.imencode(".png", self.observation)
             if not ok:
-                raise ValueError(f"cv2.imencode failed for image shape={self.observation.shape}, dtype={self.observation.dtype}")
+                shape = self.observation.shape
+                dtype = self.observation.dtype
+                raise ValueError(f"cv2.imencode failed for image shape={shape}, dtype={dtype}")
             parts.append(
                 f"--{boundary}\r\nContent-Type: image/png\r\n\r\n".encode()
                 + buf.tobytes() + b"\r\n"
@@ -90,12 +93,21 @@ class StepResponseMultipart(BaseResponse):
         parts.append(f"--{boundary}--\r\n".encode())
 
         body = b"".join(parts)
-        content_type = "multipart/form-data; boundary={}".format(boundary)
+        content_type = f"multipart/form-data; boundary={boundary}"
 
         return body, content_type
 
     @classmethod
     def decode(cls, body: bytes, content_type: str) -> "StepResponseMultipart":
+        """Decode a multipart response from bytes.
+        Args:
+            body: The response body bytes.
+            content_type: The Content-Type header value.
+        Returns:
+            A StepResponseMultipart instance.
+        Raises:
+            ValueError: If the response is missing required parts.
+        """
         msg = Message()
         msg["Content-Type"] = content_type
         boundary = msg.get_param("boundary")

@@ -1,4 +1,4 @@
-from typing import List, Callable, Optional
+from collections.abc import Callable
 
 from sphero_unsw.toy.boltplus import BOLTPLUS
 
@@ -11,17 +11,17 @@ class SpheroFinder:
 
     def __init__(
             self,
-            scan_fn: Callable[[int], List[BOLTPLUS]] = None,  # Inject BLE scanning function
+            scan_fn: Callable[[int], list[BOLTPLUS]] = None,  # Inject BLE scanning function
     ):
         from sphero_unsw import scanner  # keep import internal for easier mocking
 
         # Default scanning function from library
         self.scan4toys = scan_fn or scanner.find_toys
 
-        self.toys: List[BOLTPLUS] = []
+        self.toys: list[BOLTPLUS] = []
         self.selected_toy: BOLTPLUS | None = None
 
-    def scan_toys(self, scanning_time: int = 3) -> List:
+    def scan_toys(self, scanning_time: int = 3) -> list:
         """Scan for Sphero toys (mockable)."""
         self.toys = self.scan4toys(timeout=scanning_time)
 
@@ -42,7 +42,8 @@ class SpheroFinder:
 
         return self.selected_toy
 
-    def get_selected_toy(self) -> Optional[object]:
+    def get_selected_toy(self) -> object | None:
+        """Get the currently selected toy."""
         return self.selected_toy
 
 

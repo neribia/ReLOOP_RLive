@@ -1,10 +1,16 @@
+"""Tests for response models."""
+
 import unittest
 import numpy as np
+
 from rlive_common.core.response import StepResponseJSON, StepResponseMultipart
 
 
 class TestRequests(unittest.TestCase):
+    """Test suite for response models."""
+
     def test_encoding_and_decoding_with_json(self):
+        """Test that StepResponseJSON can be serialized and deserialized."""
         img = np.random.randint(0, 255, size=(2, 4, 3), dtype=np.uint8)
 
         response = StepResponseJSON(observation=img, truncated=False, info={"meta": "json"})
@@ -15,6 +21,7 @@ class TestRequests(unittest.TestCase):
         self.assertTrue(np.array_equal(img, loaded.observation))
 
     def test_encoding_and_decoding_with_multipart(self):
+        """Test that StepResponseMultipart can be encoded and decoded."""
         # RGB
         img_rgb = np.random.randint(0, 255, size=(2, 4, 3), dtype=np.uint8)
 

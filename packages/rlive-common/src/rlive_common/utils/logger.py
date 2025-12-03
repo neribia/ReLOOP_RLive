@@ -1,6 +1,5 @@
 import logging
 from logging.config import dictConfig
-from typing import Optional
 from pathlib import Path
 
 from rlive_common.config import config as cfg
@@ -40,7 +39,7 @@ def setup_logger(
     formatter: str = "detailed",
     date_style: str = "long",
     stream: bool = True,
-    logfile: Optional[str | Path] = None,
+    logfile: str | Path | None = None,
 ) -> None:
 
     if formatter not in FORMAT_STYLES:
@@ -145,7 +144,7 @@ def setup_logger(
 # -------------------------------------------------------------
 # Convenience accessor
 # -------------------------------------------------------------
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     global CONFIGURED
     if not CONFIGURED:
         setup_logger(

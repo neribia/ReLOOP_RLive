@@ -1,10 +1,13 @@
+"""Tests for the WorldInterface client."""
+
 import unittest
 import json
+
 import numpy as np
 import httpx
 from httpx import Response
 
-from rlive_env.world_client import WorldInterface  # adjust if needed
+from rlive_env.world_client import WorldInterface, ApiError
 from rlive_common.core.request import (
     StepRequest,
     ResetRequest,
@@ -21,8 +24,10 @@ from rlive_common.core.response import (
 
 
 class TestWorldInterface(unittest.TestCase):
+    """Test suite for WorldInterface HTTP client."""
 
     def setUp(self):
+        """Set up test fixtures with mock transport."""
         self.base_url = "http://test-world"
         self.zero_image = np.zeros((480, 640, 3), dtype=np.uint8)
 
@@ -61,6 +66,7 @@ class TestWorldInterface(unittest.TestCase):
     # /reset
     # -------------------------------------------------------------
     def test_reset_returns_resetresponse(self):
+        """Test that reset returns a valid ResetResponse."""
         expected = ResetResponse(
             observation=self.zero_image,
             truncated=False,
@@ -83,17 +89,19 @@ class TestWorldInterface(unittest.TestCase):
         self.assertEqual(result.info, expected.info)
 
     def test_reset_raises_on_http_error(self):
+        """Test that reset raises ApiError on HTTP 500 error."""
         def handler(req):
             return Response(500, json={"error": "server"})
 
         iface = self.make_iface(handler)
-        with self.assertRaises(httpx.HTTPStatusError):
+        with self.assertRaises(ApiError):
             iface.reset()
 
     # -------------------------------------------------------------
     # /step_json
     # -------------------------------------------------------------
     def test_step_json_returns_stepresponsejson(self):
+        """Test that step_json returns a valid StepResponseJSON."""
         expected = StepResponseJSON(
             observation=self.zero_image,
             truncated=False,
@@ -119,6 +127,7 @@ class TestWorldInterface(unittest.TestCase):
     # /step_multipart
     # -------------------------------------------------------------
     def test_step_multipart_returns_stepresponsemultipart(self):
+        """Test that step_multipart returns a valid StepResponseMultipart."""
         expected = StepResponseMultipart(
             observation=self.zero_image,
             truncated=False,
@@ -147,6 +156,7 @@ class TestWorldInterface(unittest.TestCase):
         self.assertEqual(result.info, expected.info)
 
     def test_step_multipart_invalid_content_type(self):
+        """Test that step_multipart raises ValueError on invalid content type."""
         def handler(req):
             return Response(200, content=b"junk", headers={"Content-Type": "text/plain"})
 
@@ -158,6 +168,7 @@ class TestWorldInterface(unittest.TestCase):
     # /attach_hardware
     # -------------------------------------------------------------
     def test_attach_hardware_returns_attachhardwareresponse(self):
+        """Test that attach_hardware returns a valid AttachHardwareResponse."""
         expected = AttachHardwareResponse(success=True, info={"status": "ok"})
 
         def handler(req: httpx.Request) -> Response:
@@ -178,6 +189,7 @@ class TestWorldInterface(unittest.TestCase):
     # /detach_hardware
     # -------------------------------------------------------------
     def test_detach_hardware_returns_detachhardwareresponse(self):
+        """Test that detach_hardware returns a valid DetachHardwareResponse."""
         expected = DetachHardwareResponse(success=True, info={"status": "ok"})
 
         def handler(req: httpx.Request) -> Response:

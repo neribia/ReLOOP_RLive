@@ -2,7 +2,7 @@ import atexit
 import signal
 import weakref
 import time
-from typing import Optional, Callable, Any
+from typing import Any
 
 from sphero_unsw.sphero_edu import SpheroEduAPI
 from sphero_unsw.toy.boltplus import BOLTPLUS
@@ -16,8 +16,7 @@ logger = get_logger(__name__)
 
 
 class SpheroBoltPlus(BaseRobot):
-    """
-    Simple and testable robot class.
+    """Simple and testable robot class.
     Optional arguments allow injecting mocks during tests without factories.
     """
 
@@ -85,8 +84,7 @@ class SpheroBoltPlus(BaseRobot):
             raise RuntimeError("Robot is not connected.")
 
     def move(self, heading: int, speed=cfg.SPHEROBOLTPLUS_SPEED, duration=cfg.SPHEROBOLTPLUS_DURATION):
-        """
-        Move the Sphero in a relative direction.
+        """Move the Sphero in a relative direction.
 
         Arttributes:
             - heading: Moving direktion (0-360°)
@@ -103,8 +101,7 @@ class SpheroBoltPlus(BaseRobot):
         self.api.roll(self.heading, speed, duration)
 
     def get_sensor_data(self) -> dict[str, Any]:
-        """
-        Returns a snapshot of all sensor readings.
+        """Returns a snapshot of all sensor readings.
 
         Returns:
             dict[str, Any]: A dictionary containing:

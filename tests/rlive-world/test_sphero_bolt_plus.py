@@ -1,110 +1,235 @@
+"""Tests for the SpheroBoltPlus robot class."""
+
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock
 
 from rlive_world.bolt.sphero_bolt_plus import SpheroBoltPlus
+from rlive_world.bolt.boltdummys import (
+    DummyFinder,
+    DummyToy,
+    DummySpheroEduAPI
+)
 
 
-class TestBolt(unittest.TestCase):
+class TestSpheroBoltPlus(unittest.TestCase):
+    """Test suite for SpheroBoltPlus robot using dummy components."""
 
-    @patch("rlive_world.bolt.sphero_bolt_plus.SpheroEduAPI", autospec=True)
-    def test_connect(self, MockAPI):
+    def test_init_with_defaults(self):
+        """Test that robot initializes with default values."""
+        robot = SpheroBoltPlus(register_handlers=False)
 
-        # Fake scanner
-        fake_scanner = MagicMock()
-        fake_toy = MagicMock()
-        fake_toy.name = "FakeBolt"
+        self.assertEqual(robot.heading, 0)
+        self.assertIsNone(robot.name)
+        self.assertIsNone(robot.api)
+        self.assertIsNone(robot.toy)
 
-        fake_scanner.scan_toys.return_value = None
-        fake_scanner.select_toy.return_value = fake_toy
-
-        # Fake API
-        mock_api = MockAPI.return_value
-        mock_api.__enter__.return_value = mock_api
-
-        # Create robot with injected scanner
+    def test_init_with_dummy_components(self):
+        """Test that robot initializes with dummy components."""
         robot = SpheroBoltPlus(
-            scanner=fake_scanner,
-            api=None,                  # will be created inside connect()
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
 
-        robot.connect("FakeBolt")
+        self.assertEqual(robot.heading, 0)
+        self.assertIsNone(robot.name)
+        self.assertIsNone(robot.api)
+
+    # ---------------------------------------------------------------------
+
+    def test_connect_with_dummy_components(self):
+        """Test that robot connects using dummy components."""
+        robot = SpheroBoltPlus(
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
+            register_handlers=False
+        )
+
+        robot.connect("DummyBolt")
 
         # Assertions
-        fake_scanner.scan_toys.assert_called_once()
-        fake_scanner.select_toy.assert_called_once_with("FakeBolt")
-        MockAPI.assert_called_once_with(fake_toy)
-        mock_api.__enter__.assert_called_once()
+        self.assertEqual(robot.name, "DummyBolt")
+        self.assertIsNotNone(robot.api)
+        self.assertIsNotNone(robot.toy)
+        self.assertIsInstance(robot.toy, DummyToy)
 
-        self.assertEqual(robot.name, "FakeBolt")
-        self.assertIs(robot.api, mock_api)
+        robot.disconnect()
+
+    def test_connect_toy_not_found(self):
+        """Test that connect raises RuntimeError when toy not found."""
+        robot = SpheroBoltPlus(
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
+            register_handlers=False
+        )
+
+        with self.assertRaises(RuntimeError) as context:
+            robot.connect("NonExistentBolt")
+
+        self.assertIn("not found", str(context.exception))
 
     # ---------------------------------------------------------------------
 
     def test_disconnect_calls_cleanup_and_closes_api(self):
+        """Test that disconnect calls cleanup and closes the API."""
         robot = SpheroBoltPlus(
-            scanner=MagicMock(),
-            api=MagicMock(),
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
 
-        fake_api = robot.api
+        robot.connect("DummyBolt")
+        self.assertIsNotNone(robot.api)
 
         # Call disconnect
         robot.disconnect()
 
-        # __exit__ should have been called
-        fake_api.__exit__.assert_called_once_with(None, None, None)
-
         # API must be cleared
+        self.assertIsNone(robot.api)
+
+    def test_disconnect_when_not_connected(self):
+        """Test that disconnect works when not connected."""
+        robot = SpheroBoltPlus(
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
+            register_handlers=False
+        )
+
+        # Should not raise
+        robot.disconnect()
         self.assertIsNone(robot.api)
 
     # ---------------------------------------------------------------------
 
     def test_require_connection_not_connected(self):
+        """Test that _require_connection raises when not connected."""
         robot = SpheroBoltPlus(
-            scanner=MagicMock(),
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(RuntimeError) as context:
             robot._require_connection()
 
-    # ---------------------------------------------------------------------
+        self.assertIn("not connected", str(context.exception))
 
     def test_require_connection_connected(self):
+        """Test that _require_connection does not raise when connected."""
         robot = SpheroBoltPlus(
-            scanner=MagicMock(),
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
 
-        robot.api = MagicMock()  # simulate connection
+        robot.connect("DummyBolt")
         robot._require_connection()  # should NOT raise
+        robot.disconnect()
 
     # ---------------------------------------------------------------------
 
-    @patch("rlive_world.bolt.sphero_bolt_plus.SpheroEduAPI", autospec=True)
-    def test_move(self, MockAPI):
-        fake_scanner = MagicMock()
-        fake_toy = MagicMock()
-        fake_toy.name = "FakeBolt"
-
-        fake_scanner.scan_toys.return_value = None
-        fake_scanner.select_toy.return_value = fake_toy
-
-        fake_api = MockAPI.return_value
-        fake_api.__enter__.return_value = fake_api
-
+    def test_move_with_dummy_components(self):
+        """Test that robot move command works correctly with dummy components."""
         robot = SpheroBoltPlus(
-            scanner=fake_scanner,
-            api=None,
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
             register_handlers=False
         )
 
-        robot.connect("FakeBolt")
-        robot.move(heading=90, speed=100, duration=1)
+        robot.connect("DummyBolt")
 
-        fake_api.roll.assert_has_calls([
-            call(90, 0, 1),
-            call(90, 100, 1),
-        ])
+        # Test first move
+        robot.move(heading=90, speed=100, duration=1)
+        self.assertEqual(robot.heading, 90)
+
+        # Test second move (heading should accumulate)
+        robot.move(heading=90, speed=100, duration=1)
+        self.assertEqual(robot.heading, 180)
+
+        # Test third move
+        robot.move(heading=180, speed=100, duration=1)
+        self.assertEqual(robot.heading, 0)  # 180 + 180 = 360 = 0
+
+        robot.disconnect()
+
+    def test_move_not_connected(self):
+        """Test that move raises when not connected."""
+        robot = SpheroBoltPlus(
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
+            register_handlers=False
+        )
+
+        with self.assertRaises(RuntimeError) as context:
+            robot.move(heading=90, speed=100, duration=1)
+
+        self.assertIn("not connected", str(context.exception))
+
+    def test_move_heading_wrapping(self):
+        """Test that heading wraps correctly at 360 degrees."""
+        robot = SpheroBoltPlus(
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
+            register_handlers=False
+        )
+
+        robot.connect("DummyBolt")
+
+        # Test positive wrapping
+        robot.heading = 350
+        robot.move(heading=20, speed=100, duration=1)
+        self.assertEqual(robot.heading, 10)  # (350 + 20) % 360 = 10
+
+        # Test negative wrapping (if heading goes negative)
+        robot.heading = 10
+        robot.move(heading=-20, speed=100, duration=1)
+        self.assertEqual(robot.heading, 350)  # (10 - 20 + 360) % 360 = 350
+
+        robot.disconnect()
+
+    # ---------------------------------------------------------------------
+
+    def test_get_sensor_data(self):
+        """Test that get_sensor_data returns expected structure."""
+        robot = SpheroBoltPlus(
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
+            register_handlers=False
+        )
+
+        robot.connect("DummyBolt")
+
+        # Mock the sensor methods that don't exist in DummySpheroEduAPI
+        robot.api.get_luminosity = MagicMock(return_value={"ambient_light": 100})
+        robot.api.get_velocity = MagicMock(return_value={"x": 0, "y": 0})
+        robot.api.get_location = MagicMock(return_value={"x": 0, "y": 0})
+        robot.api.get_gyroscope = MagicMock(return_value={"x": 0, "y": 0, "z": 0})
+        robot.api.get_distance = MagicMock(return_value=0)
+        robot.api.get_heading = MagicMock(return_value=0)
+
+        sensor_data = robot.get_sensor_data()
+
+        # Verify structure
+        self.assertIn("ambient_light", sensor_data)
+        self.assertIn("orientation", sensor_data)
+        self.assertIn("velocity", sensor_data)
+        self.assertIn("location", sensor_data)
+        self.assertIn("gyroscope", sensor_data)
+        self.assertIn("acceleration", sensor_data)
+        self.assertIn("travel_distance", sensor_data)
+        self.assertIn("heading", sensor_data)
+
+        robot.disconnect()
+
+    def test_get_sensor_data_not_connected(self):
+        """Test that get_sensor_data raises when not connected."""
+        robot = SpheroBoltPlus(
+            scanner=DummyFinder(),
+            api_class=DummySpheroEduAPI,  # type: ignore
+            register_handlers=False
+        )
+
+        with self.assertRaises(RuntimeError) as context:
+            robot.get_sensor_data()
+
+        self.assertIn("not connected", str(context.exception))

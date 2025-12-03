@@ -1,11 +1,11 @@
 from types import SimpleNamespace
 
-from fastapi import FastAPI, HTTPException, Response, Request
+from fastapi import FastAPI, Response, Request
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
-from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest, BaseRequest
+from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_world.world import World
 from rlive_common.utils import get_logger
 
