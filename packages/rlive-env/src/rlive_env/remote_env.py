@@ -15,10 +15,12 @@ class RemoteWorldEnv(gym.Env):
 
     metadata = {"render_modes": ["opencv"]}
 
-    def __init__(self, render_mode: str | None = None, **kwargs) -> None:
+    def __init__(self, render_mode: str | None = None, auto_attach: bool = True, **kwargs) -> None:
         """Initialize the environment.
 
         Attributes:
+            - render_mode (Optional[str]): Rendering mode ('opencv' or None)
+            - auto_attach (bool): Automatically attach hardware on init (default: True)
             - base_url (Optional[str]): Base URL for remote environment.
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
         """
@@ -27,22 +29,50 @@ class RemoteWorldEnv(gym.Env):
         self.render_mode = render_mode
         self.iface: WorldInterface | None = None
         self.obs = None
+        self._hardware_attached = False
 
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint8)
         self.action_space = gym.spaces.Discrete(360, start=-179)  # placeholder (one valid action)
 
-        self._connect(**kwargs)
+        self._connect(auto_attach=auto_attach, **kwargs)
 
-    def _connect(self, **kwargs):
-        """Create iface and attach hardware."""
+    def _connect(self, auto_attach: bool = True, **kwargs):
+        """Create iface and optionally attach hardware."""
         logger.info("Setting up interface to RemoteWorld.")
         self.iface = WorldInterface(**kwargs)
+
+        if auto_attach:
+            self.attach_hardware()
+
+    def attach_hardware(self):
+        """Explicitly attach hardware to the world server."""
+        if self._hardware_attached:
+            logger.warning("Hardware already attached, skipping.")
+            return
 
         logger.info("Attaching hardware in RemoteWorld.")
         resp = self.iface.attach_hardware()
         if not resp.success:
-            raise RuntimeError("Failed to connect the hardware")
+            raise RuntimeError(f"Failed to attach hardware: {resp.info}")
 
+        self._hardware_attached = True
+        logger.info("Hardware successfully attached.")
         return resp
+
+    def detach_hardware(self):
+        """Explicitly detach hardware from the world server."""
+        if not self._hardware_attached:
+            logger.debug("Hardware not attached, skipping detach.")
+            return
+
+        try:
+            resp = self.iface.detach_hardware()
+            self._hardware_attached = False
+            logger.info("Hardware successfully detached.")
+            return resp
+        except Exception:
+            logger.exception("Failed to detach hardware (ignored).")
+            self._hardware_attached = False
 
     def _disconnect(self):
         """Detach hardware and close HTTP interface (robust gegen Fehler)."""
@@ -50,12 +80,12 @@ class RemoteWorldEnv(gym.Env):
         if iface is None:
             return
 
-        logger.info("Detaching hardware in RemoteWorld and closing connection.")
-        try:
-            iface.detach_hardware()
-        except Exception:
-            logger.exception("Failed to detach hardware (ignored).")
+        logger.info("Closing connection to RemoteWorld.")
 
+        # Detach hardware if attached
+        self.detach_hardware()
+
+        # Close HTTP client
         try:
             iface.close()
         except Exception:

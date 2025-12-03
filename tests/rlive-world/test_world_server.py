@@ -92,3 +92,32 @@ class TestWorldAPI(unittest.TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertTrue(resp.headers["content-type"].startswith("multipart/form-data"))
             self.assertIn(b"application/json", resp.content)
+
+    def test_health_endpoint(self):
+        """Test GET /health returns health status."""
+        with TestClient(app) as client:
+            resp = client.get("/health")
+            self.assertEqual(resp.status_code, 200)
+
+            data = resp.json()
+            self.assertIn("status", data)
+            self.assertEqual(data["status"], "healthy")
+            self.assertIn("hardware_attached", data)
+            self.assertIsInstance(data["hardware_attached"], bool)
+
+    def test_status_endpoint(self):
+        """Test GET /status returns detailed server status."""
+        with TestClient(app) as client:
+            resp = client.get("/status")
+            self.assertEqual(resp.status_code, 200)
+
+            data = resp.json()
+            self.assertIn("hardware_attached", data)
+            self.assertIn("camera_active", data)
+            self.assertIn("robot_connected", data)
+
+            # All should be boolean values
+            self.assertIsInstance(data["hardware_attached"], bool)
+            self.assertIsInstance(data["camera_active"], bool)
+            self.assertIsInstance(data["robot_connected"], bool)
+

@@ -32,18 +32,81 @@ class TestWorld(unittest.TestCase):
         self.assertIn("status", result.info)
         self.assertIn("msg", result.info)
         self.assertTrue(result.success)
+        self.assertTrue(world._hardware_attached)
+
+    def test_attach_hardware_idempotent(self):
+        """Test that attach_hardware can be called multiple times safely."""
+        world = ToyWorld()
+        request = AttachHardwareRequest()
+
+        # First attach
+        result1 = world.attach_hardware(request)
+        self.assertTrue(result1.success)
+        self.assertEqual(result1.info["status"], "ok")
+
+        # Second attach should return already_attached
+        result2 = world.attach_hardware(request)
+        self.assertTrue(result2.success)
+        self.assertEqual(result2.info["status"], "already_attached")
 
     def test_detach_hardware(self):
         """Test that detach_hardware returns success response."""
         world = ToyWorld()
-        request = DetachHardwareRequest()
 
+        # First attach
+        world.attach_hardware(AttachHardwareRequest())
+
+        # Then detach
+        request = DetachHardwareRequest()
         result = world.detach_hardware(request)
 
         self.assertIsInstance(result, DetachHardwareResponse)
         self.assertIn("status", result.info)
         self.assertIn("msg", result.info)
         self.assertTrue(result.success)
+        self.assertFalse(world._hardware_attached)
+
+    def test_detach_hardware_when_not_attached(self):
+        """Test that detach_hardware when not attached is safe."""
+        world = ToyWorld()
+        request = DetachHardwareRequest()
+
+        result = world.detach_hardware(request)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.info["status"], "not_attached")
+
+    def test_make_observation_requires_hardware(self):
+        """Test that _make_observation raises error when hardware not attached."""
+        world = World()
+
+        # Should raise RuntimeError
+        with self.assertRaises(RuntimeError) as context:
+            world._make_observation()
+
+        self.assertIn("Hardware not attached", str(context.exception))
+
+    def test_reset_requires_hardware(self):
+        """Test that reset raises error when hardware not attached."""
+        world = ToyWorld()
+        request = ResetRequest()
+
+        # Should raise RuntimeError
+        with self.assertRaises(RuntimeError) as context:
+            world.reset(request)
+
+        self.assertIn("Hardware not attached", str(context.exception))
+
+    def test_step_requires_hardware(self):
+        """Test that step raises error when hardware not attached."""
+        world = ToyWorld()
+        request = StepRequest(action=5)
+
+        # Should raise RuntimeError
+        with self.assertRaises(RuntimeError) as context:
+            world.step(request)
+
+        self.assertIn("Hardware not attached", str(context.exception))
 
     def test_make_observation(self):
         """Test _make_observation returns correct array shape and type."""
@@ -64,14 +127,24 @@ class TestWorld(unittest.TestCase):
     def test_reset(self):
         """Test that reset returns a valid response."""
         world = ToyWorld()
+
+        # Attach hardware first
+        world.attach_hardware(AttachHardwareRequest())
+
         request = ResetRequest()
         result = world.reset(request)
 
         self.assertIsInstance(result, BaseResponse)
 
+        # Clean up
+        world.detach_hardware(DetachHardwareRequest())
+
     def test_step(self):
         """Test that step returns a valid response with correct observation."""
         world = ToyWorld()
+
+        # Attach hardware first
+        world.attach_hardware(AttachHardwareRequest())
 
         # Setup mock robot to avoid NoneType error
         world.robot = MagicMock()
@@ -84,3 +157,7 @@ class TestWorld(unittest.TestCase):
         self.assertEqual(result.observation.shape, (480, 640, 3))
         self.assertEqual(result.observation.dtype, np.uint8)
         world.robot.move.assert_called_once_with(5)
+
+        # Clean up
+        world.detach_hardware(DetachHardwareRequest())
+

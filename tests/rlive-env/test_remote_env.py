@@ -31,10 +31,69 @@ class TestRemoteWorldEnv(unittest.TestCase):
         self.mock_iface.attach_hardware.assert_called_once()
 
     def test_connect_failed(self):
-        """Test that _connect raises RuntimeError on hardware attachment failure."""
+        """Test that attach_hardware raises RuntimeError on hardware attachment failure."""
+        # Create new mock with failed attach_hardware
         self.mock_iface.attach_hardware.return_value.success = False
-        with self.assertRaises(RuntimeError):
-            self.env._connect()
+        self.mock_iface.attach_hardware.return_value.info = {"error": "Hardware failure"}
+
+        # Create a new environment with auto_attach=False
+        env = RemoteWorldEnv(auto_attach=False, base_url="http://test")
+
+        # Now trying to attach should raise RuntimeError
+        with self.assertRaises(RuntimeError) as context:
+            env.attach_hardware()
+
+        self.assertIn("Failed to attach hardware", str(context.exception))
+
+    def test_auto_attach_true(self):
+        """Test that auto_attach=True calls attach_hardware on init."""
+        # This is already tested in setUp, but explicit test
+        self.mock_iface.attach_hardware.assert_called_once()
+        self.assertTrue(self.env._hardware_attached)
+
+    def test_auto_attach_false(self):
+        """Test that auto_attach=False skips hardware attachment on init."""
+        # Create new environment with auto_attach=False
+        env = RemoteWorldEnv(auto_attach=False, base_url="http://test")
+
+        # attach_hardware should only be called once from setUp (not from this new env)
+        self.assertEqual(self.mock_iface.attach_hardware.call_count, 1)
+        self.assertFalse(env._hardware_attached)
+
+    def test_attach_hardware_idempotent(self):
+        """Test that attach_hardware can be called multiple times safely."""
+        # First call was in setUp
+        self.env.attach_hardware()  # Second call should log warning
+
+        # attach_hardware should only be called once on the mock
+        self.mock_iface.attach_hardware.assert_called_once()
+
+    def test_detach_hardware_when_not_attached(self):
+        """Test that detach_hardware when not attached is safe."""
+        # Create env without auto_attach
+        env = RemoteWorldEnv(auto_attach=False, base_url="http://test")
+
+        # Detach when not attached should not call server
+        env.detach_hardware()
+
+        # detach_hardware should not be called on the mock
+        self.mock_iface.detach_hardware.assert_not_called()
+
+    def test_detach_hardware_success(self):
+        """Test that detach_hardware successfully detaches."""
+        self.env.detach_hardware()
+
+        self.mock_iface.detach_hardware.assert_called_once()
+        self.assertFalse(self.env._hardware_attached)
+
+    def test_detach_hardware_handles_exceptions(self):
+        """Test that detach_hardware handles exceptions gracefully."""
+        self.mock_iface.detach_hardware.side_effect = Exception("Network error")
+
+        # Should not raise, just log
+        self.env.detach_hardware()
+
+        self.assertFalse(self.env._hardware_attached)
 
     def test_disconnect(self):
         """Test that _disconnect calls detach and close."""

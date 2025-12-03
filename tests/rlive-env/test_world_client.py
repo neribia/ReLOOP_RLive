@@ -205,3 +205,67 @@ class TestWorldInterface(unittest.TestCase):
 
         self.assertIsInstance(result, DetachHardwareResponse)
         self.assertTrue(result.success)
+
+    # -------------------------------------------------------------
+    # /health
+    # -------------------------------------------------------------
+    def test_health_check_returns_status(self):
+        """Test that health_check returns health status."""
+        expected = {"status": "healthy", "hardware_attached": True}
+
+        def handler(req: httpx.Request) -> Response:
+            self.assertEqual(req.method, "GET")
+            self.assertEqual(req.url.path, "/health")
+            return Response(200, json=expected)
+
+        iface = self.make_iface(handler)
+        result = iface.health_check()
+
+        self.assertEqual(result, expected)
+        self.assertEqual(result["status"], "healthy")
+
+    def test_health_check_handles_error(self):
+        """Test that health_check returns unhealthy on error."""
+        def handler(req: httpx.Request) -> Response:
+            return Response(500, json={"error": "server down"})
+
+        iface = self.make_iface(handler)
+        result = iface.health_check()
+
+        self.assertEqual(result["status"], "unhealthy")
+        self.assertIn("error", result)
+
+    # -------------------------------------------------------------
+    # /status
+    # -------------------------------------------------------------
+    def test_get_status_returns_detailed_status(self):
+        """Test that get_status returns detailed server status."""
+        expected = {
+            "hardware_attached": True,
+            "camera_active": True,
+            "robot_connected": False
+        }
+
+        def handler(req: httpx.Request) -> Response:
+            self.assertEqual(req.method, "GET")
+            self.assertEqual(req.url.path, "/status")
+            return Response(200, json=expected)
+
+        iface = self.make_iface(handler)
+        result = iface.get_status()
+
+        self.assertEqual(result, expected)
+        self.assertTrue(result["hardware_attached"])
+        self.assertTrue(result["camera_active"])
+        self.assertFalse(result["robot_connected"])
+
+    def test_get_status_handles_error(self):
+        """Test that get_status returns error dict on failure."""
+        def handler(req: httpx.Request) -> Response:
+            return Response(500, json={"error": "internal error"})
+
+        iface = self.make_iface(handler)
+        result = iface.get_status()
+
+        self.assertIn("error", result)
+

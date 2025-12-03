@@ -41,6 +41,28 @@ async def internal_error_handler(request: Request, exc: Exception) -> JSONRespon
     )
 
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint to verify server is running."""
+    return {
+        "status": "healthy",
+        "hardware_attached": resources.world._hardware_attached if hasattr(resources, "world") else False
+    }
+
+
+@app.get("/status")
+def get_status():
+    """Get current world status including hardware state."""
+    if not hasattr(resources, "world"):
+        return {"error": "World not initialized"}
+
+    return {
+        "hardware_attached": resources.world._hardware_attached,
+        "camera_active": resources.world.camera is not None and resources.world.camera.is_running,
+        "robot_connected": resources.world.robot is not None and resources.world.robot.api is not None
+    }
+
+
 @app.post("/attach_hardware", response_model=AttachHardwareResponse)
 def attach_hardware(req: AttachHardwareRequest) -> AttachHardwareResponse:
     response = resources.world.attach_hardware(req)
