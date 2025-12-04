@@ -19,7 +19,7 @@ class CameraConfig:
         height (Optional[int]): The desired camera frame height in pixels. Defaults from config.
     """
     type: str = cfg.CAMERA_TYPE
-    id: int = 0 # cfg.CAMERA_ID
+    id: int = cfg.CAMERA_ID
     width: int = cfg.CAMERA_RESOLUTION[1]
     height: int = cfg.CAMERA_RESOLUTION[0]
     exposure_time_ms: float = cfg.CAMERA_EXPOSURE_TIME_MS
