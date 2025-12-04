@@ -76,11 +76,10 @@ Default robot name to connect to.
 default: BP-D217
 """
 
-SPHEROBOLTPLUS_SPEED: int = int(os.getenv("SPHEROBOLTPLUS_SPEED", "100"))
 """
 Speed of the Sphero Bolt+ robot. (-255, 255)
 
-default: 100
+default: 50
 """
 
 SPHEROBOLTPLUS_DURATION: float = float(os.getenv("SPHEROBOLTPLUS_DURATION", "1"))

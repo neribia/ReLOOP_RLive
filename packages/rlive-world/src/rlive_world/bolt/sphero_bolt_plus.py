@@ -106,7 +106,9 @@ class SpheroBoltPlus(BaseRobot):
         self.heading = (self.heading + heading + 360) % 360
         logger.info(f"Moving: heading={heading}, speed={speed}, duration={duration}")
         self.api.roll(self.heading, 0, duration)
+        time.sleep(duration/2)
         self.api.roll(self.heading, speed, duration)
+        time.sleep(duration/2)
 
     def get_sensor_data(self) -> dict[str, Any]:
         """Returns a snapshot of all sensor readings.
@@ -141,11 +143,13 @@ if __name__ == "__main__":
     logger.info("Connecting to Sphero BOLT...")
     # robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
     # robot.connect("DummyBolt")
-    robot = SpheroBoltPlus()
-    robot.connect()
+    robot = SpheroBoltPlus(register_handlers=True)
+    robot.connect(bolt_name="BP-D217", timeout=3)
     robot.move(heading=0)
-    robot.move(heading=90)
-    robot.move(heading=0)
+    robot.move(heading=180)
+    robot.move(heading=180)
+    robot.move(heading=180)
+    robot.move(heading=180)
     # data = robot.get_sensor_data()
     # for key, value in data.items():
     #     logger.info(f"{key.replace('_', ' ').title()}: {value}")
