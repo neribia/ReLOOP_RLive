@@ -66,18 +66,12 @@ Default: 20
 """
 
 # --- Sphero Bolt+ config -----------------------------------------------------
-ROBOT_NAME: str = os.getenv("DEFAULT_ROBOT_NAME", "DummyBolt")
+
+SPHEROBOLTPLUS_NAME: str = os.getenv("SPHEROBOLTPLUS_NAME", "BP-D217")
 """
 Default robot name to connect to. 
 - For dummy hardware: "DummyBolt"
 - For real hardware: Your Sphero's Bluetooth name (e.g., "BP-D217")
-
-default: DummyBolt
-"""
-
-SPHEROBOLTPLUS_NAME: str = os.getenv("SPHEROBOLTPLUS_NAME", "BP-D217")
-"""
-Name/ID of the Sphero Bolt+ robot.
 
 default: BP-D217
 """

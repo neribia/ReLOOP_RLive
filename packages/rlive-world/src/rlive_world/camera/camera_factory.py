@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from collections.abc import Callable
 
+from rlive_world.config import config as cfg
 from rlive_world.camera.base_camera import BaseCamera
-
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -13,16 +13,16 @@ class CameraConfig:
     """Configuration dataclass for camera initialization.
 
     Attributes:
-        type (str): The type of camera to be created (e.g., 'picam', 'webcam', 'dummy').
-        id (Optional[int]): The camera index or ID (e.g., for webcam devices). Defaults to 0.
-        width (int): The desired camera frame width in pixels. Defaults to 640.
-        height (int): The desired camera frame height in pixels. Defaults to 480.
+        type (Optional[str]): The type of camera to be created (e.g., 'picam', 'webcam', 'dummy') Default from config.
+        id (Optional[int]): The camera index or ID (e.g., for webcam devices). Defaults from config.
+        width (Optional[int]): The desired camera frame width in pixels. Defaults from config.
+        height (Optional[int]): The desired camera frame height in pixels. Defaults from config.
     """
-
-    type: str = "dummy"
-    id: int = 0
-    width: int = 640
-    height: int = 480
+    type: str = cfg.CAMERA_TYPE
+    id: int = 0 # cfg.CAMERA_ID
+    width: int = cfg.CAMERA_RESOLUTION[1]
+    height: int = cfg.CAMERA_RESOLUTION[0]
+    exposure_time_ms: float = cfg.CAMERA_EXPOSURE_TIME_MS
 
 
 class CameraFactory:
@@ -36,7 +36,6 @@ class CameraFactory:
         # >>> factory = CameraFactory()
         # >>> camera = factory.build(cfg)
     """
-
     def __init__(self) -> None:
         """Initializes the CameraFactory and registers available camera builder functions."""
         self._builders: dict[str, Callable[[CameraConfig], BaseCamera]] = {
