@@ -42,7 +42,7 @@ class SpheroBoltPlus(BaseRobot):
 
     # -----------------------------------------------------
 
-    def connect(self, bolt_name: str = cfg.SPHEROBOLTPLUS_NAME, **kwargs):
+    def connect(self, bolt_name: str, **kwargs):
         """Connect to the Sphero BOLT robot by name.
 
         Args:

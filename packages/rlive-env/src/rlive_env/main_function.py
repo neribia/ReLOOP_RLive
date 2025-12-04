@@ -8,12 +8,17 @@ logger = get_logger(__name__)
 
 def main() -> None:
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
-    env = RemoteWorldEnv(base_url=base_url, render_mode="opencv")
+    options = {"camera_type": "dummy",
+               "robot_name": "BP-D217",
+               "use_dummy": False,
+               }
+    env = RemoteWorldEnv(base_url=base_url, render_mode="opencv", options=options)
+    env.reset()
 
     obs, info = env.reset()
     logger.info(f"reset -> obs={obs.shape}, info={info}")
 
-    for t in range(3):
+    for t in range(5):
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
         env.render()

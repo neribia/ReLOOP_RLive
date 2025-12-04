@@ -67,15 +67,7 @@ Default: 20
 
 # --- Sphero Bolt+ config -----------------------------------------------------
 
-SPHEROBOLTPLUS_NAME: str = os.getenv("SPHEROBOLTPLUS_NAME", "BP-D217")
-"""
-Default robot name to connect to. 
-- For dummy hardware: "DummyBolt"
-- For real hardware: Your Sphero's Bluetooth name (e.g., "BP-D217")
-
-default: BP-D217
-"""
-
+SPHEROBOLTPLUS_SPEED: int = int(os.getenv("SPHEROBOLTPLUS_SPEED", "50"))
 """
 Speed of the Sphero Bolt+ robot. (-255, 255)
 

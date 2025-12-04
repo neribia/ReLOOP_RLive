@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import cv2 as cv
 import gymnasium as gym
@@ -15,7 +17,7 @@ class RemoteWorldEnv(gym.Env):
 
     metadata = {"render_modes": ["opencv"]}
 
-    def __init__(self, render_mode: str | None = None, auto_attach: bool = True, **kwargs) -> None:
+    def __init__(self, render_mode: str | None = None, auto_attach: bool = True, options: dict[str, Any] | None = None, **kwargs) -> None:
         """Initialize the environment.
 
         Attributes:
@@ -30,13 +32,14 @@ class RemoteWorldEnv(gym.Env):
         self.iface: WorldInterface | None = None
         self.obs = None
         self._hardware_attached = False
+        self.options = options or {}
 
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint8)
         self.action_space = gym.spaces.Discrete(360, start=-179)  # placeholder (one valid action)
 
         self._connect(auto_attach=auto_attach, **kwargs)
 
-    def _connect(self, auto_attach: bool = True, **kwargs):
+    def _connect(self, auto_attach: bool = True, **kwargs) -> None:
         """Create iface and optionally attach hardware."""
         logger.info("Setting up interface to RemoteWorld.")
         self.iface = WorldInterface(**kwargs)
@@ -44,14 +47,14 @@ class RemoteWorldEnv(gym.Env):
         if auto_attach:
             self.attach_hardware()
 
-    def attach_hardware(self):
+    def attach_hardware(self) -> Any:
         """Explicitly attach hardware to the world server."""
         if self._hardware_attached:
             logger.warning("Hardware already attached, skipping.")
-            return
+            return None
 
         logger.info("Attaching hardware in RemoteWorld.")
-        resp = self.iface.attach_hardware()
+        resp = self.iface.attach_hardware(**self.options)
         if not resp.success:
             raise RuntimeError(f"Failed to attach hardware: {resp.info}")
 

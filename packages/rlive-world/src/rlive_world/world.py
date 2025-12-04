@@ -3,6 +3,7 @@ from typing import Any
 import asyncio
 import numpy as np
 
+from rlive_world.config import config as cfg
 from rlive_world.camera import CameraService, CameraConfig
 from rlive_world.bolt.sphero_bolt_plus import SpheroBoltPlus  # FIXME: make daccessible over bolt(__init__)
 from rlive_world.bolt.boltdummys import DummySpheroEduAPI, DummyFinder
@@ -36,15 +37,18 @@ class World:
                 info={"status": "already_attached", "msg": "Hardware was already attached"}
             )
 
-        # Setup Camera
-        self.camera = CameraService(CameraConfig())
-        self.camera.setup()
-
         # Setup Robot/Bolt
-        self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)
-        self.robot.connect(bolt_name="DummyBolt")
-        # self.robot = SpheroBoltPlus()
-        # self.robot.connect()
+        if request.use_dummy:
+            self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)
+            self.robot.connect(bolt_name="DummyBolt", timeout=0.01)
+            self.camera = CameraService(CameraConfig(type="dummy"))
+            self.camera.setup()
+
+        else:
+            self.robot = SpheroBoltPlus()
+            self.robot.connect()
+            self.camera = CameraService(CameraConfig())
+            self.camera.setup()
 
         self._hardware_attached = True
         logger.info("Hardware successfully attached.")

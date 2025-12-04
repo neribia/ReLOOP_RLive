@@ -90,9 +90,9 @@ class WorldInterface:
             return {"error": str(e)}
 
     # -------------------------------------------------------------
-    def attach_hardware(self) -> AttachHardwareResponse:
+    def attach_hardware(self, **kwargs) -> AttachHardwareResponse:
         """Call POST /attach_hardware on the world server with retries."""
-        payload = AttachHardwareRequest().model_dump()
+        payload = AttachHardwareRequest(**kwargs).model_dump()
         data = self._request("POST", "/attach_hardware", json=payload)
         return AttachHardwareResponse(**data)
 
