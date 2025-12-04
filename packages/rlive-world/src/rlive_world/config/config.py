@@ -34,21 +34,24 @@ default: true
 
 # --- Camera config -----------------------------------------------------
 
-CAMERA_TYPE: str = os.getenv("DEFAULT_CAMERA_TYPE", "dummy")
+CAMERA_TYPE: str = str(os.getenv("DEFAULT_CAMERA_TYPE", "dummy"))
 """
 Default camera type: 'dummy', 'webcam', or 'picam'
 
 default: dummy
 """
 
-CAMERA_ID: int = os.getenv("CAMERA_ID", "0")
+CAMERA_ID: int = int(os.getenv("CAMERA_ID", "0"))
 """
 Sets the camer id.
 
 Default: 0
 """
 
-CAMERA_RESOLUTION: tuple[int, int] = tuple(os.getenv("CAMERA_RESOLUTION", (480, 640)))
+CAMERA_WIDTH: int = int(os.getenv("CAMERA_WIDTH", 640))
+CAMERA_HEIGHT: int = int(os.getenv("CAMERA_HEIGHT", 480))
+
+CAMERA_RESOLUTION: tuple[int, int] = (CAMERA_HEIGHT, CAMERA_WIDTH)
 """
 Camera resolution as (height, width).
 
