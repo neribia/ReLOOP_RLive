@@ -137,6 +137,12 @@ def setup_logger(
         },
     }
 
+    # --- Ensure log directory exists before configuring handlers ---
+    for handler in handlers.values():
+        filename = handler.get("filename")
+        if filename:
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+
     # --- Step 3: Apply configuration ---
     dictConfig(config)
     logging.getLogger(__name__).debug(

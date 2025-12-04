@@ -1,11 +1,12 @@
+"""Config-file for the rlive-env package."""
 import os
 import sys
 from os.path import abspath, dirname, join
 
-# --- base directories --------------------------------------------------------
+# --- Base Configuration --------------------------------------------------------
 
+PACKAGE_NAME = "rlive-env"
 BUNDLE_DIR = getattr(sys, "_MEIPASS", abspath(join(dirname(__file__), "..", "..")))
-
 APP_HOME = os.getenv("APP_HOME", f"{BUNDLE_DIR}")
 
 # --- interface config
@@ -46,9 +47,9 @@ default: 0.3
 
 # --- debug config ------------------------------------------------------------
 
-DEBUG = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]
+DEBUG: bool = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]
 """
-enable debug mode (with: true, yes, 1)
+Enable debug mode (with: true, yes, 1)
 
 default: False
 """
