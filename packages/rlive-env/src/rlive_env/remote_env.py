@@ -4,6 +4,7 @@ import numpy as np
 import cv2 as cv
 import gymnasium as gym
 
+from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
 from rlive_common.utils import get_logger
@@ -36,6 +37,8 @@ class RemoteWorldEnv(gym.Env):
 
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint8)
         self.action_space = gym.spaces.Discrete(360, start=-179)  # placeholder (one valid action)
+        # Goal variables
+        self.goal_position = (320, 240)
 
         self._connect(auto_attach=auto_attach, **kwargs)
 
@@ -119,7 +122,7 @@ class RemoteWorldEnv(gym.Env):
             data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(action) # self.iface.step_multipart(action)
             logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
-            self.obs = data.observation
+            self.obs = self._draw_goal(data.observation)
             reward = 0.0
             terminated = False
             truncated = data.truncated
@@ -134,11 +137,35 @@ class RemoteWorldEnv(gym.Env):
         logger.debug(f"OpenCV rendering mode: {self.render_mode}")
         if self.render_mode == "opencv":
             if self.obs is not None:
-                cv.imshow("Environment", self.obs)
+                show_image = cv.cvtColor(self.obs, cv.COLOR_RGB2BGR)
+                cv.imshow("Environment", show_image)
                 cv.waitKey(1)
-
 
     def close(self) -> None:
         logger.info("Closing environment.")
         self._disconnect()
         cv.destroyAllWindows()
+
+    def _draw_goal(self, image: np.ndarray) -> np.ndarray:
+        """Draw transparent goal indicator."""
+
+        annotated_image = image.copy()
+
+        # Create overlay (same size as image)
+        overlay = annotated_image.copy()
+
+        thickness = -1  # Filled circle to allow transparency
+
+        cv.circle(overlay, self.goal_position, cfg.GOAL_RADIUS, cfg.GOAL_COLOUR, thickness)
+
+        # Transparency factor (0.0 = invisible, 1.0 = fully visible)
+        alpha = cfg.GOLA_ALPHA
+
+        # Blend overlay onto original
+        cv.addWeighted(overlay, alpha, annotated_image, 1 - alpha, 0, annotated_image)
+
+        # Draw outline for better visibility (optional)
+        cv.circle(annotated_image, self.goal_position, cfg.GOAL_RADIUS, (0, 180, 0), 2)
+
+        return annotated_image
+
