@@ -18,10 +18,12 @@ class RemoteWorldEnv(gym.Env):
 
     metadata = {"render_modes": ["opencv"]}
 
-    def __init__(self, render_mode: str | None = None, auto_attach: bool = True, options: dict[str, Any] | None = None, **kwargs) -> None:
+    def __init__(self, max_episode_steps: int | None = 100, render_mode: str | None = None, auto_attach: bool = True, options: dict[str, Any] | None = None,
+                 **kwargs) -> None:
         """Initialize the environment.
 
         Attributes:
+            - max_episodes (int | None): Max epochs (default: 100)
             - render_mode (Optional[str]): Rendering mode ('opencv' or None)
             - auto_attach (bool): Automatically attach hardware on init (default: True)
             - base_url (Optional[str]): Base URL for remote environment.
@@ -29,6 +31,8 @@ class RemoteWorldEnv(gym.Env):
         """
         super().__init__()
 
+        self._max_episode_steps = max_episode_steps
+        self._episode = 0  # Start from 0 or 1? Other Env's as reference.
         self.render_mode = render_mode
         self.iface: WorldInterface | None = None
         self.obs = None
@@ -127,6 +131,8 @@ class RemoteWorldEnv(gym.Env):
             terminated = False
             truncated = data.truncated
             info = data.info
+            self._episode += 1
+            info["episode"] = f"{self._episode}/{self._max_episode_steps if self._max_episode_steps is not None else '∞'}"
             return self.obs, reward, terminated, truncated, info
         except Exception as e:
             logger.exception("Failed to step environment")

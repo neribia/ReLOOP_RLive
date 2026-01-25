@@ -12,8 +12,7 @@ def main() -> None:
                "robot_name": "BP-D217",
                "use_dummy": False,
                }
-    env = RemoteWorldEnv(base_url=base_url, render_mode="opencv", options=options)
-    env.reset()
+    env = RemoteWorldEnv(max_episode_steps=10, base_url=base_url, render_mode="opencv", options=options)
 
     obs, info = env.reset()
     logger.info(f"reset -> obs={obs.shape}, info={info}")
