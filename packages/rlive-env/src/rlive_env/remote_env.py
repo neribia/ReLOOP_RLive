@@ -142,9 +142,9 @@ class RemoteWorldEnv(gym.Env):
             logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
             self.obs = self._draw_goal(data.observation)
-            reward = self.calculate_reward(observation=data.observation)
+            goal_reached, reward = self.calculate_reward(observation=data.observation)
             terminated = False  # if success
-            truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps)
+            truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps) or goal_reached
             info = data.info
             self._episode += 1
             info["episode"] = f"{self._episode}/{self._max_episode_steps if self._max_episode_steps is not None else '∞'}"
@@ -167,7 +167,7 @@ class RemoteWorldEnv(gym.Env):
         self._disconnect()
         cv.destroyAllWindows()
 
-    def calculate_reward(self, observation: np.ndarray) -> float:
+    def calculate_reward(self, observation: np.ndarray) -> tuple[bool, float]:
         """Calculate reward based on the observation and goal position.
 
         Arttributes:
@@ -178,7 +178,7 @@ class RemoteWorldEnv(gym.Env):
             - reward (float): The calculated reward.
         """
         # Placeholder implementation: return a constant reward
-        return 0.0
+        return False, 0.0
 
     def set_random_goal(self):
         height, width, _ = self.observation_space.shape
