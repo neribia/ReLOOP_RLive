@@ -35,6 +35,29 @@ async def lifespan(app: FastAPI):
 app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
 
 
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
+    """Handle RuntimeError with structured error response."""
+    logger.warning(f"RuntimeError at {request.url.path}: {exc}")
+
+    # Determine if error is recoverable and provide suggestion
+    message = str(exc)
+    recoverable = "attach_hardware" in message.lower() or "not attached" in message.lower()
+    suggestion = "Call attach_hardware() first" if recoverable else None
+
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "HardwareError",
+            "message": message,
+            "recoverable": recoverable,
+            "suggestion": suggestion,
+            "endpoint": request.url.path,
+            "method": request.method
+        }
+    )
+
+
 @app.exception_handler(Exception)
 async def internal_error_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled server exception")

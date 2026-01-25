@@ -162,7 +162,19 @@ class WorldInterface:
 
     def _handle_http_error(self, method, path, exc, attempt):
         status = exc.response.status_code
-        detail = self.parse_error(exc.response)
+        error_data = self.parse_error(exc.response)
+
+        # Log structured error information if available
+        if isinstance(error_data, dict):
+            if error_data.get("recoverable"):
+                suggestion = error_data.get("suggestion", "Check hardware state")
+                logger.warning(f"Recoverable error: {suggestion}")
+
+            error_type = error_data.get("error", "UnknownError")
+            message = error_data.get("message", str(error_data))
+            detail = f"[{error_type}] {message}"
+        else:
+            detail = error_data
 
         # no retry for server logic errors
         if not self.is_retryable_status(status):
