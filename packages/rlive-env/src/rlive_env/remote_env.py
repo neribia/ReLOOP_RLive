@@ -130,6 +130,8 @@ class RemoteWorldEnv(gym.Env):
             reward = 0.0
             terminated = False
             truncated = data.truncated
+            terminated = False  # if success
+            truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps)
             info = data.info
             self._episode += 1
             info["episode"] = f"{self._episode}/{self._max_episode_steps if self._max_episode_steps is not None else '∞'}"

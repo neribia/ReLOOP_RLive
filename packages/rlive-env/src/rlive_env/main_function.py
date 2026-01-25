@@ -15,13 +15,16 @@ def main() -> None:
     env = RemoteWorldEnv(max_episode_steps=10, base_url=base_url, render_mode="opencv", options=options)
 
     obs, info = env.reset()
+    env.render()
     logger.info(f"reset -> obs={obs.shape}, info={info}")
 
-    for t in range(5):
+    done = False
+    while not done:
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
         env.render()
-        logger.info(f"t={t:02d} action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
+        done =  truncated
+        logger.info(f"action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
         if terminated or truncated:
             obs, info = env.reset()
             logger.info("Episode reset.")
