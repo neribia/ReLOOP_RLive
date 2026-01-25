@@ -41,13 +41,13 @@ class World:
         if request.use_dummy:
             self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)
             self.robot.connect(bolt_name="DummyBolt", timeout=0.01)
-            self.camera = CameraService(CameraConfig(type="dummy"))
+            self.camera = CameraService(CameraConfig(type="webcam"))
             self.camera.setup()
 
         else:
             self.robot = SpheroBoltPlus()
-            self.robot.connect()
-            self.camera = CameraService(CameraConfig())
+            self.robot.connect(bolt_name=request.robot_name)
+            self.camera = CameraService(CameraConfig(type=request.camera_type))
             self.camera.setup()
 
         self._hardware_attached = True
