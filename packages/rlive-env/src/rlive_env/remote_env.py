@@ -42,7 +42,7 @@ class RemoteWorldEnv(gym.Env):
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint8)
         self.action_space = gym.spaces.Discrete(360, start=-179)  # placeholder (one valid action)
         # Goal variables
-        self.goal_position = (320, 240)
+        self.goal_position = None
 
         self._connect(auto_attach=auto_attach, **kwargs)
 
@@ -106,6 +106,8 @@ class RemoteWorldEnv(gym.Env):
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         logger.info("Resetting environment.")
+
+        self.set_random_goal()
 
         try:
             data: ResetResponse = self.iface.reset()
@@ -177,6 +179,14 @@ class RemoteWorldEnv(gym.Env):
         """
         # Placeholder implementation: return a constant reward
         return 0.0
+
+    def set_random_goal(self):
+        height, width, _ = self.observation_space.shape
+
+        x = np.random.randint(0, width)
+        y = np.random.randint(0, height)
+
+        self.goal_position = (x, y)
 
     def _draw_goal(self, image: np.ndarray) -> np.ndarray:
         """Draw transparent goal indicator."""
