@@ -67,6 +67,13 @@ Default: 20
 
 # --- Sphero Bolt+ config -----------------------------------------------------
 
+SPHEROBOLTPLUS_NAME: str = str(os.getenv("SPHEROBOLTPLUS_NAME", "SB-0001"))
+"""
+Name of the Sphero Bolt+ robot to connect to.
+
+default: SB-0001
+"""
+
 SPHEROBOLTPLUS_SPEED: int = int(os.getenv("SPHEROBOLTPLUS_SPEED", "50"))
 """
 Speed of the Sphero Bolt+ robot. (-255, 255)
