@@ -120,6 +120,19 @@ class RemoteWorldEnv(gym.Env):
             raise RuntimeError(f"Failed to reset environment: {e}")
 
     def step(self, action) -> tuple[np.ndarray, float, bool, bool, dict]:
+        """
+        Make a step in the environment with the given action.
+
+        Attributes:
+            - action: The action to take in the environment.
+
+        Returns:
+            - obs (np.ndarray): The next observation after taking the action.
+            - reward (float): The reward received after taking the action.
+            - terminated (bool): Whether the episode has terminated.
+            - truncated (bool): Whether the episode has been truncated.
+            - info (dict): Additional information about the step.
+        """
         logger.info(f"Making a step with action: {action}")
 
         try:
@@ -127,9 +140,7 @@ class RemoteWorldEnv(gym.Env):
             logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
             self.obs = self._draw_goal(data.observation)
-            reward = 0.0
-            terminated = False
-            truncated = data.truncated
+            reward = self.calculate_reward(observation=data.observation)
             terminated = False  # if success
             truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps)
             info = data.info
@@ -153,6 +164,19 @@ class RemoteWorldEnv(gym.Env):
         logger.info("Closing environment.")
         self._disconnect()
         cv.destroyAllWindows()
+
+    def calculate_reward(self, observation: np.ndarray) -> float:
+        """Calculate reward based on the observation and goal position.
+
+        Arttributes:
+            - observation (np.ndarray): The current observation from the environment.
+
+        Returns:
+            - terminated (bool): Whether the episode has terminated.
+            - reward (float): The calculated reward.
+        """
+        # Placeholder implementation: return a constant reward
+        return 0.0
 
     def _draw_goal(self, image: np.ndarray) -> np.ndarray:
         """Draw transparent goal indicator."""
