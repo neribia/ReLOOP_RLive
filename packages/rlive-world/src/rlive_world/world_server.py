@@ -11,7 +11,6 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-# FIXME: Give back the internal Server error in Info or ...
 
 resources = SimpleNamespace()
 
@@ -22,7 +21,15 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    resources.world.close()
+    # Graceful cleanup
+    try:
+        if resources.world._hardware_attached:
+            logger.info("Shutting down: detaching hardware...")
+            resources.world.detach_hardware(DetachHardwareRequest())
+    except Exception:
+        logger.exception("Error during shutdown")
+    finally:
+        resources.world.close()
 
 
 app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
