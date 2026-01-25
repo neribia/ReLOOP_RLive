@@ -24,7 +24,7 @@ class TestWorld(unittest.TestCase):
     def test_attach_hardware(self):
         """Test that attach_hardware returns success response."""
         world = ToyWorld()
-        request = AttachHardwareRequest()
+        request = AttachHardwareRequest(use_dummy=True)
 
         result = world.attach_hardware(request)
 
@@ -37,7 +37,7 @@ class TestWorld(unittest.TestCase):
     def test_attach_hardware_idempotent(self):
         """Test that attach_hardware can be called multiple times safely."""
         world = ToyWorld()
-        request = AttachHardwareRequest()
+        request = AttachHardwareRequest(use_dummy=True)
 
         # First attach
         result1 = world.attach_hardware(request)
@@ -54,7 +54,7 @@ class TestWorld(unittest.TestCase):
         world = ToyWorld()
 
         # First attach
-        world.attach_hardware(AttachHardwareRequest())
+        world.attach_hardware(AttachHardwareRequest(use_dummy=True))
 
         # Then detach
         request = DetachHardwareRequest()
@@ -113,7 +113,7 @@ class TestWorld(unittest.TestCase):
         world = World()
 
         # Attach hardware to initialize camera and robot
-        world.attach_hardware(AttachHardwareRequest())
+        world.attach_hardware(AttachHardwareRequest(use_dummy=True))
 
         obs = world._make_observation()
 
@@ -129,7 +129,7 @@ class TestWorld(unittest.TestCase):
         world = ToyWorld()
 
         # Attach hardware first
-        world.attach_hardware(AttachHardwareRequest())
+        world.attach_hardware(AttachHardwareRequest(use_dummy=True))
 
         request = ResetRequest()
         result = world.reset(request)
@@ -144,7 +144,7 @@ class TestWorld(unittest.TestCase):
         world = ToyWorld()
 
         # Attach hardware first
-        world.attach_hardware(AttachHardwareRequest())
+        world.attach_hardware(AttachHardwareRequest(use_dummy=True))
 
         # Setup mock robot to avoid NoneType error
         world.robot = MagicMock()
@@ -161,3 +161,4 @@ class TestWorld(unittest.TestCase):
         # Clean up
         world.detach_hardware(DetachHardwareRequest())
 
+        world.detach_hardware(DetachHardwareRequest())
