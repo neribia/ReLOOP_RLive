@@ -60,7 +60,7 @@ Colour of the goal circle in RGB format.
 default: (0, 255, 0)  # Green
 """
 
-GOLA_ALPHA: float = float(os.getenv("GOAL_ALPHA", "0.5"))
+GOAL_ALPHA: float = float(os.getenv("GOAL_ALPHA", "0.5"))
 """ 
 Alpha value of the goal circle overlay (0.0 = invisible, 1.0 = fully visible).
 

@@ -43,7 +43,7 @@ default: dummy
 
 CAMERA_ID: int = int(os.getenv("CAMERA_ID", "0"))
 """
-Sets the camer id.
+Sets the camera id.
 
 Default: 0
 """

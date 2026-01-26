@@ -170,7 +170,7 @@ class RemoteWorldEnv(gym.Env):
     def calculate_reward(self, observation: np.ndarray) -> tuple[bool, float]:
         """Calculate reward based on the observation and goal position.
 
-        Arttributes:
+        Attributes:
             - observation (np.ndarray): The current observation from the environment.
 
         Returns:
@@ -201,7 +201,7 @@ class RemoteWorldEnv(gym.Env):
         cv.circle(overlay, self.goal_position, cfg.GOAL_RADIUS, cfg.GOAL_COLOUR, thickness)
 
         # Transparency factor (0.0 = invisible, 1.0 = fully visible)
-        alpha = cfg.GOLA_ALPHA
+        alpha = cfg.GOAL_ALPHA
 
         # Blend overlay onto original
         cv.addWeighted(overlay, alpha, annotated_image, 1 - alpha, 0, annotated_image)

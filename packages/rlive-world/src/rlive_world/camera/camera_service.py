@@ -1,5 +1,5 @@
 import threading
-from typing import Any
+
 
 import numpy as np
 
@@ -35,7 +35,7 @@ class CameraService:
                 return None
             try:
                 img = self._cam.get_image()
-                # Optional: Validierung des Rückgabetyps
+                # Optional: Validate return type
                 if not isinstance(img, np.ndarray):
                     logger.warning("CameraService.get_frame: unexpected image type %s", type(img))
                 return img

@@ -22,8 +22,8 @@ class SpheroBoltPlus(BaseRobot):
 
     def __init__(
             self,
-            scanner_class: SpheroFinder = SpheroFinder,
-            api_class: SpheroEduAPI = SpheroEduAPI,
+            scanner_class: type[SpheroFinder] = SpheroFinder,
+            api_class: type[SpheroEduAPI] = SpheroEduAPI,
             register_handlers=False,
     ):
         self.scanner: SpheroFinder = scanner_class()
@@ -56,7 +56,7 @@ class SpheroBoltPlus(BaseRobot):
 
         self.toy = self.scanner.select_toy(bolt_name)
         if not self.toy:
-            raise RuntimeError(f"Sphero '{bolt_name}' not found, avalible Toys: {[toy.name for toy in toys]}")
+            raise RuntimeError(f"Sphero '{bolt_name}' not found, available Toys: {[toy.name for toy in toys]}")
 
         self.name = str(self.toy.name)
         # If api was not injected, create it now
@@ -94,7 +94,7 @@ class SpheroBoltPlus(BaseRobot):
     def move(self, heading: int, speed=cfg.SPHEROBOLTPLUS_SPEED, duration=cfg.SPHEROBOLTPLUS_DURATION):
         """Move the Sphero in a relative direction.
 
-        Arttributes:
+        Attributes:
             - heading: Moving direktion (0-360°)
             - speed: Moving speed (-255 - 255)
             - duration: Moving duration (seconds)
@@ -103,7 +103,7 @@ class SpheroBoltPlus(BaseRobot):
         """
         self._require_connection()
 
-        self.heading = (self.heading + heading + 360) % 360
+        self.heading = (self.heading + heading) % 360
         logger.info(f"Moving: heading={heading}, speed={speed}, duration={duration}")
         self.api.roll(self.heading, 0, duration)
         time.sleep(duration/2)
@@ -139,7 +139,7 @@ class SpheroBoltPlus(BaseRobot):
 
 
 if __name__ == "__main__":
-    from rlive_world.bolt.boltdummys import DummySpheroEduAPI, DummyFinder
+
     logger.info("Connecting to Sphero BOLT...")
     # robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
     # robot.connect("DummyBolt")

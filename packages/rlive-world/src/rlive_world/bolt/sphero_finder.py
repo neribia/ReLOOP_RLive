@@ -62,8 +62,8 @@ if __name__ == "__main__":
     logger.info("Scanning for Sphero robots...")
     finder = SpheroFinder()
 
-    logger.info("Scanning for Sphero robots...")
-    toys = finder.find_toys(scanning_time=3)
+
+    toys = finder.scan_toys(timeout=3)
 
     if not toys:
         logger.info("No toys found.")

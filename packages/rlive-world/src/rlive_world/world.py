@@ -3,7 +3,7 @@ from typing import Any
 import asyncio
 import numpy as np
 
-from rlive_world.config import config as cfg
+
 from rlive_world.camera import CameraService, CameraConfig
 from rlive_world.bolt.sphero_bolt_plus import SpheroBoltPlus  # FIXME: make daccessible over bolt(__init__)
 from rlive_world.bolt.boltdummys import DummySpheroEduAPI, DummyFinder
