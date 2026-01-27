@@ -210,4 +210,3 @@ class RemoteWorldEnv(gym.Env):
         cv.circle(annotated_image, self.goal_position, cfg.GOAL_RADIUS, (0, 180, 0), 2)
 
         return annotated_image
-

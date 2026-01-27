@@ -160,5 +160,3 @@ class TestWorld(unittest.TestCase):
 
         # Clean up
         world.detach_hardware(DetachHardwareRequest())
-
-        world.detach_hardware(DetachHardwareRequest())
