@@ -1,6 +1,5 @@
 import logging
 from logging.config import dictConfig
-from typing import Optional
 from pathlib import Path
 
 from rlive_common.config import config as cfg
@@ -14,7 +13,7 @@ CONFIGURED = False
 # -------------------------------------------------------------
 FORMAT_STYLES = {
     "simple": "[%(asctime)s] %(levelname)-8s - %(message)s",
-    "detailed": "[%(asctime)s] %(levelname)-8s - %(name)s - %(filename)s:%(lineno)d - %(message)s",
+    "detailed": "[%(asctime)s.%(msecs)03d] %(levelname)-8s - %(name)s.py:%(lineno)d - %(message)s",
     "color": "\033[1;36m%(asctime)s\033[0m \033[1;33m[%(levelname)-8s]\033[0m %(name)s: %(message)s",
     "thread": "%(asctime)s (%(threadName)-22s) %(name)s:%(lineno)d - %(levelname)s - %(message)s",
     "json": (
@@ -40,7 +39,7 @@ def setup_logger(
     formatter: str = "detailed",
     date_style: str = "long",
     stream: bool = True,
-    logfile: Optional[str | Path] = None,
+    logfile: str | Path | None = None,
 ) -> None:
 
     if formatter not in FORMAT_STYLES:
@@ -89,6 +88,11 @@ def setup_logger(
         "formatters": formatters,
         "handlers": handlers,
         "loggers": {
+            "__main__": {
+                "level": logging.getLevelName(level),
+                "handlers": list(handlers.keys()),
+                "propagate": False,
+            },
             "rlive_common": {
                 "level": logging.getLevelName(level),
                 "handlers": list(handlers.keys()),
@@ -133,6 +137,12 @@ def setup_logger(
         },
     }
 
+    # --- Ensure log directory exists before configuring handlers ---
+    for handler in handlers.values():
+        filename = handler.get("filename")
+        if filename:
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+
     # --- Step 3: Apply configuration ---
     dictConfig(config)
     logging.getLogger(__name__).debug(
@@ -145,7 +155,7 @@ def setup_logger(
 # -------------------------------------------------------------
 # Convenience accessor
 # -------------------------------------------------------------
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     global CONFIGURED
     if not CONFIGURED:
         setup_logger(

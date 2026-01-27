@@ -1,3 +1,5 @@
+"""HTTP client interface for communicating with the World server."""
+
 from typing import Any, Optional
 import time
 
@@ -5,12 +7,31 @@ import httpx
 from httpx import Response
 
 from rlive_world.config import config as cfg
-from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
+from rlive_common.core.response import (
+    ResetResponse,
+    StepResponseJSON,
+    StepResponseMultipart,
+    AttachHardwareResponse,
+    DetachHardwareResponse,
+)
 from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
 from rlive_env.config import config as cfg
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
+
+# FIXME: Shutdown if the server throws an error and maybe print that error
+
+class ApiError(Exception):
+    def __init__(self, method, path, status, message):
+        self.method = method
+        self.path = path
+        self.status = status
+        self.message = message
+        logger.debug("ApiError information:")
+        logger.debug(f"method: {method}, path: {path}, status: {status}, message: {message}")
+        super().__init__(f"{status} {method} {path}: {message}")
+
 
 
 class WorldInterface:
@@ -28,7 +49,7 @@ class WorldInterface:
 
     def __init__(
             self,
-            base_url: Optional[str] = cfg.WORLD_BASE_URL,
+            base_url: str = cfg.WORLD_BASE_URL,
             timeout: float = cfg.WORLD_INTERFACE_TIMEOUT,
             max_retries: int = cfg.WORLD_INTERFACE_MAX_RETRIES,
             backoff_factor: float = cfg.WORLD_INTERFACE_BACKOFF_FACTOR,
@@ -51,9 +72,27 @@ class WorldInterface:
         self._client.close()
 
     # -------------------------------------------------------------
-    def attach_hardware(self) -> AttachHardwareResponse:
+
+    def health_check(self) -> dict:
+        """Check if the world server is healthy and responding."""
+        try:
+            return self._request("GET", "/health", expect_json=True)
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return {"status": "unhealthy", "error": str(e)}
+
+    def get_status(self) -> dict:
+        """Get detailed status of the world server including hardware state."""
+        try:
+            return self._request("GET", "/status", expect_json=True)
+        except Exception as e:
+            logger.error(f"Status check failed: {e}")
+            return {"error": str(e)}
+
+    # -------------------------------------------------------------
+    def attach_hardware(self, **kwargs) -> AttachHardwareResponse:
         """Call POST /attach_hardware on the world server with retries."""
-        payload = AttachHardwareRequest().model_dump()
+        payload = AttachHardwareRequest(**kwargs).model_dump()
         data = self._request("POST", "/attach_hardware", json=payload)
         return AttachHardwareResponse(**data)
 
@@ -76,9 +115,7 @@ class WorldInterface:
         return StepResponseJSON(**data)
 
     def step_multipart(self, action: int) -> StepResponseMultipart:
-        """
-        Call POST /step_multipart and decode multipart/mixed response.
-        """
+        """Call POST /step_multipart and decode multipart/mixed response."""
         payload = StepRequest(action=action).model_dump()
         response: Response = self._request("POST", "/step_multipart", json=payload, expect_json=False)
 
@@ -104,29 +141,65 @@ class WorldInterface:
             return response
 
     def _request(self, method: str, path: str, expect_json: bool = True, **kwargs):
-        """Retry wrapper with exponential backoff."""
-        start = time.monotonic()
-
         for attempt in range(self.max_retries + 1):
             try:
                 return self._send_once(method, path, expect_json, **kwargs)
 
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
-                elapsed = time.monotonic() - start
-                if elapsed > self.max_retry_time:
-                    logger.error(f"Retry timeout exceeded after {elapsed:.2f}s")
+            except httpx.HTTPStatusError as e:
+                retry = self._handle_http_error(method, path, e, attempt)
+                if not retry:
                     raise
 
+                time.sleep(self.backoff_factor * (2 ** attempt))
+
+            except httpx.RequestError as e:  # network errors → retry
                 if attempt >= self.max_retries:
-                    logger.error(f"Request failed after {self.max_retries} retries: {e}")
-                    raise
+                    raise ApiError(method, path, None, str(e))
 
-                delay = self.backoff_factor * (2 ** attempt)
-                logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay:.2f}s...")
-                time.sleep(delay)
-
-            except Exception:
-                logger.exception("Unexpected non-HTTP error during request, not retrying")
-                raise
+                time.sleep(self.backoff_factor * (2 ** attempt))
 
         raise RuntimeError("Unreachable")
+
+    def _handle_http_error(self, method, path, exc, attempt):
+        status = exc.response.status_code
+        error_data = self.parse_error(exc.response)
+
+        # Log structured error information if available
+        if isinstance(error_data, dict):
+            if error_data.get("recoverable"):
+                suggestion = error_data.get("suggestion", "Check hardware state")
+                logger.warning(f"Recoverable error: {suggestion}")
+
+            error_type = error_data.get("error", "UnknownError")
+            message = error_data.get("message", str(error_data))
+            detail = f"[{error_type}] {message}"
+        else:
+            detail = error_data
+
+        # no retry for server logic errors
+        if not self.is_retryable_status(status):
+            raise ApiError(method, path, status, detail)
+
+        # retryable: only if attempts left
+        if attempt >= self.max_retries:
+            raise ApiError(method, path, status, detail)
+
+        # return delay (so caller can sleep)
+        return True  # meaning: "retry"
+
+    @staticmethod
+    def parse_error(response):
+        try:
+            data = response.json()
+        except Exception:
+            return response.text
+        return data.get("message", data)
+
+    @staticmethod
+    def is_retryable_status(status: int) -> bool:
+        return status in {502, 503, 504}
+
+
+
+
+

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from typing import Optional, Callable
+from collections.abc import Callable
 
+from rlive_world.config import config as cfg
 from rlive_world.camera.base_camera import BaseCamera
-
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -10,25 +10,23 @@ logger = get_logger(__name__)
 
 @dataclass(frozen=True)
 class CameraConfig:
-    """
-    Configuration dataclass for camera initialization.
+    """Configuration dataclass for camera initialization.
 
     Attributes:
-        type (str): The type of camera to be created (e.g., 'picam', 'webcam', 'dummy').
-        id (Optional[int]): The camera index or ID (e.g., for webcam devices). Defaults to 0.
-        width (int): The desired camera frame width in pixels. Defaults to 640.
-        height (int): The desired camera frame height in pixels. Defaults to 480.
+        type (Optional[str]): The type of camera to be created (e.g., 'picam', 'webcam', 'dummy') Default from config.
+        id (Optional[int]): The camera index or ID (e.g., for webcam devices). Defaults from config.
+        width (Optional[int]): The desired camera frame width in pixels. Defaults from config.
+        height (Optional[int]): The desired camera frame height in pixels. Defaults from config.
     """
-
-    type: str = "dummy"
-    id: Optional[int] = 0
-    width: int = 640
-    height: int = 480
+    type: str = cfg.CAMERA_TYPE
+    id: int = cfg.CAMERA_ID
+    width: int = cfg.CAMERA_RESOLUTION[1]
+    height: int = cfg.CAMERA_RESOLUTION[0]
+    exposure_time_ms: float = cfg.CAMERA_EXPOSURE_TIME_MS
 
 
 class CameraFactory:
-    """
-    Factory class responsible for creating and initializing camera instances.
+    """Factory class responsible for creating and initializing camera instances.
 
     The factory provides an abstraction layer to create different types of camera
     objects (e.g., PiCamera, Webcam, DummyCamera) based on the given configuration.
@@ -38,11 +36,8 @@ class CameraFactory:
         # >>> factory = CameraFactory()
         # >>> camera = factory.build(cfg)
     """
-
     def __init__(self) -> None:
-        """
-        Initializes the CameraFactory and registers available camera builder functions.
-        """
+        """Initializes the CameraFactory and registers available camera builder functions."""
         self._builders: dict[str, Callable[[CameraConfig], BaseCamera]] = {
             "picam": self._build_pi_camera,
             "webcam": self._build_webcam,
@@ -50,8 +45,7 @@ class CameraFactory:
         }
 
     def build(self, cfg: CameraConfig) -> BaseCamera:
-        """
-        Builds and returns a camera instance based on the given configuration.
+        """Builds and returns a camera instance based on the given configuration.
 
         If the specified camera type cannot be created, the factory automatically
         falls back to a dummy camera (fake video feed).
@@ -84,8 +78,7 @@ class CameraFactory:
 
     @staticmethod
     def _build_dummy_camera(cfg: CameraConfig) -> BaseCamera:
-        """
-        Creates a dummy (fake) camera instance, used as fallback when real cameras are unavailable.
+        """Creates a dummy (fake) camera instance, used as fallback when real cameras are unavailable.
 
         Args:
             cfg (CameraConfig): Camera configuration object.
@@ -99,8 +92,7 @@ class CameraFactory:
 
     @staticmethod
     def _build_pi_camera(cfg: CameraConfig) -> BaseCamera:
-        """
-        Creates a Raspberry Pi camera instance (e.g., using the PiCamera module).
+        """Creates a Raspberry Pi camera instance (e.g., using the PiCamera module).
 
         Args:
             cfg (CameraConfig): Camera configuration object.
@@ -114,8 +106,7 @@ class CameraFactory:
 
     @staticmethod
     def _build_webcam(cfg: CameraConfig) -> BaseCamera:
-        """
-        Creates a webcam instance using a connected USB or built-in camera.
+        """Creates a webcam instance using a connected USB or built-in camera.
 
         Args:
             cfg (CameraConfig): Camera configuration object.

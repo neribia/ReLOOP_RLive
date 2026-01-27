@@ -8,16 +8,23 @@ logger = get_logger(__name__)
 
 def main() -> None:
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
-    env = RemoteWorldEnv(base_url=base_url, render_mode="opencv")
+    options = {"camera_type": "dummy",
+               "robot_name": "BP-D217",
+               "use_dummy": False,
+               }
+    env = RemoteWorldEnv(max_episode_steps=10, base_url=base_url, render_mode="opencv", options=options)
 
     obs, info = env.reset()
+    env.render()
     logger.info(f"reset -> obs={obs.shape}, info={info}")
 
-    for t in range(3):
+    done = False
+    while not done:
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
         env.render()
-        logger.info(f"t={t:02d} action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
+        done =  truncated
+        logger.info(f"action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
         if terminated or truncated:
             obs, info = env.reset()
             logger.info("Episode reset.")

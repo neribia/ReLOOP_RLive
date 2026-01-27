@@ -2,7 +2,7 @@ import atexit
 import signal
 import weakref
 import time
-from typing import Optional, Callable, Any
+from typing import Any
 
 from sphero_unsw.sphero_edu import SpheroEduAPI
 from sphero_unsw.toy.boltplus import BOLTPLUS
@@ -16,19 +16,19 @@ logger = get_logger(__name__)
 
 
 class SpheroBoltPlus(BaseRobot):
-    """
-    Simple and testable robot class.
+    """Simple and testable robot class.
     Optional arguments allow injecting mocks during tests without factories.
     """
 
     def __init__(
             self,
-            scanner: Optional[SpheroFinder] = None,
-            api: Optional[SpheroEduAPI] = None,
-            register_handlers=True,
+            scanner_class: type[SpheroFinder] = SpheroFinder,
+            api_class: type[SpheroEduAPI] = SpheroEduAPI,
+            register_handlers=False,
     ):
-        self.scanner: SpheroFinder = scanner or SpheroFinder()
-        self.api: SpheroEduAPI | None = api  # set after connect() normally
+        self.scanner: SpheroFinder = scanner_class()
+        self.api_class: SpheroEduAPI = api_class
+        self.api: SpheroEduAPI | None = None
         self.toy: BOLTPLUS | None = None
         self.name: str | None = None
 
@@ -42,17 +42,25 @@ class SpheroBoltPlus(BaseRobot):
 
     # -----------------------------------------------------
 
-    def connect(self, bolt_name: str = cfg.SPHEROBOLTPLUS_NAME):
+    def connect(self, bolt_name: str, **kwargs):
+        """Connect to the Sphero BOLT robot by name.
+
+        Args:
+            - bolt_name: str: Name of the Sphero BOLT to connect to.
+            - timeout: float: Time to scan for the robot (seconds).
+
+        Returns: None
+        """
         logger.info("Scanning for Sphero BOLT...")
-        self.scanner.scan_toys()
+        toys = self.scanner.scan_toys(**kwargs)
 
         self.toy = self.scanner.select_toy(bolt_name)
         if not self.toy:
-            raise RuntimeError(f"Sphero '{bolt_name}' not found")
+            raise RuntimeError(f"Sphero '{bolt_name}' not found, available Toys: {[toy.name for toy in toys]}")
 
         self.name = str(self.toy.name)
         # If api was not injected, create it now
-        self.api = self.api or SpheroEduAPI(self.toy)
+        self.api = self.api_class(self.toy)
         self.api.__enter__()
 
         logger.info(f"Connected to {self.name}")
@@ -84,10 +92,9 @@ class SpheroBoltPlus(BaseRobot):
             raise RuntimeError("Robot is not connected.")
 
     def move(self, heading: int, speed=cfg.SPHEROBOLTPLUS_SPEED, duration=cfg.SPHEROBOLTPLUS_DURATION):
-        """
-        Move the Sphero in a relative direction.
+        """Move the Sphero in a relative direction.
 
-        Arttributes:
+        Attributes:
             - heading: Moving direktion (0-360°)
             - speed: Moving speed (-255 - 255)
             - duration: Moving duration (seconds)
@@ -99,11 +106,12 @@ class SpheroBoltPlus(BaseRobot):
         self.heading = (self.heading + heading) % 360
         logger.info(f"Moving: heading={heading}, speed={speed}, duration={duration}")
         self.api.roll(self.heading, 0, duration)
+        time.sleep(duration/2)
         self.api.roll(self.heading, speed, duration)
+        time.sleep(duration/2)
 
     def get_sensor_data(self) -> dict[str, Any]:
-        """
-        Returns a snapshot of all sensor readings.
+        """Returns a snapshot of all sensor readings.
 
         Returns:
             dict[str, Any]: A dictionary containing:
@@ -131,12 +139,18 @@ class SpheroBoltPlus(BaseRobot):
 
 
 if __name__ == "__main__":
-    robot = SpheroBoltPlus()
-    robot.connect()
+
+    logger.info("Connecting to Sphero BOLT...")
+    # robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
+    # robot.connect("DummyBolt")
+    robot = SpheroBoltPlus(register_handlers=True)
+    robot.connect(bolt_name="BP-D217", timeout=3)
     robot.move(heading=0)
-    robot.move(heading=90)
-    robot.move(heading=0)
-    data = robot.get_sensor_data()
-    for key, value in data.items():
-        logger.info(f"{key.replace('_', ' ').title()}: {value}")
+    robot.move(heading=180)
+    robot.move(heading=180)
+    robot.move(heading=180)
+    robot.move(heading=180)
+    # data = robot.get_sensor_data()
+    # for key, value in data.items():
+    #     logger.info(f"{key.replace('_', ' ').title()}: {value}")
     robot.disconnect()

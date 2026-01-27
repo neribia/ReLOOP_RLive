@@ -3,6 +3,9 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class AttachHardwareRequest(BaseModel):
     """Request body for POST /connect."""
+    camera_type: str | None = None
+    robot_name: str | None = None
+    use_dummy: bool = False
 
 
 class DetachHardwareRequest(BaseModel):
