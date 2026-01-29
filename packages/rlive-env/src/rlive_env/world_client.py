@@ -75,19 +75,11 @@ class WorldInterface:
 
     def health_check(self) -> dict:
         """Check if the world server is healthy and responding."""
-        try:
-            return self._request("GET", "/health", expect_json=True)
-        except Exception as e:
-            logger.error(f"Health check failed: {e}")
-            return {"status": "unhealthy", "error": str(e)}
+        return self._request("GET", "/health", expect_json=True)
 
     def get_status(self) -> dict:
         """Get detailed status of the world server including hardware state."""
-        try:
-            return self._request("GET", "/status", expect_json=True)
-        except Exception as e:
-            logger.error(f"Status check failed: {e}")
-            return {"error": str(e)}
+        return self._request("GET", "/status", expect_json=True)
 
     # -------------------------------------------------------------
     def attach_hardware(self, **kwargs) -> AttachHardwareResponse:

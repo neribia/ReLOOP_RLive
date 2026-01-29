@@ -51,6 +51,13 @@ class RemoteWorldEnv(gym.Env):
         logger.info("Setting up interface to RemoteWorld.")
         self.iface = WorldInterface(**kwargs)
 
+        # Verify server is healthy before attempting to attach hardware
+        try:
+            health = self.iface.health_check()
+            logger.info(f"Server health check passed: {health}")
+        except Exception as e:
+            logger.warning(f"Server health check failed: {e}")
+
         if auto_attach:
             self.attach_hardware()
 
@@ -106,6 +113,15 @@ class RemoteWorldEnv(gym.Env):
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         logger.info("Resetting environment.")
+
+        # Verify server status before reset
+        try:
+            status = self.iface.get_status()
+            logger.debug(f"Server status: {status}")
+        except Exception as e:
+            logger.error(f"Cannot reset: server status check failed: {e}")
+            self._disconnect()
+            raise RuntimeError(f"Server connection error: {e}")
 
         self.set_random_goal()
 
