@@ -11,6 +11,7 @@ members = [
     "packages/rlive-common",
     "packages/rlive-world",
     "packages/rlive-env",
+    "packages/rlive-sim",
 ]
 
 [dependency-groups]

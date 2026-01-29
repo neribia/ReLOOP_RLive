@@ -7,6 +7,7 @@ members = [
     "reloop-rlive-dev",
     "rlive-common",
     "rlive-env",
+    "rlive-sim",
     "rlive-world",
 ]
 
@@ -871,6 +872,23 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
+    { name = "rlive-common", editable = "packages/rlive-common" },
+]
+
+[[package]]
+name = "rlive-sim"
+version = "0.1.0"
+source = { editable = "packages/rlive-sim" }
+dependencies = [
+    { name = "gymnasium" },
+    { name = "numpy" },
+    { name = "rlive-common" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "gymnasium", specifier = ">=1.2.1" },
+    { name = "numpy", specifier = ">=2.2.6" },
     { name = "rlive-common", editable = "packages/rlive-common" },
 ]
 
