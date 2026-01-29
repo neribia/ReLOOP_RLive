@@ -183,8 +183,8 @@ class RemoteWorldEnv(gym.Env):
     def set_random_goal(self):
         height, width, _ = self.observation_space.shape
 
-        x = np.random.randint(0, width)
-        y = np.random.randint(0, height)
+        x = int(self.np_random.integers(0, width))
+        y = int(self.np_random.integers(0, height))
 
         self.goal_position = (x, y)
 
