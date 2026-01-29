@@ -56,7 +56,8 @@ class RemoteWorldEnv(gym.Env):
             health = self.iface.health_check()
             logger.info(f"Server health check passed: {health}")
         except Exception as e:
-            logger.warning(f"Server health check failed: {e}")
+            logger.error("Server health check failed, aborting connection.", exc_info=e)
+            raise RuntimeError("RemoteWorld server health check failed") from e
 
         if auto_attach:
             self.attach_hardware()
