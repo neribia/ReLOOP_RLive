@@ -8,7 +8,7 @@ logger = get_logger(__name__)
 
 def main() -> None:
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
-    options = {"camera_type": "dummy",
+    options = {"camera_type": "webcam",
                "robot_name": "BP-D217",
                "use_dummy": False,
                }
@@ -23,7 +23,7 @@ def main() -> None:
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
         env.render()
-        done =  truncated
+        done = truncated
         logger.info(f"action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
         if terminated or truncated:
             obs, info = env.reset()

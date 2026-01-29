@@ -16,6 +16,7 @@ class TestRemoteWorldEnv(unittest.TestCase):
         self.addCleanup(self.patcher.stop)
 
         self.mock_iface = self.MockWorldInterface.return_value
+        self.mock_iface.health_check.return_value = {"status": "healthy"}
         self.mock_iface.attach_hardware.return_value = MagicMock(success=True)
         self.mock_iface.detach_hardware.return_value = MagicMock(success=True)
 
@@ -29,6 +30,38 @@ class TestRemoteWorldEnv(unittest.TestCase):
     def test_connect(self):
         """Test that _connect is called during initialization."""
         self.mock_iface.attach_hardware.assert_called_once()
+
+    def test_health_check_success(self):
+        """Test that health_check is called during _connect and logs success."""
+        # Create a fresh mock for this test
+        with patch("rlive_env.remote_env.WorldInterface") as MockWorldInterface, \
+             patch("rlive_env.remote_env.logger") as mock_logger:
+            mock_iface = MockWorldInterface.return_value
+            mock_iface.health_check.return_value = {"status": "healthy", "version": "1.0.0"}
+            mock_iface.attach_hardware.return_value = MagicMock(success=True)
+            
+            # Create environment to trigger _connect
+            env = RemoteWorldEnv(auto_attach=False, base_url="http://test")
+            
+            # Verify health_check was called
+            mock_iface.health_check.assert_called_once()
+            
+            # Verify success message was logged
+            mock_logger.info.assert_any_call("Server health check passed: {'status': 'healthy', 'version': '1.0.0'}")
+
+    def test_health_check_failure(self):
+        """Test that health_check failure raises RuntimeError."""
+        # Create a fresh mock for this test
+        with patch("rlive_env.remote_env.WorldInterface") as MockWorldInterface:
+            mock_iface = MockWorldInterface.return_value
+            mock_iface.health_check.side_effect = Exception("Connection timeout")
+
+            # Create environment - should raise RuntimeError on health check failure
+            with self.assertRaises(RuntimeError) as context:
+                RemoteWorldEnv(auto_attach=False, base_url="http://test")
+
+            self.assertIn("RemoteWorld server health check failed", str(context.exception))
+            mock_iface.health_check.assert_called_once()
 
     def test_connect_failed(self):
         """Test that attach_hardware raises RuntimeError on hardware attachment failure."""
@@ -113,6 +146,44 @@ class TestRemoteWorldEnv(unittest.TestCase):
         np.testing.assert_array_equal(obs, np.array([1, 2, 3]))
         self.assertEqual(info, {"meta": "test"})
         self.mock_iface.reset.assert_called_once()
+
+    def test_reset_with_status_check_success(self):
+        """Test that reset proceeds normally when get_status succeeds."""
+        # Mock get_status to return successfully
+        self.mock_iface.get_status.return_value = {"status": "ok"}
+        
+        mock_data = MagicMock()
+        mock_data.observation = np.array([1, 2, 3])
+        mock_data.info = {"meta": "test"}
+        self.mock_iface.reset.return_value = mock_data
+
+        obs, info = self.env.reset(seed=42, options={})
+
+        # Verify get_status was called
+        self.mock_iface.get_status.assert_called_once()
+        # Verify reset proceeded normally
+        self.mock_iface.reset.assert_called_once()
+        np.testing.assert_array_equal(obs, np.array([1, 2, 3]))
+        self.assertEqual(info, {"meta": "test"})
+
+    def test_reset_with_status_check_failure(self):
+        """Test that reset raises RuntimeError and disconnects when get_status fails."""
+        # Mock get_status to raise an exception
+        self.mock_iface.get_status.side_effect = Exception("Connection lost")
+
+        with self.assertRaises(RuntimeError) as context:
+            self.env.reset()
+
+        # Verify error message
+        self.assertIn("Server connection error", str(context.exception))
+        self.assertIn("Connection lost", str(context.exception))
+        
+        # Verify _disconnect was called (detach_hardware and close)
+        self.mock_iface.detach_hardware.assert_called()
+        self.mock_iface.close.assert_called()
+        
+        # Verify reset was not called
+        self.mock_iface.reset.assert_not_called()
 
     def test_step(self):
         """Test that step returns correct gymnasium tuple."""

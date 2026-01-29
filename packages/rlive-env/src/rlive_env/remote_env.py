@@ -51,6 +51,14 @@ class RemoteWorldEnv(gym.Env):
         logger.info("Setting up interface to RemoteWorld.")
         self.iface = WorldInterface(**kwargs)
 
+        # Verify server is healthy before attempting to attach hardware
+        try:
+            health = self.iface.health_check()
+            logger.info(f"Server health check passed: {health}")
+        except Exception as e:
+            logger.error("Server health check failed, aborting connection.", exc_info=e)
+            raise RuntimeError("RemoteWorld server health check failed") from e
+
         if auto_attach:
             self.attach_hardware()
 
@@ -106,6 +114,15 @@ class RemoteWorldEnv(gym.Env):
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         logger.info("Resetting environment.")
+
+        # Verify server status before reset
+        try:
+            status = self.iface.get_status()
+            logger.debug(f"Server status: {status}")
+        except Exception as e:
+            logger.error(f"Cannot reset: server status check failed: {e}")
+            self._disconnect()
+            raise RuntimeError(f"Server connection error: {e}")
 
         self.set_random_goal()
 
@@ -183,8 +200,8 @@ class RemoteWorldEnv(gym.Env):
     def set_random_goal(self):
         height, width, _ = self.observation_space.shape
 
-        x = np.random.randint(0, width)
-        y = np.random.randint(0, height)
+        x = int(self.np_random.integers(0, width))
+        y = int(self.np_random.integers(0, height))
 
         self.goal_position = (x, y)
 
@@ -210,4 +227,3 @@ class RemoteWorldEnv(gym.Env):
         cv.circle(annotated_image, self.goal_position, cfg.GOAL_RADIUS, (0, 180, 0), 2)
 
         return annotated_image
-

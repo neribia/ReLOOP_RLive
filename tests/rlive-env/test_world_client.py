@@ -225,15 +225,17 @@ class TestWorldInterface(unittest.TestCase):
         self.assertEqual(result["status"], "healthy")
 
     def test_health_check_handles_error(self):
-        """Test that health_check returns unhealthy on error."""
+        """Test that health_check raises ApiError on server error."""
         def handler(req: httpx.Request) -> Response:
             return Response(500, json={"error": "server down"})
 
         iface = self.make_iface(handler)
-        result = iface.health_check()
 
-        self.assertEqual(result["status"], "unhealthy")
-        self.assertIn("error", result)
+        with self.assertRaises(ApiError) as context:
+            iface.health_check()
+
+        self.assertEqual(context.exception.status, 500)
+        self.assertIn("GET", str(context.exception))
 
     # -------------------------------------------------------------
     # /status
@@ -260,12 +262,15 @@ class TestWorldInterface(unittest.TestCase):
         self.assertFalse(result["robot_connected"])
 
     def test_get_status_handles_error(self):
-        """Test that get_status returns error dict on failure."""
+        """Test that get_status raises ApiError on server error."""
         def handler(req: httpx.Request) -> Response:
             return Response(500, json={"error": "internal error"})
 
         iface = self.make_iface(handler)
-        result = iface.get_status()
 
-        self.assertIn("error", result)
+        with self.assertRaises(ApiError) as context:
+            iface.get_status()
+
+        self.assertEqual(context.exception.status, 500)
+        self.assertIn("GET", str(context.exception))
 

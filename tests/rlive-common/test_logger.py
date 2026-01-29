@@ -64,10 +64,9 @@ class TestLogger(unittest.TestCase):
 
     def test_setup_logger_sets_configured_flag(self):
         import rlive_common.utils.logger as logger_module
-        from rlive_common.utils.logger import setup_logger
 
         self.assertFalse(logger_module.CONFIGURED)
-        setup_logger()
+        logger_module.setup_logger()
         self.assertTrue(logger_module.CONFIGURED)
 
     def test_logger_levels(self):
