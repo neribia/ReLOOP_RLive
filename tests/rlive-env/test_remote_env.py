@@ -50,25 +50,18 @@ class TestRemoteWorldEnv(unittest.TestCase):
             mock_logger.info.assert_any_call("Server health check passed: {'status': 'healthy', 'version': '1.0.0'}")
 
     def test_health_check_failure(self):
-        """Test that health_check failures are handled gracefully with warning."""
+        """Test that health_check failure raises RuntimeError."""
         # Create a fresh mock for this test
-        with patch("rlive_env.remote_env.WorldInterface") as MockWorldInterface, \
-             patch("rlive_env.remote_env.logger") as mock_logger:
+        with patch("rlive_env.remote_env.WorldInterface") as MockWorldInterface:
             mock_iface = MockWorldInterface.return_value
             mock_iface.health_check.side_effect = Exception("Connection timeout")
-            mock_iface.attach_hardware.return_value = MagicMock(success=True)
-            
-            # Create environment to trigger _connect
-            env = RemoteWorldEnv(auto_attach=False, base_url="http://test")
-            
-            # Verify health_check was called
+
+            # Create environment - should raise RuntimeError on health check failure
+            with self.assertRaises(RuntimeError) as context:
+                RemoteWorldEnv(auto_attach=False, base_url="http://test")
+
+            self.assertIn("RemoteWorld server health check failed", str(context.exception))
             mock_iface.health_check.assert_called_once()
-            
-            # Verify warning was logged but execution continued
-            mock_logger.warning.assert_any_call("Server health check failed: Connection timeout")
-            
-            # Verify environment was still created successfully
-            self.assertIsNotNone(env.iface)
 
     def test_connect_failed(self):
         """Test that attach_hardware raises RuntimeError on hardware attachment failure."""
