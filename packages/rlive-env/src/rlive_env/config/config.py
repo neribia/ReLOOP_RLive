@@ -3,63 +3,14 @@ import os
 import sys
 from pathlib import Path
 
-# --- Helper Functions --------------------------------------------------------
-
-def _find_project_root() -> Path:
-    """
-    Finds the package root directory (not the workspace root).
-
-    Priority order:
-    1. PyInstaller bundles: Uses sys._MEIPASS
-    2. Package root: Searches for directory containing src/<package_dir>
-    3. Fallback: Any pyproject.toml (closest to config.py)
-    4. Final fallback: Relative directory structure
-
-    Returns:
-        Path: The package root directory (e.g., packages/rlive-env)
-    """
-    # PyInstaller Bundle
-    if hasattr(sys, "_MEIPASS"):
-        return Path(sys._MEIPASS)
-
-    resolved = Path(__file__).resolve()
-
-    # Derive package directory name (e.g., 'rlive_env')
-    # Path structure: .../packages/rlive-env/src/rlive_env/config/config.py
-    try:
-        package_dir = resolved.parents[1].name  # rlive_env
-    except Exception:
-        package_dir = None
-
-    # 1) Search for package root: ancestor containing src/<package_dir>
-    if package_dir:
-        current = resolved.parent
-        for _ in range(10):  # Max 10 levels up
-            if (current / "src" / package_dir).exists():
-                return current
-            if current.parent == current:
-                break
-            current = current.parent
-
-    # 2) Fallback: Search for any pyproject.toml (closest one)
-    current = resolved.parent
-    for _ in range(10):  # Max 10 levels up
-        if (current / "pyproject.toml").exists():
-            return current
-        if current.parent == current:
-            break
-        current = current.parent
-
-    # 3) Final fallback: Relative to config.py location
-    # For packages/rlive-*/src/rlive_*/config/config.py -> go up 3 levels to package root
-    return resolved.parents[3]
+from rlive_common.utils.path_utils import find_project_root
 
 # --- Base Configuration --------------------------------------------------------
 
 PACKAGE_NAME = "rlive-env"
 
 # Project root directory (auto-detected)
-PROJECT_ROOT = _find_project_root()
+PROJECT_ROOT = find_project_root(__file__)
 
 # Bundle directory (for PyInstaller compatibility)
 BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_ROOT))
