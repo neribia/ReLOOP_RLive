@@ -16,6 +16,7 @@ class TestRemoteWorldEnv(unittest.TestCase):
         self.addCleanup(self.patcher.stop)
 
         self.mock_iface = self.MockWorldInterface.return_value
+        self.mock_iface.health_check.return_value = {"status": "healthy"}
         self.mock_iface.attach_hardware.return_value = MagicMock(success=True)
         self.mock_iface.detach_hardware.return_value = MagicMock(success=True)
 
