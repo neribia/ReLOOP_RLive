@@ -16,6 +16,7 @@ class TestRemoteWorldEnv(unittest.TestCase):
         self.addCleanup(self.patcher.stop)
 
         self.mock_iface = self.MockWorldInterface.return_value
+        self.mock_iface.health_check.return_value = {"status": "healthy"}
         self.mock_iface.attach_hardware.return_value = MagicMock(success=True)
         self.mock_iface.detach_hardware.return_value = MagicMock(success=True)
 
@@ -29,6 +30,45 @@ class TestRemoteWorldEnv(unittest.TestCase):
     def test_connect(self):
         """Test that _connect is called during initialization."""
         self.mock_iface.attach_hardware.assert_called_once()
+
+    def test_health_check_success(self):
+        """Test that health_check is called during _connect and logs success."""
+        # Create a fresh mock for this test
+        with patch("rlive_env.remote_env.WorldInterface") as MockWorldInterface, \
+             patch("rlive_env.remote_env.logger") as mock_logger:
+            mock_iface = MockWorldInterface.return_value
+            mock_iface.health_check.return_value = {"status": "healthy", "version": "1.0.0"}
+            mock_iface.attach_hardware.return_value = MagicMock(success=True)
+            
+            # Create environment to trigger _connect
+            env = RemoteWorldEnv(auto_attach=False, base_url="http://test")
+            
+            # Verify health_check was called
+            mock_iface.health_check.assert_called_once()
+            
+            # Verify success message was logged
+            mock_logger.info.assert_any_call("Server health check passed: {'status': 'healthy', 'version': '1.0.0'}")
+
+    def test_health_check_failure(self):
+        """Test that health_check failures are handled gracefully with warning."""
+        # Create a fresh mock for this test
+        with patch("rlive_env.remote_env.WorldInterface") as MockWorldInterface, \
+             patch("rlive_env.remote_env.logger") as mock_logger:
+            mock_iface = MockWorldInterface.return_value
+            mock_iface.health_check.side_effect = Exception("Connection timeout")
+            mock_iface.attach_hardware.return_value = MagicMock(success=True)
+            
+            # Create environment to trigger _connect
+            env = RemoteWorldEnv(auto_attach=False, base_url="http://test")
+            
+            # Verify health_check was called
+            mock_iface.health_check.assert_called_once()
+            
+            # Verify warning was logged but execution continued
+            mock_logger.warning.assert_any_call("Server health check failed: Connection timeout")
+            
+            # Verify environment was still created successfully
+            self.assertIsNotNone(env.iface)
 
     def test_connect_failed(self):
         """Test that attach_hardware raises RuntimeError on hardware attachment failure."""
