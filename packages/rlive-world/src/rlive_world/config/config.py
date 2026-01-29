@@ -1,13 +1,21 @@
 """ Config-file for rlive-world package."""
 import os
 import sys
-from os.path import abspath, dirname, join
+from pathlib import Path
+
+from rlive_common.utils.path_utils import find_project_root
 
 # --- Base Configuration --------------------------------------------------------
 
 PACKAGE_NAME = "rlive-world"
-BUNDLE_DIR = getattr(sys, "_MEIPASS", abspath(join(dirname(__file__), "..", "..")))
-APP_HOME = os.getenv("APP_HOME", f"{BUNDLE_DIR}")
+
+# Project root directory (auto-detected)
+PROJECT_ROOT = find_project_root(__file__)
+
+# Bundle directory (for PyInstaller compatibility)
+BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_ROOT))
+
+APP_HOME = os.getenv("APP_HOME", str(BUNDLE_DIR))
 
 # --- Server config ------------------------------------------------------------
 WORLD_HOST: str = os.getenv("WORLD_HOST", "0.0.0.0")

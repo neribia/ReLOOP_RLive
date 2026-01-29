@@ -1,14 +1,21 @@
 """Config-file for the rlive-common package."""
 import os
 import sys
-from os.path import abspath, dirname, join
 from pathlib import Path
+
+from rlive_common.utils.path_utils import find_project_root
 
 # --- Base Configuration --------------------------------------------------------
 
 PACKAGE_NAME = "rlive-common"
-BUNDLE_DIR = getattr(sys, "_MEIPASS", abspath(join(dirname(__file__), "..", "..")))
-APP_HOME = os.getenv("APP_HOME", f"{BUNDLE_DIR}")
+
+# Project root directory (auto-detected)
+PROJECT_ROOT = find_project_root(__file__)
+
+# Bundle directory (for PyInstaller compatibility)
+BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_ROOT))
+
+APP_HOME = os.getenv("APP_HOME", str(BUNDLE_DIR))
 
 # --- debug config ------------------------------------------------------------
 
@@ -55,10 +62,11 @@ Options: true, false
 Default: false
 """
 
-LOGGING_FILE_PATH: Path = Path(os.getenv("LOGGING_FILE_PATH", Path(sys.argv[0]).resolve().parent / "logs"))
+_LOGGING_FILE_PATH_ENV = os.getenv("LOGGING_FILE_PATH")
+LOGGING_FILE_PATH: Path = Path(_LOGGING_FILE_PATH_ENV) if _LOGGING_FILE_PATH_ENV else PROJECT_ROOT / "logs"
 """
 Path to the logging directory.
-Default: ./logs
+Default: <project_root>/logs
 """
 
 LOGGING_FILE_NAME: str = os.getenv("LOGGING_FILE_NAME", "app.log")
