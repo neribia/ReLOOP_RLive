@@ -114,6 +114,44 @@ class TestRemoteWorldEnv(unittest.TestCase):
         self.assertEqual(info, {"meta": "test"})
         self.mock_iface.reset.assert_called_once()
 
+    def test_reset_with_status_check_success(self):
+        """Test that reset proceeds normally when get_status succeeds."""
+        # Mock get_status to return successfully
+        self.mock_iface.get_status.return_value = {"status": "ok"}
+        
+        mock_data = MagicMock()
+        mock_data.observation = np.array([1, 2, 3])
+        mock_data.info = {"meta": "test"}
+        self.mock_iface.reset.return_value = mock_data
+
+        obs, info = self.env.reset(seed=42, options={})
+
+        # Verify get_status was called
+        self.mock_iface.get_status.assert_called_once()
+        # Verify reset proceeded normally
+        self.mock_iface.reset.assert_called_once()
+        np.testing.assert_array_equal(obs, np.array([1, 2, 3]))
+        self.assertEqual(info, {"meta": "test"})
+
+    def test_reset_with_status_check_failure(self):
+        """Test that reset raises RuntimeError and disconnects when get_status fails."""
+        # Mock get_status to raise an exception
+        self.mock_iface.get_status.side_effect = Exception("Connection lost")
+
+        with self.assertRaises(RuntimeError) as context:
+            self.env.reset()
+
+        # Verify error message
+        self.assertIn("Server connection error", str(context.exception))
+        self.assertIn("Connection lost", str(context.exception))
+        
+        # Verify _disconnect was called (detach_hardware and close)
+        self.mock_iface.detach_hardware.assert_called()
+        self.mock_iface.close.assert_called()
+        
+        # Verify reset was not called
+        self.mock_iface.reset.assert_not_called()
+
     def test_step(self):
         """Test that step returns correct gymnasium tuple."""
         mock_data = MagicMock()
