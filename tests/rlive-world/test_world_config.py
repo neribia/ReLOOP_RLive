@@ -43,3 +43,22 @@ class TestWorldConfig(unittest.TestCase):
         from rlive_world.config import config as cfg
         self.assertIsInstance(cfg.SPHEROBOLTPLUS_DURATION, float)
         self.assertGreater(cfg.SPHEROBOLTPLUS_DURATION, 0)
+
+    def test_spheroboltplus_display_color_r_is_int(self):
+        from rlive_world.config import config as cfg
+        self.assertIsInstance(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_R, int)
+        self.assertGreaterEqual(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_R, 0)
+        self.assertLessEqual(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_R, 255)
+
+    def test_spheroboltplus_display_color_g_is_int(self):
+        from rlive_world.config import config as cfg
+        self.assertIsInstance(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_G, int)
+        self.assertGreaterEqual(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_G, 0)
+        self.assertLessEqual(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_G, 255)
+
+    def test_spheroboltplus_display_color_b_is_int(self):
+        from rlive_world.config import config as cfg
+        self.assertIsInstance(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_B, int)
+        self.assertGreaterEqual(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_B, 0)
+        self.assertLessEqual(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_B, 255)
+
