@@ -103,6 +103,27 @@ Scanning time for the Sphero Bolt+ robot.
 default: 3
 """
 
+SPHEROBOLTPLUS_DISPLAY_COLOR_R: int = int(os.getenv("SPHEROBOLTPLUS_DISPLAY_COLOR_R", "255"))
+"""
+Red component of the default display color (0-255).
+
+default: 255
+"""
+
+SPHEROBOLTPLUS_DISPLAY_COLOR_G: int = int(os.getenv("SPHEROBOLTPLUS_DISPLAY_COLOR_G", "255"))
+"""
+Green component of the default display color (0-255).
+
+default: 255
+"""
+
+SPHEROBOLTPLUS_DISPLAY_COLOR_B: int = int(os.getenv("SPHEROBOLTPLUS_DISPLAY_COLOR_B", "255"))
+"""
+Blue component of the default display color (0-255).
+
+default: 255
+"""
+
 # --- debug config ------------------------------------------------------------
 DEBUG: bool = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]
 """
