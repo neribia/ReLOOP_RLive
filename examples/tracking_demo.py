@@ -486,7 +486,7 @@ def main():
 
     # ========== CONFIGURATION ==========
     # Video source settings
-    VIDEO_SOURCE = "test_recording.mp4"  # Use 0 for webcam, or path to video file
+    VIDEO_SOURCE = "demo_video.mp4"  # Use 0 for webcam, or path to video file
     FRAME_WIDTH = 640 # Frame width for webcam
     FRAME_HEIGHT = 480 # Frame height for webcam
     TARGET_FPS = 30  # Target frames per second
@@ -498,7 +498,7 @@ def main():
     SHOW_DEBUG_ON_START = True  # Show debug view on startup
 
     # Display settings
-    SCALE_FACTOR = 1.0  # Scale factor for display windows (1.0 = original, 0.5 = half size, 2.0 = double size)
+    SCALE_FACTOR = 2.0  # Scale factor for display windows (1.0 = original, 0.5 = half size, 2.0 = double size)
 
     # Custom pipeline processors
     custom_pipeline = ImagePipeline([
