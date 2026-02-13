@@ -75,6 +75,17 @@ Alpha value of the goal circle overlay (0.0 = invisible, 1.0 = fully visible).
 default: 0.5
 """
 
+# --- Reward config -----------------------------------------------------------
+
+REWARD_MODE: str = os.getenv("REWARD_MODE", "dense")
+"""
+Reward calculation mode: 'dense' or 'sparse'.
+- dense: Distance-based reward (closer to goal = higher reward)
+- sparse: Binary reward (+1.0 only when goal reached)
+
+default: dense
+"""
+
 # --- debug config ------------------------------------------------------------
 
 DEBUG: bool = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]

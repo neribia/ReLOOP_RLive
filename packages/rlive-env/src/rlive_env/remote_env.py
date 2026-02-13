@@ -1,4 +1,5 @@
-from typing import Any
+from typing import Any, Literal
+import math
 
 import numpy as np
 import cv2 as cv
@@ -6,7 +7,8 @@ import gymnasium as gym
 
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
-from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart
+from rlive_env.localisation import BallLocalisator, BallLocation
+from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, DetachHardwareResponse, AttachHardwareResponse
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -19,6 +21,7 @@ class RemoteWorldEnv(gym.Env):
     metadata = {"render_modes": ["opencv"]}
 
     def __init__(self, max_episode_steps: int | None = 100, render_mode: str | None = None, auto_attach: bool = True, options: dict[str, Any] | None = None,
+                 reward_mode: Literal["dense", "sparse"] | None = None,
                  **kwargs) -> None:
         """Initialize the environment.
 
@@ -26,6 +29,7 @@ class RemoteWorldEnv(gym.Env):
             - max_episodes (int | None): Max epochs (default: 100)
             - render_mode (Optional[str]): Rendering mode ('opencv' or None)
             - auto_attach (bool): Automatically attach hardware on init (default: True)
+            - reward_mode (str): Reward calculation mode ('dense' or 'sparse'). Defaults to config value.
             - base_url (Optional[str]): Base URL for remote environment.
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
         """
@@ -34,15 +38,24 @@ class RemoteWorldEnv(gym.Env):
         self._max_episode_steps = max_episode_steps
         self._episode = 0  # Start from 0 or 1? Other Env's as reference.
         self.render_mode = render_mode
+        self.reward_mode: Literal["dense", "sparse"] | str = reward_mode or cfg.REWARD_MODE
         self.iface: WorldInterface | None = None
         self.obs = None
         self._hardware_attached = False
         self.options = options or {}
 
+        # Ball localisation
+        self.localiser = BallLocalisator()
+        self.ball_location: BallLocation | None = None
+
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint8)
         self.action_space = gym.spaces.Discrete(360, start=-179)  # placeholder (one valid action)
         # Goal variables
         self.goal_position = None
+
+        # Calculate max possible distance for reward normalization (diagonal of observation space)
+        height, width, _ = self.observation_space.shape
+        self._max_distance = math.sqrt(width ** 2 + height ** 2)
 
         self._connect(auto_attach=auto_attach, **kwargs)
 
@@ -62,7 +75,7 @@ class RemoteWorldEnv(gym.Env):
         if auto_attach:
             self.attach_hardware()
 
-    def attach_hardware(self) -> Any:
+    def attach_hardware(self) -> AttachHardwareResponse | None:
         """Explicitly attach hardware to the world server."""
         if self._hardware_attached:
             logger.warning("Hardware already attached, skipping.")
@@ -77,11 +90,11 @@ class RemoteWorldEnv(gym.Env):
         logger.info("Hardware successfully attached.")
         return resp
 
-    def detach_hardware(self):
+    def detach_hardware(self) -> DetachHardwareResponse | None:
         """Explicitly detach hardware from the world server."""
         if not self._hardware_attached:
             logger.debug("Hardware not attached, skipping detach.")
-            return
+            return None
 
         try:
             resp = self.iface.detach_hardware()
@@ -158,8 +171,12 @@ class RemoteWorldEnv(gym.Env):
             data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(action) # self.iface.step_multipart(action)
             logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
-            self.obs = self._draw_goal(data.observation)
+            # Ball localisation before draw_goal
             goal_reached, reward = self.calculate_reward(observation=data.observation)
+
+            # Draw goal after ball localisation
+            self.obs = self._draw_goal(data.observation)
+
             terminated = False  # if success
             truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps) or goal_reached
             info = data.info
@@ -175,7 +192,8 @@ class RemoteWorldEnv(gym.Env):
         logger.debug(f"OpenCV rendering mode: {self.render_mode}")
         if self.render_mode == "opencv":
             if self.obs is not None:
-                show_image = cv.cvtColor(self.obs, cv.COLOR_RGB2BGR)
+                show_image = self.localiser.annotate_image(self.obs,self.ball_location, self.goal_position, cfg.GOAL_RADIUS)
+                show_image = cv.cvtColor(show_image, cv.COLOR_RGB2BGR)
                 cv.imshow("Environment", show_image)
                 cv.waitKey(1)
 
@@ -187,15 +205,52 @@ class RemoteWorldEnv(gym.Env):
     def calculate_reward(self, observation: np.ndarray) -> tuple[bool, float]:
         """Calculate reward based on the observation and goal position.
 
+        Uses the BallLocalisator to locate the ball and computes reward based on
+        the configured reward_mode:
+        - 'dense': Distance-based reward (1.0 - distance/max_distance)
+        - 'sparse': Binary reward (+1.0 only when goal is reached)
+
         Attributes:
             - observation (np.ndarray): The current observation from the environment.
 
         Returns:
-            - terminated (bool): Whether the episode has terminated.
+            - goal_reached (bool): Whether the ball has reached the goal.
             - reward (float): The calculated reward.
         """
-        # Placeholder implementation: return a constant reward
-        return False, 0.0
+        if self.goal_position is None:
+            logger.warning("Goal position not set, returning zero reward")
+            return False, 0.0
+
+        # Locate the ball in the observation
+        # Note: observation might be RGB, convert to BGR for OpenCV
+        bgr_image = cv.cvtColor(observation, cv.COLOR_RGB2BGR)
+        self.ball_location = self.localiser.get_position(bgr_image)
+
+        # TODO: What happens im Ball was not found?
+        if self.ball_location is None:
+            logger.debug("Ball not detected in observation")
+            # Return small negative reward when ball is not visible
+            return False, -0.1
+
+        # Check if goal is reached
+        goal_reached = self.ball_location.is_within_radius(self.goal_position, cfg.GOAL_RADIUS) # TODO: radius as Env option.
+
+        if self.reward_mode == "sparse":
+            # Sparse reward: +1.0 only when goal is reached
+            reward = 1.0 if goal_reached else 0.0
+        else:
+            # Dense reward: higher reward when closer to goal
+            distance = self.ball_location.distance_to(self.goal_position)
+            reward = 1.0 - (distance / self._max_distance) # FIXME: Normalized or in px?
+
+            # Bonus reward for reaching the goal
+            if goal_reached:
+                reward += 1.0 # FIXME: Does this make's sense?
+
+        logger.debug(f"Ball at {self.ball_location.as_tuple()}, goal at {self.goal_position}, "
+                     f"reward={reward:.3f}, goal_reached={goal_reached}")
+
+        return goal_reached, reward
 
     def set_random_goal(self):
         height, width, _ = self.observation_space.shape
