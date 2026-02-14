@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from rlive_common.utils.path_utils import find_project_root
+from rlive_common.utils.import_utils import get_rgb_env
 
 # --- Base Configuration --------------------------------------------------------
 
@@ -101,6 +102,27 @@ SPHEROBOLTPLUS_SCANNING_TIME: float = float(os.getenv("SPHEROBOLTPLUS_SCANNING_T
 Scanning time for the Sphero Bolt+ robot.
 
 default: 3
+"""
+
+SPHEROBOLTPLUS_DISPLAY_COLOR_R: int = get_rgb_env("SPHEROBOLTPLUS_DISPLAY_COLOR_R", "255")
+"""
+Red component of the default display color (0-255).
+
+default: 255
+"""
+
+SPHEROBOLTPLUS_DISPLAY_COLOR_G: int = get_rgb_env("SPHEROBOLTPLUS_DISPLAY_COLOR_G", "255")
+"""
+Green component of the default display color (0-255).
+
+default: 255
+"""
+
+SPHEROBOLTPLUS_DISPLAY_COLOR_B: int = get_rgb_env("SPHEROBOLTPLUS_DISPLAY_COLOR_B", "255")
+"""
+Blue component of the default display color (0-255).
+
+default: 255
 """
 
 # --- debug config ------------------------------------------------------------

@@ -2,13 +2,17 @@ import atexit
 import signal
 import weakref
 import time
-from typing import Any
+from typing import Any, Literal
+
+import numpy as np
 
 from sphero_unsw.sphero_edu import SpheroEduAPI
 from sphero_unsw.toy.boltplus import BOLTPLUS
+from sphero_unsw.types import Color
 
 from rlive_world.bolt.base_robot import BaseRobot
 from rlive_world.bolt.sphero_finder import SpheroFinder
+from rlive_world.bolt.bitmaps import Bitmap, ARROW_BITMAPS
 from rlive_world.config import config as cfg
 from rlive_common.utils import get_logger
 
@@ -31,6 +35,8 @@ class SpheroBoltPlus(BaseRobot):
         self.api: SpheroEduAPI | None = None
         self.toy: BOLTPLUS | None = None
         self.name: str | None = None
+
+        self._animation_index = 0
 
         self.heading = 0
 
@@ -71,6 +77,8 @@ class SpheroBoltPlus(BaseRobot):
         self._cleanup()
 
     def _cleanup(self):
+        self._animation_index = 0
+        
         if self.api:
             try:
                 self.api.__exit__(None, None, None)
@@ -137,20 +145,139 @@ class SpheroBoltPlus(BaseRobot):
             "heading": self.api.get_heading(),
         }
 
+    # ---------------------------------------------------------
+    # LED Matrix Display Methods
+    # ---------------------------------------------------------
 
-if __name__ == "__main__":
+    def _get_default_color(self) -> Color:
+        """Get the default display color from config."""
+        return Color(
+            cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_R,
+            cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_G,
+            cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_B,
+        )
 
-    logger.info("Connecting to Sphero BOLT...")
-    # robot = SpheroBoltPlus(api_class=DummySpheroEduAPI, scanner=DummyFinder())
-    # robot.connect("DummyBolt")
-    robot = SpheroBoltPlus(register_handlers=True)
-    robot.connect(bolt_name="BP-D217", timeout=3)
-    robot.move(heading=0)
-    robot.move(heading=180)
-    robot.move(heading=180)
-    robot.move(heading=180)
-    robot.move(heading=180)
-    # data = robot.get_sensor_data()
-    # for key, value in data.items():
-    #     logger.info(f"{key.replace('_', ' ').title()}: {value}")
-    robot.disconnect()
+    def display_bitmap(self, bitmap: Bitmap, color: Color | None = None) -> None:
+        """Display an 8x8 bitmap pattern on the LED matrix.
+
+        Args:
+            bitmap: 8x8 boolean grid where True = pixel on, False = pixel off.
+            color: RGB color for lit pixels. Uses default config color if None.
+        """
+        self._require_connection()
+
+        if color is None:
+            color = self._get_default_color()
+
+        # Validate bitmap shape and type before building the frame.
+        # Expect exactly an 8x8 grid of boolean values.
+        try:
+            bitmap_array = np.asarray(bitmap)
+        except Exception as exc:
+            raise TypeError("bitmap must be an array-like 8x8 grid of booleans") from exc
+
+        if bitmap_array.shape != (8, 8):
+            raise ValueError(
+                f"bitmap must be 8x8, got shape {bitmap_array.shape!r}"
+            )
+
+        if bitmap_array.dtype != np.bool_:
+            # Allow values that can be sensibly interpreted as booleans (e.g. 0/1).
+            try:
+                bitmap_array = bitmap_array.astype(bool)
+            except (TypeError, ValueError) as exc:
+                raise TypeError(
+                    "bitmap values must be boolean or boolean-convertible"
+                ) from exc
+
+        # Build frame using numpy - convert boolean bitmap to palette indices (0 or 1)
+        # Frame format: 8x8 grid of integers (palette indices)
+        # Palette: index 0 = black (off), index 1 = color (on)
+        frame = bitmap_array.astype(np.uint8)
+        frame = np.fliplr(frame)  # Flip horizontally to fix left/right swap
+        frame = np.rot90(frame, k=1)
+        frame_list = frame.tolist()
+
+        # Create palette: index 0 = black, index 1 = the specified color
+        palette = [Color(0, 0, 0), color]
+
+        # NOTE: register_matrix_animation() does NOT return the animation index,
+        # and registered animations persist until disconnect (clear_matrix() only stops playback).
+        # We must track _animation_index manually.
+        self.api.register_matrix_animation(
+            frames=[frame_list],
+            palette=palette,
+            fps=1,
+            transition=False
+        )
+        self.api.play_matrix_animation(animation_id=self._animation_index, loop=True)
+
+        self._animation_index += 1
+        logger.debug("Displayed bitmap using matrix animation")
+
+    def display_arrow(
+        self,
+        direction: Literal["up", "down", "left", "right"],
+        color: Color | None = None,
+    ) -> None:
+        """Display an arrow pointing in the specified direction.
+
+        Args:
+            direction: Arrow direction ("up", "down", "left", "right").
+            color: RGB color for the arrow. Uses default config color if None.
+
+        Raises:
+            ValueError: If direction is not valid.
+        """
+        if direction not in ARROW_BITMAPS:
+            raise ValueError(f"Invalid direction '{direction}'. Must be one of: {list(ARROW_BITMAPS.keys())}")
+
+        bitmap = ARROW_BITMAPS[direction]
+        self.display_bitmap(bitmap, color)
+        logger.info(f"Displayed arrow: {direction}")
+
+    def display_character(self, char: str, color: Color | None = None) -> None:
+        """Display a single character on the LED matrix.
+
+        Args:
+            char: Single character to display.
+            color: RGB color for the character. Uses default config color if None.
+        """
+        self._require_connection()
+
+        if color is None:
+            color = self._get_default_color()
+
+        self.api.set_matrix_character(char, color)
+        logger.info(f"Displayed character: '{char}'")
+
+    def scroll_text(
+        self,
+        text: str,
+        color: Color | None = None,
+        fps: int = 5,
+        wait: bool = True,
+    ) -> None:
+        """Scroll text across the LED matrix.
+
+        Args:
+            text: Text string to scroll.
+            color: RGB color for the text. Uses default config color if None.
+            fps: Frames per second for scrolling animation.
+            wait: If True, block until scrolling completes.
+        """
+        self._require_connection()
+
+        if color is None:
+            color = self._get_default_color()
+
+        self.api.scroll_matrix_text(text, color, fps=fps, wait=wait)  # Forward wait to underlying API; see its docs for blocking behavior.
+        logger.info(f"Scrolled text: '{text}'")
+
+    def clear_display(self) -> None:
+        """Clear the LED matrix (turn off all pixels)."""
+        self._require_connection()
+
+        self.api.clear_matrix()
+
+        logger.debug("Cleared LED matrix display")
