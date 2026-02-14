@@ -401,6 +401,21 @@ class TestSpheroBoltPlus(unittest.TestCase):
 
         robot.disconnect()
 
+    def test_display_bitmap_not_connected(self):
+        """Test that display_bitmap raises when not connected."""
+        from rlive_world.bolt.bitmaps import ARROW_UP
+
+        robot = SpheroBoltPlus(
+            scanner_class=DummyFinder,
+            api_class=DummySpheroEduAPI,  # type: ignore
+            register_handlers=False
+        )
+
+        with self.assertRaises(RuntimeError) as context:
+            robot.display_bitmap(ARROW_UP)
+
+        self.assertIn("not connected", str(context.exception))
+
     def test_display_with_custom_color(self):
         """Test that display methods accept custom color."""
         from sphero_unsw.types import Color

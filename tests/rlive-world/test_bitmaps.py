@@ -3,7 +3,6 @@
 import unittest
 
 from rlive_world.bolt.bitmaps import (
-    Bitmap,
     ARROW_UP,
     ARROW_DOWN,
     ARROW_LEFT,

@@ -77,6 +77,8 @@ class SpheroBoltPlus(BaseRobot):
         self._cleanup()
 
     def _cleanup(self):
+        self._animation_index = 0
+        
         if self.api:
             try:
                 self.api.__exit__(None, None, None)
@@ -158,7 +160,7 @@ class SpheroBoltPlus(BaseRobot):
     def display_bitmap(self, bitmap: Bitmap, color: Color | None = None) -> None:
         """Display an 8x8 bitmap pattern on the LED matrix.
 
-        Attributes:
+        Args:
             bitmap: 8x8 boolean grid where True = pixel on, False = pixel off.
             color: RGB color for lit pixels. Uses default config color if None.
         """
@@ -167,10 +169,31 @@ class SpheroBoltPlus(BaseRobot):
         if color is None:
             color = self._get_default_color()
 
+        # Validate bitmap shape and type before building the frame.
+        # Expect exactly an 8x8 grid of boolean values.
+        try:
+            bitmap_array = np.asarray(bitmap)
+        except Exception as exc:
+            raise TypeError("bitmap must be an array-like 8x8 grid of booleans") from exc
+
+        if bitmap_array.shape != (8, 8):
+            raise ValueError(
+                f"bitmap must be 8x8, got shape {bitmap_array.shape!r}"
+            )
+
+        if bitmap_array.dtype != np.bool_:
+            # Allow values that can be sensibly interpreted as booleans (e.g. 0/1).
+            try:
+                bitmap_array = bitmap_array.astype(bool)
+            except (TypeError, ValueError) as exc:
+                raise TypeError(
+                    "bitmap values must be boolean or boolean-convertible"
+                ) from exc
+
         # Build frame using numpy - convert boolean bitmap to palette indices (0 or 1)
         # Frame format: 8x8 grid of integers (palette indices)
         # Palette: index 0 = black (off), index 1 = color (on)
-        frame = np.array(bitmap, dtype=np.uint8)
+        frame = bitmap_array.astype(np.uint8)
         frame = np.fliplr(frame)  # Flip horizontally to fix left/right swap
         frame = np.rot90(frame, k=1)
         frame_list = frame.tolist()
@@ -199,7 +222,7 @@ class SpheroBoltPlus(BaseRobot):
     ) -> None:
         """Display an arrow pointing in the specified direction.
 
-        Attributes:
+        Args:
             direction: Arrow direction ("up", "down", "left", "right").
             color: RGB color for the arrow. Uses default config color if None.
 
@@ -216,7 +239,7 @@ class SpheroBoltPlus(BaseRobot):
     def display_character(self, char: str, color: Color | None = None) -> None:
         """Display a single character on the LED matrix.
 
-        Attributes:
+        Args:
             char: Single character to display.
             color: RGB color for the character. Uses default config color if None.
         """
@@ -237,7 +260,7 @@ class SpheroBoltPlus(BaseRobot):
     ) -> None:
         """Scroll text across the LED matrix.
 
-        Attributes:
+        Args:
             text: Text string to scroll.
             color: RGB color for the text. Uses default config color if None.
             fps: Frames per second for scrolling animation.
@@ -248,7 +271,7 @@ class SpheroBoltPlus(BaseRobot):
         if color is None:
             color = self._get_default_color()
 
-        self.api.scroll_matrix_text(text, color, fps=fps, wait=wait) # FIXME: Wait, does not really block the (it seems)
+        self.api.scroll_matrix_text(text, color, fps=fps, wait=wait)  # Forward wait to underlying API; see its docs for blocking behavior.
         logger.info(f"Scrolled text: '{text}'")
 
     def clear_display(self) -> None:
@@ -257,5 +280,4 @@ class SpheroBoltPlus(BaseRobot):
 
         self.api.clear_matrix()
 
-        # self.api.set_matrix_fill(0, 0, 7, 7, Color(0, 0, 0))
         logger.debug("Cleared LED matrix display")
