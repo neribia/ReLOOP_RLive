@@ -32,9 +32,9 @@ class CameraFactory:
     objects (e.g., PiCamera, Webcam, DummyCamera) based on the given configuration.
 
     Example:
-        # >>> cfg = CameraConfig(type="webcam", id=0, width=1280, height=720)
-        # >>> factory = CameraFactory()
-        # >>> camera = factory.build(cfg)
+        cfg = CameraConfig(type="webcam", id=0, width=1280, height=720)
+        factory = CameraFactory()
+        camera = factory.build(cfg)
     """
     def __init__(self) -> None:
         """Initializes the CameraFactory and registers available camera builder functions."""
