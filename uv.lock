@@ -882,6 +882,7 @@ source = { editable = "packages/rlive-sim" }
 dependencies = [
     { name = "gymnasium" },
     { name = "numpy" },
+    { name = "opencv-python" },
     { name = "rlive-common" },
 ]
 
@@ -889,6 +890,7 @@ dependencies = [
 requires-dist = [
     { name = "gymnasium", specifier = ">=1.2.1" },
     { name = "numpy", specifier = ">=2.2.6" },
+    { name = "opencv-python", specifier = ">=4.12.0.88" },
     { name = "rlive-common", editable = "packages/rlive-common" },
 ]
 

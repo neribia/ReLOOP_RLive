@@ -17,7 +17,7 @@ import numpy as np
 
 
 # TODO: Create pydantic model for scenestate like Physicsstate
-# TODO: Maybe overkill, because the scene does not really change between the steps only the position of the Robot -> New class physics + render = EnviromentState
+# TODO: Maybe overkill, because the scene does not really change between the steps only the position of the Robot -> New class physics + render = EnvironmentState
 class SceneState:
     """Represents the current situation of the scene.
 
@@ -65,11 +65,11 @@ class BaseRenderEngine(ABC):
     ) -> None:
         """Initialize the render engine.
 
-        Attributes:
+        Args:
             width: Image width in pixels. Defaults to 640.
             height: Image height in pixels. Defaults to 480.
             channels: Number of color channels. Defaults to 3 (RGB).
-            _image: Hold's the current renderd image of the scene.
+            _image: Holds the current rendered image of the scene.
         """
         self.width = width
         self.height = height
@@ -80,7 +80,7 @@ class BaseRenderEngine(ABC):
     def render(self, scene_state: dict[str, Any]) -> np.ndarray:
         """Render the current scene and return an image.
 
-        Attributes:
+        Args:
             scene_state: Dictionary containing scene information such as
                 object positions, camera pose, lighting, and animation frame.
                 Expected keys may include:
@@ -125,7 +125,7 @@ class BaseRenderEngine(ABC):
         lighting, camera, and other visual elements. Call this once before
         starting the render loop.
 
-        Attributes:
+        Args:
             scene_config: Dictionary containing scene setup parameters.
                 Expected keys include:
                 - "objects": List of object definitions (type, position, size, etc.)
@@ -192,7 +192,7 @@ class BaseRenderEngine(ABC):
         and its up direction. This is typically called before render() to
         control the viewpoint.
 
-        Attributes:
+        Args:
             position: Camera position [x, y, z] in world coordinates.
             target: Point the camera looks at [x, y, z] in world coordinates.
             up: Up vector [x, y, z] to define camera roll. Defaults to [0, 0, 1].

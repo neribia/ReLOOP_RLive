@@ -88,8 +88,8 @@ from rlive_sim.engine.render.opencv_render_engine import OpenCVRenderEngine
 from rlive_sim.engine.render.mitsuba_render_engine import MitsubaRenderEngine
 
 # Integrated implementations
-from rlive_sim.engine.unified.combined_engine import CombinedEngine
-from rlive_sim.engine.unified.godot_integrated_engine import GodotIntegratedEngine
+from rlive_sim.engine.integrated.combined_engine import CombinedEngine
+from rlive_sim.engine.integrated.godot_integrated_engine import GodotIntegratedEngine
 
 __all__ = [
     # Registries & Decorators
@@ -117,5 +117,5 @@ __all__ = [
     "MitsubaRenderEngine",
     # Integrated implementations
     "CombinedEngine",
-    "GodotUnifiedEngine",
+    "GodotIntegratedEngine",
 ]

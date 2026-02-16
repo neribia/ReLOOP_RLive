@@ -1,20 +1,53 @@
 # rlive-sim
 
-Client-side Gymnasium-compatible environment for robot simulation..
+A flexible simulation package for reinforcement learning with pluggable physics and rendering backends.
 
 ## 📦 What's Included
 
-This package provides the RL environment for simulation for a robot.
+This package provides a modular simulation architecture with support for multiple physics and rendering backends, all wrapped in a Gymnasium-compatible environment interface.
 
 ### Main Components
 
-- **`SimulationEnv`**: A Gymnasium-compatible environment that communicates with the world server
-  - Follows the standard Gymnasium API (`reset()`, `step()`, `close()`, `render()`)
+- **`SimulationEnv`**: A Gymnasium-compatible environment for RL training
+  - Follows the standard Gymnasium API (`reset()`, `step()`, `render()`, `close()`)
+  - Flexible engine architecture supporting different backend combinations
 
+- **`SimulationEngine`**: Core orchestrator for physics and rendering
+  - Unified API for integrated engines (Godot, MuJoCo) and separate engines (physics + render)
+  - Handles state management and action application
+  - Supports efficient combined step-and-render operations
+
+- **Physics Engines**:
+  - `SimplePhysicsEngine`: Basic physics simulation using numpy
+  - `PyMunkPhysicsEngine`: Advanced 2D physics (stub implementation)
+  - Integrated backends: MuJoCo, Isaac Sim, Godot (via unified interface)
+
+- **Render Engines**:
+  - `OpenCVRenderEngine`: Fast OpenCV-based rendering
+  - `MitsubaRenderEngine`: Advanced ray tracing (stub implementation)
+  - Integrated backends: Built-in rendering for Godot, MuJoCo, etc.
+
+### Architecture
+
+The package supports two complementary architectures:
+
+1. **Separate Engines**: Physics and rendering are independent
+   - Flexibility: Choose best-of-breed solutions
+   - Modularity: Easy to swap components
+   - Trade-off: Potential performance overhead
+
+2. **Integrated Engines**: Physics and rendering tightly coupled
+   - Efficiency: Shared resources and optimizations
+   - Examples: Godot, MuJoCo, Isaac Sim
+
+`SimulationEngine` provides a unified interface for both, so your RL code doesn't need to know which architecture is being used.
 
 ### Features
 
 - 🎮 **Gymnasium Compatible**: Drop-in replacement for standard RL environments
+- 🔌 **Pluggable Backends**: Swap physics/render engines without changing RL code
+- 🏗️ **Unified API**: Works seamlessly with integrated or separate engines
+- ⚡ **Configurable**: Registry-based factory pattern for clean extensibility
 
 ## 🚀 Installation
 
@@ -31,33 +64,39 @@ The installation command depends on your current directory:
 
 **From Repository Root** (`ReLoop_RLive/`):
 ```bash
-# Install only rlive-env (includes rlive-common as dependency)
+# Install only rlive-sim (includes rlive-common as dependency)
 uv sync --package rlive-sim
 ```
 
-**From Package Root** (`ReLoop_RLive/packages/rlive-env/`):
+**From Package Root** (`ReLoop_RLive/packages/rlive-sim/`):
 ```bash
-# Install rlive-env and dependencies
+# Install rlive-sim and dependencies
 uv sync
 ```
 
 ## 📚 Usage
 
-### Quick Start
+### Quick Start with Demo
 
-Run the built-in demo that connects to the world server and executes a few steps:
+Run the interactive demo that shows ball-in-box simulation:
 
 ```bash
-uv run rlive-sim
+# Modern approach (recommended)
+python -m rlive_sim.demo_ball_in_box
 
+# Legacy approach (direct instantiation)
+python -m rlive_sim.demo_ball_in_box --legacy
 ```
 
-### Basic Example
+Controls: Press any key to apply a random action, press 'q' or ESC to quit.
+
+### Basic Example: Default Configuration
 
 ```python
-from rlive_env.remote_env import RemoteWorldEnv
+from rlive_sim import SimulationEnv
 
-env = RemoteWorldEnv(max_episode_steps=10)
+# Create environment with default configuration
+env = SimulationEnv(max_episode_steps=100)
 
 # Reset and get initial observation
 obs, info = env.reset()
@@ -69,8 +108,8 @@ while not done:
     action = env.action_space.sample()  # Random action
     obs, reward, terminated, truncated, info = env.step(action)
     print(f"action={action}, reward={reward:.3f}")
-    done = truncated
-    if terminated or truncated:
+    done = terminated or truncated
+    if done:
         obs, info = env.reset()
         print("Episode reset.")
 
@@ -78,39 +117,172 @@ while not done:
 env.close()
 ```
 
-This is equivalent to the code in `main_function.py`.
+### Separate Engines (Modern: Factory Pattern)
+
+Use the registry-based factory pattern for clean separation of concerns:
+
+```python
+from rlive_sim import (
+    SimulationEnv,
+    SimulationEngine,
+    SimplePhysicsEngine,
+    OpenCVRenderEngine,
+)
+from rlive_sim.config import SimulationConfig, PhysicsConfig, RenderConfig, PhysicsBackend, RenderBackend
+
+# Create configuration objects
+sim_config = SimulationConfig(
+    use_integrated=False,  # Use separate engines
+    physics=PhysicsConfig(
+        backend=PhysicsBackend.SIMPLE,
+        box_width=640,
+        box_height=480,
+        ball_radius=20,
+        dt=0.01,
+    ),
+    render=RenderConfig(
+        backend=RenderBackend.OPENCV,
+        width=640,
+        height=480,
+    ),
+)
+
+# Create engines from configuration
+physics = SimplePhysicsEngine(
+    box_width=sim_config.physics.box_width,
+    box_height=sim_config.physics.box_height,
+    ball_radius=sim_config.physics.ball_radius,
+    dt=sim_config.physics.dt,
+)
+
+render = OpenCVRenderEngine(
+    width=sim_config.render.width,
+    height=sim_config.render.height,
+)
+
+# Combine into simulation engine
+sim = SimulationEngine(physics_engine=physics, render_engine=render)
+
+# Create environment
+env = SimulationEnv(engine=sim, max_episode_steps=100)
+
+# Use as normal Gymnasium environment
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step([45.0, 50.0])
+image = env.render()
+```
+
+### Separate Engines (Legacy: Direct Instantiation)
+
+For quick prototyping, directly instantiate engines:
+
+```python
+from rlive_sim import SimulationEnv, SimulationEngine, SimplePhysicsEngine, OpenCVRenderEngine
+
+# Directly create engines with parameters
+physics = SimplePhysicsEngine(box_width=640, box_height=480, ball_radius=20)
+render = OpenCVRenderEngine(width=640, height=480)
+
+# Combine them
+sim = SimulationEngine(physics_engine=physics, render_engine=render)
+
+# Create environment
+env = SimulationEnv(engine=sim)
+
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step([45.0, 50.0])
+```
+
+### Integrated Engine Example
+
+For efficient simulation with integrated physics and rendering (e.g., MuJoCo, Godot):
+
+```python
+from rlive_sim import SimulationEnv, SimulationEngine
+from rlive_sim.config import IntegratedConfig, IntegratedBackend
+from rlive_sim.engine import GodotIntegratedEngine  # or MuJoCoIntegratedEngine
+
+# Note: This is a conceptual example. Implementation depends on available backends.
+
+# Create integrated engine configuration
+config = IntegratedConfig(backend=IntegratedBackend.GODOT)
+
+# Create integrated engine
+integrated = GodotIntegratedEngine(config)
+
+# Wrap in SimulationEngine for consistent API
+sim = SimulationEngine(integrated_engine=integrated)
+
+# Create environment
+env = SimulationEnv(engine=sim)
+
+obs, info = env.reset()
+
+# Efficient combined step-and-render
+obs, reward, terminated, truncated, info = env.step([1.0, 0.5])
+image = env.render()
+```
 
 ### Custom Configuration
 
+Override default configuration by providing a custom `SimulationConfig`:
+
 ```python
-from rlive_env.remote_env import RemoteWorldEnv
+from rlive_sim import SimulationEnv
+from rlive_sim.config import SimulationConfig, PhysicsConfig, RenderConfig
 
-# Connect to a different server
-env = RemoteWorldEnv(base_url="http://192.168.1.100:8000")
+config = SimulationConfig(
+    max_episode_steps=200,
+    physics=PhysicsConfig(
+        dt=0.005,  # Smaller timestep for more accuracy
+        box_width=800,
+        box_height=600,
+    ),
+    render=RenderConfig(
+        width=800,
+        height=600,
+    ),
+)
 
-# Or use environment variables:
-# export WORLD_BASE_URL=http://192.168.1.100:8000
-import os
-base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
-env = RemoteWorldEnv(base_url=base_url)
+env = SimulationEnv(config=config)
+obs, info = env.reset()
 ```
-
 
 ## ⚙️ Configuration
 
-Configure the environment using environment variables:
+Configure the environment through `SimulationConfig`:
 
-| Variable | Default | Description          |
-|----------|---------|----------------------|
-| `XXX`    | `XXX`   | Example description. |
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `max_episode_steps` | int | 500 | Maximum steps per episode |
+| `use_integrated` | bool | False | Use integrated engine if available |
+| `physics` | PhysicsConfig | default | Physics engine configuration |
+| `render` | RenderConfig | default | Render engine configuration |
 
+### Physics Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `backend` | PhysicsBackend | SIMPLE | Physics engine backend |
+| `dt` | float | 0.01 | Simulation timestep (seconds) |
+| `box_width` | int | 640 | Simulation box width (pixels) |
+| `box_height` | int | 480 | Simulation box height (pixels) |
+| `ball_radius` | int | 20 | Ball radius (pixels) |
+
+### Render Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `backend` | RenderBackend | OPENCV | Render engine backend |
+| `width` | int | 640 | Output image width (pixels) |
+| `height` | int | 480 | Output image height (pixels) |
 
 ## 🧪 Testing
 
 Run tests for this package:
 
 ```bash
-pytest tests/rlive-env/ -v
+pytest tests/rlive-sim/ -v
 ```
 
 ## 📄 License

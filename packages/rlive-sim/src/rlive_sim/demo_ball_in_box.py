@@ -45,7 +45,7 @@ def main():
 
     # Create configs
     sim_config = SimulationConfig(
-        use_unified=False,
+        use_integrated=False,
         physics=PhysicsConfig(
             backend=PhysicsBackend.SIMPLE,
             dt=0.01,

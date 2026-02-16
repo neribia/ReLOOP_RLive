@@ -96,7 +96,7 @@ class PhysicsState(BaseModel):
         Reconstructs a PhysicsState object from a flattened vector, typically
         used after neural network predictions or state serialization.
 
-        Attributes:
+        Args:
             arr: Flattened state vector of shape (13,) with elements
                 [position (3), velocity (3), rotation (4), angular_velocity (3)].
 
@@ -155,7 +155,7 @@ class BasePhysicsEngine(ABC):
     def __init__(self, dt: float = 0.01, gravity: list[float] | None = None) -> None:
         """Initialize the physics engine.
 
-        Attributes:
+        Args:
             dt: Simulation timestep in seconds. Defaults to 0.01 (100 Hz).
             gravity: Gravity vector [gx, gy, gz]. Defaults to [0, 0, -9.81].
         """
@@ -204,7 +204,7 @@ class BasePhysicsEngine(ABC):
         prepares the simulation for a new episode. Call this at the start of
         each episode or when restarting simulation.
 
-        Attributes:
+        Args:
             initial_state: Optional initial state. If None, uses engine's default.
 
         Returns:
@@ -252,7 +252,7 @@ class BasePhysicsEngine(ABC):
         This registers the action to be applied during the next step() call.
         The action format and interpretation depend on the specific engine.
 
-        Attributes:
+        Args:
             action: Action vector to apply. Format depends on implementation.
                 For example, [angle_degrees, distance_pixels] for ball-in-box,
                 or [force_x, force_y, force_z] for 3D physics.
@@ -279,7 +279,7 @@ class BasePhysicsEngine(ABC):
         rollback, or deterministic replay. All state components (position,
         velocity, rotation, etc.) are updated.
 
-        Attributes:
+        Args:
             state: The state to set.
 
         Examples:

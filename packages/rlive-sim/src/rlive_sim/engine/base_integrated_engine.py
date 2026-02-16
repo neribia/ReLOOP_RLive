@@ -99,7 +99,7 @@ class BaseIntegratedEngine(BasePhysicsEngine, BaseRenderEngine):
     ) -> None:
         """Initialize the integrated engine.
 
-        Attributes:
+        Args:
             dt: Simulation timestep in seconds. Defaults to 0.01 (100 Hz).
             gravity: Gravity vector [gx, gy, gz]. Defaults to [0, 0, -9.81].
             width: Image width in pixels. Defaults to 640.
@@ -117,7 +117,7 @@ class BaseIntegratedEngine(BasePhysicsEngine, BaseRenderEngine):
         simulation and rendering together, which is more efficient than doing
         them separately as they can share intermediate computations.
 
-        Attributes:
+        Args:
             dt: Optional timestep override. Uses self.dt if None.
 
         Returns:
@@ -152,7 +152,7 @@ class BaseIntegratedEngine(BasePhysicsEngine, BaseRenderEngine):
 
         Call before reset() to set up the initial scene configuration.
 
-        Attributes:
+        Args:
             scene_path: Absolute or relative path to the scene file.
                 For Godot: .tscn or .escn files
                 For MuJoCo: .xml files with physics definitions
@@ -191,7 +191,7 @@ class BaseIntegratedEngine(BasePhysicsEngine, BaseRenderEngine):
         Dynamically creates a new physics/visual object in the simulation.
         Returns a unique ID that can be used for later reference/manipulation.
 
-        Attributes:
+        Args:
             object_type: Type name for the object (e.g., "sphere", "box", "cylinder").
                 Supported types depend on the integrated backend.
             position: Initial position [x, y, z] in world coordinates.
@@ -249,7 +249,7 @@ class BaseIntegratedEngine(BasePhysicsEngine, BaseRenderEngine):
         Deletes a previously spawned object and frees associated resources
         (physics body, visuals, memory).
 
-        Attributes:
+        Args:
             object_id: Unique identifier returned by spawn_object().
 
         Raises:

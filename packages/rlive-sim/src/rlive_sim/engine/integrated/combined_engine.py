@@ -62,7 +62,7 @@ class CombinedEngine(BaseIntegratedEngine):
     ) -> None:
         """Initialize the combined engine adapter.
 
-        Attributes:
+        Args:
             physics_engine: Physics engine instance to wrap.
             render_engine: Render engine instance to wrap.
 
@@ -99,7 +99,7 @@ class CombinedEngine(BaseIntegratedEngine):
 
         Delegates to the wrapped physics engine.
 
-        Attributes:
+        Args:
             dt: Optional timestep override. Uses self.dt if None.
 
         Returns:
@@ -112,7 +112,7 @@ class CombinedEngine(BaseIntegratedEngine):
 
         Delegates to the wrapped physics engine.
 
-        Attributes:
+        Args:
             initial_state: Optional initial state. Uses engine default if None.
 
         Returns:
@@ -135,7 +135,7 @@ class CombinedEngine(BaseIntegratedEngine):
 
         Delegates to the wrapped physics engine.
 
-        Attributes:
+        Args:
             state: The state to set.
         """
         self.physics_engine.set_state(state)
@@ -145,7 +145,7 @@ class CombinedEngine(BaseIntegratedEngine):
 
         Delegates to the wrapped physics engine.
 
-        Attributes:
+        Args:
             action: Action vector to apply.
         """
         self.physics_engine.apply_action(action)
@@ -156,7 +156,7 @@ class CombinedEngine(BaseIntegratedEngine):
 
         Delegates to the wrapped render engine.
 
-        Attributes:
+        Args:
             scene_state: Dictionary containing scene information.
 
         Returns:
@@ -180,7 +180,7 @@ class CombinedEngine(BaseIntegratedEngine):
 
         Delegates to the wrapped render engine.
 
-        Attributes:
+        Args:
             scene_config: Dictionary containing scene setup parameters.
         """
         self.render_engine.setup_scene(scene_config)
@@ -195,7 +195,7 @@ class CombinedEngine(BaseIntegratedEngine):
 
         Delegates to the wrapped render engine.
 
-        Attributes:
+        Args:
             position: Camera position [x, y, z] in world coordinates.
             target: Point the camera looks at [x, y, z].
             up: Up vector [x, y, z]. Defaults to [0, 0, 1] if None.
@@ -209,7 +209,7 @@ class CombinedEngine(BaseIntegratedEngine):
         For separate engines, this calls step() then render() sequentially.
         The render uses the physics state after the step.
 
-        Attributes:
+        Args:
             dt: Optional timestep override.
 
         Returns:
@@ -275,7 +275,7 @@ class CombinedEngine(BaseIntegratedEngine):
         Internal helper to convert physics state to scene state format
         for the render engine.
 
-        Attributes:
+        Args:
             state: The physics state to convert.
 
         Returns:

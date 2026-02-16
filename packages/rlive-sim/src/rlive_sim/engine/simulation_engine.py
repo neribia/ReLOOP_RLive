@@ -17,7 +17,7 @@ import numpy as np
 from rlive_sim.engine.base_physics_engine import BasePhysicsEngine, PhysicsState
 from rlive_sim.engine.base_render_engine import BaseRenderEngine
 from rlive_sim.engine.base_integrated_engine import BaseIntegratedEngine
-from rlive_sim.engine.unified.combined_engine import CombinedEngine
+from rlive_sim.engine.integrated.combined_engine import CombinedEngine
 
 
 # TODO: Create a class, that gathers all information crated during a step??
@@ -84,7 +84,7 @@ class SimulationEngine:
         Provide either an `integrated_engine` OR both `physics_engine` and
         `render_engine`. Cannot mix integrated and separate engines.
 
-        Attributes:
+        Args:
             physics_engine: Physics engine instance. Required if not using
                 integrated engine.
             render_engine: Render engine instance. Required if not using
@@ -146,12 +146,11 @@ class SimulationEngine:
         # Cache for last state (used for rendering in separate mode)
         self._last_state: PhysicsState | None = None
 
-    
-    # TODO: Diffrent name, because step normaly sets an action and returns an observation
+    # TODO: Different name, because step normaly sets an action and returns an observation
     def step(self, dt: float | None = None) -> PhysicsState:
         """Advance the simulation by one timestep.
 
-        Attributes:
+        Args:
             dt: Optional timestep override. Uses engine default if None.
 
         Returns:
@@ -161,11 +160,11 @@ class SimulationEngine:
         self._last_state = state
         return state
 
-    # TODO: Same as step. Name maybe missleading
+    # TODO: Same as step. Name maybe misleading
     def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
         """Reset the simulation to initial conditions.
 
-        Attributes:
+        Args:
             initial_state: Optional initial state. Uses engine default if None.
 
         Returns:
@@ -179,7 +178,7 @@ class SimulationEngine:
     def apply_action(self, action: np.ndarray | list[float]) -> None:
         """Apply an action to the simulation.
 
-        Attributes:
+        Args:
             action: Action vector to apply. Format depends on engine.
         """
         self._engine.apply_action(action)
@@ -187,7 +186,7 @@ class SimulationEngine:
     def render(self, scene_state: dict[str, Any] | None = None) -> np.ndarray:
         """Render the current scene.
 
-        Attributes:
+        Args:
             scene_state: Optional scene state for rendering. If None,
                 uses the last physics state to build scene state.
 
@@ -209,7 +208,7 @@ class SimulationEngine:
 
         This is more efficient for unified engines.
 
-        Attributes:
+        Args:
             dt: Optional timestep override.
 
         Returns:
@@ -230,7 +229,7 @@ class SimulationEngine:
     def set_state(self, state: PhysicsState) -> None:
         """Set the physics state directly.
 
-        Attributes:
+        Args:
             state: The state to set.
         """
         self._engine.set_state(state)
@@ -258,7 +257,7 @@ class SimulationEngine:
     def setup_scene(self, scene_config: dict[str, Any]) -> None:
         """Set up the scene with given configuration.
 
-        Attributes:
+        Args:
             scene_config: Dictionary containing scene setup parameters.
         """
         self._engine.setup_scene(scene_config)

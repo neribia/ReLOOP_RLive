@@ -47,7 +47,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
     ) -> None:
         """Initialize the simple physics engine.
 
-        Attributes:
+        Args:
             box_width: Width of the bounding box in pixels. Defaults to 640.
             box_height: Height of the bounding box in pixels. Defaults to 480.
             ball_radius: Radius of the ball in pixels. Defaults to 20.
@@ -77,7 +77,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         The ball moves in the direction specified by the angle for
         the given distance. If hitting a wall, it slides along the wall.
 
-        Attributes:
+        Args:
             dt: Not used in this simple implementation.
 
         Returns:
@@ -136,7 +136,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
     def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
         """Reset the ball to initial position.
 
-        Attributes:
+        Args:
             initial_state: Optional initial state. If None, ball starts at center.
 
         Returns:
@@ -182,7 +182,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
     def apply_action(self, action: np.ndarray | list[float]) -> None:
         """Apply a movement action to the ball.
 
-        Attributes:
+        Args:
             action: Movement command as [angle_degrees, distance].
                 - angle_degrees: Direction of movement (0° = right, 90° = down).
                 - distance: How far to move in pixels.
@@ -204,7 +204,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
     def set_state(self, state: PhysicsState) -> None:
         """Set the physics state directly.
 
-        Attributes:
+        Args:
             state: The state to set. Position will be clamped to box bounds.
         """
         x, y, z = state.position

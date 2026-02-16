@@ -54,7 +54,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
     ) -> None:
         """Initialize the OpenCV render engine.
 
-        Attributes:
+        Args:
             width: Image width in pixels.
             height: Image height in pixels.
             channels: Number of color channels.
@@ -81,7 +81,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
     def render(self, scene_state: dict[str, Any]) -> np.ndarray:
         """Render the scene with a ball in a box.
 
-        Attributes:
+        Args:
             scene_state: Dictionary with objects and positions.
 
         Returns:

@@ -80,6 +80,7 @@ class SimulationEnv(gym.Env):
     def __init__(
         self,
         engine: SimulationEngine | None = None,
+        config: SimulationConfig | None = None, # TODO: Implement engine creation from config (Full support for integrated, physics, render configs)
         max_episode_steps: int | None = None,
         render_mode: str | None = None,
         options: dict[str, Any] | None = None,
