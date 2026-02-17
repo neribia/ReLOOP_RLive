@@ -19,40 +19,44 @@ Contrast with separate engines:
     - SimulationEngine: Orchestrator that combines separate engines
 """
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from rlive_sim.engine.base_physics_engine import BasePhysicsEngine, PhysicsState
-from rlive_sim.engine.base_render_engine import BaseRenderEngine
+from rlive_sim.engine.base_physics_engine import PhysicsState
 
 if TYPE_CHECKING:
     from rlive_sim.config import IntegratedConfig
 
 
-class BaseIntegratedEngine(BasePhysicsEngine, BaseRenderEngine):
+class BaseIntegratedEngine(ABC):
     """Abstract base class for integrated simulation engines.
 
-    This class combines both physics and rendering interfaces into a single
-    monolithic engine. Use this for integrated simulation platforms like Godot,
-    MuJoCo, or Isaac Sim where physics and rendering are tightly coupled and
-    benefit from being executed together.
+    This class defines the interface for integrated simulation platforms where
+    physics and rendering are tightly coupled and executed together. It does
+    not inherit from BasePhysicsEngine or BaseRenderEngine; instead, it defines
+    its own comprehensive interface that combines both domains.
+
+    Use this for integrated simulation platforms like Godot, MuJoCo, or Isaac Sim
+    where physics and rendering are naturally coupled and benefit from being
+    executed together for efficiency.
 
     For simulations where physics and rendering are independent, prefer using
     separate PhysicsEngine and RenderEngine with SimulationEngine orchestrator.
 
-    Inherits from both BasePhysicsEngine and BaseRenderEngine, providing:
-        - Physics simulation interface (step, apply_action, reset, etc.)
-        - Rendering interface (render, set_camera, etc.)
-        - Integrated step_and_render() for efficient combined updates
+    Interface includes:
+        - Physics simulation: step(), apply_action(), reset(), get_state(), set_state()
+        - Rendering: render(), set_camera(), get_image()
+        - Integrated: step_and_render() for efficient combined updates
+        - Scene management: load_scene(), spawn_object(), remove_object()
 
     Attributes:
-        dt: Simulation timestep in seconds (from BasePhysicsEngine).
-        gravity: Gravity vector [gx, gy, gz] (from BasePhysicsEngine).
-        width: Image width in pixels (from BaseRenderEngine).
-        height: Image height in pixels (from BaseRenderEngine).
-        channels: Number of color channels (from BaseRenderEngine).
+        dt: Simulation timestep in seconds.
+        gravity: Gravity vector [gx, gy, gz].
+        width: Image width in pixels.
+        height: Image height in pixels.
+        channels: Number of color channels.
 
     Examples:
         Using an integrated engine with efficient combined updates:
@@ -106,8 +110,11 @@ class BaseIntegratedEngine(BasePhysicsEngine, BaseRenderEngine):
             height: Image height in pixels. Defaults to 480.
             channels: Number of color channels. Defaults to 3 (RGB).
         """
-        BasePhysicsEngine.__init__(self, dt=dt, gravity=gravity)
-        BaseRenderEngine.__init__(self, width=width, height=height, channels=channels)
+        self.dt = dt
+        self.gravity = gravity
+        self.width = width
+        self.height = height
+        self.channels = channels
 
     @abstractmethod
     def step_and_render(self, dt: float | None = None) -> tuple[PhysicsState, np.ndarray]:
