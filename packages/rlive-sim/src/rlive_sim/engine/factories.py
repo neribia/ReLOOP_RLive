@@ -5,7 +5,7 @@ Factories use registries populated by @register_*_backend decorators on concrete
 """
 from typing import Any
 
-from rlive_sim.config import PhysicsConfig, RenderConfig, IntegratedConfig
+from rlive_sim.config import PhysicsConfig, RenderConfig, IntegratedConfig, SimulationConfig
 from rlive_sim.engine.registry import _PHYSICS_REGISTRY, _RENDER_REGISTRY, _INTEGRATED_REGISTRY
 
 
@@ -139,3 +139,45 @@ class IntegratedEngine:
             **kwargs,
         )
 
+# ==========================================================
+# Simulation Engine Factory Class / Dispatcher
+# ==========================================================
+
+
+class SimulationEngineFactory:
+    """Factory class for creating simulation engines from config.
+
+    This is the top-level factory that creates a complete SimulationEngine
+    orchestrator based on SimulationConfig. It automatically handles both:
+    - Integrated engine mode (physics + render tightly coupled)
+    - Separate engine mode (independent physics and render)
+
+    Usage:
+        config = SimulationConfig(
+            use_integrated=False,
+            physics=PhysicsConfig(backend=PhysicsBackend.SIMPLE),
+            render=RenderConfig(backend=RenderBackend.OPENCV),
+        )
+        engine = SimulationEngineFactory(config)  # Returns SimulationEngine
+    """
+
+    def __new__(cls, config: "SimulationConfig", **kwargs: Any):
+        """Create simulation engine from config.
+
+        Args:
+            config: SimulationConfig instance with engine configurations.
+            **kwargs: Additional engine-specific parameters.
+
+        Returns:
+            SimulationEngine: Instantiated simulation engine of appropriate type.
+        """
+        # Import here to avoid circular imports
+        from rlive_sim.engine.simulation_engine import SimulationEngine
+
+        if config.use_integrated:
+            engine = IntegratedEngine(config.integrated, **kwargs)
+            return SimulationEngine(integrated_engine=engine)
+        else:
+            physics = PhysicsEngine(config.physics, **kwargs)
+            render = RenderEngine(config.render, **kwargs)
+            return SimulationEngine(physics_engine=physics, render_engine=render)

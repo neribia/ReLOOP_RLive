@@ -67,7 +67,12 @@ from rlive_sim.engine.registry import (
 )
 
 # Factories
-from rlive_sim.engine.factories import PhysicsEngine, RenderEngine, IntegratedEngine
+from rlive_sim.engine.factories import (
+    PhysicsEngine,
+    RenderEngine,
+    IntegratedEngine,
+    SimulationEngineFactory,
+)
 
 # Base classes
 from rlive_sim.engine.base_physics_engine import BasePhysicsEngine, PhysicsState
@@ -100,6 +105,7 @@ __all__ = [
     "PhysicsEngine",
     "RenderEngine",
     "IntegratedEngine",
+    "SimulationEngineFactory",
     # Base classes
     "BasePhysicsEngine",
     "BaseRenderEngine",

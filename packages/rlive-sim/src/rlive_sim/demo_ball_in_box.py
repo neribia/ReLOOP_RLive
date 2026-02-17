@@ -1,23 +1,23 @@
 """Demo: Ball in Box Simulation
 
-This demo shows two approaches for creating simulation engines:
+This demo shows two approaches for creating simulation environments:
 
-1. **Modern**: Registry-Based Factory Pattern
-   - Engines auto-register via @register_*_backend decorators
-   - Clean factory dispatch: PhysicsEngine(config) → specific engine
-   - Type-safe, extensible architecture
+1. **Modern (Recommended)**: Config-based with SimulationEnv
+   - Pass SimulationConfig to SimulationEnv
+   - Factory pattern handled internally
+   - Cleanest API: SimulationEnv(config=config)
 
-2. **Legacy**: Direct Class Instantiation
-   - Directly instantiate engine classes with parameters
-   - Simple but less structured
-   - Good for quick tests
+2. **Legacy**: Direct Engine Instantiation
+   - Create engines directly
+   - Manually assemble SimulationEngine
+   - More control, more code
 
-Both approaches are valid. Choose based on your use case:
-- **Production**: Use factories with config objects
+Choose based on your use case:
+- **Production/Research**: Use config-based SimulationEnv (recommended)
 - **Quick prototyping**: Direct instantiation
 
 Usage:
-    python -m rlive_sim.demo_ball_in_box              # Modern (factory)
+    python -m rlive_sim.demo_ball_in_box              # Modern (config)
     python -m rlive_sim.demo_ball_in_box --legacy     # Legacy (direct)
 
 Controls:
@@ -29,21 +29,31 @@ import argparse
 import cv2
 import numpy as np
 
-from rlive_sim.engine import SimulationEngine, PhysicsEngine, RenderEngine, SimplePhysicsEngine, OpenCVRenderEngine
-from rlive_sim.config import SimulationConfig, PhysicsConfig, RenderConfig, PhysicsBackend, RenderBackend
+from rlive_sim.engine import (
+    SimulationEngine,
+    SimplePhysicsEngine,
+    OpenCVRenderEngine,
+)
+from rlive_sim.config import (
+    SimulationConfig,
+    PhysicsConfig,
+    RenderConfig,
+    PhysicsBackend,
+    RenderBackend,
+)
+from rlive_sim.simulation_env import SimulationEnv
 
 
 def main():
-    """Run demo using registry-based factory pattern (modern approach)."""
+    """Run demo using config-based SimulationEnv (modern, recommended approach)."""
     print("=" * 60)
-    print("Modern: Registry-Based Factory Pattern")
+    print("Modern: Config-Based SimulationEnv (Recommended)")
     print("=" * 60)
     print()
-    print("PhysicsEngine(config) → dispatches to SimplePhysicsEngine")
-    print("RenderEngine(config)  → dispatches to OpenCVRenderEngine")
+    print("SimulationEnv(config=config) → factory handled internally")
     print()
 
-    # Create configs
+    # Create config
     sim_config = SimulationConfig(
         use_integrated=False,
         physics=PhysicsConfig(
@@ -69,29 +79,25 @@ def main():
         ),
     )
 
-    # Create engines using factories
-    # No if/elif, no .create(), just clean factory dispatch
-    physics = PhysicsEngine(sim_config.physics)
-    render = RenderEngine(sim_config.render)
+    # Create environment - factory is called internally
+    env = SimulationEnv(config=sim_config)
 
-    print(f"✓ Physics: {type(physics).__name__}(PhysicsConfig)")
-    print(f"✓ Render:  {type(render).__name__}(RenderConfig)")
+    print(f"✓ SimulationEnv created from config")
+    print(f"  - Engine: {type(env.engine).__name__}")
     print()
 
-    # Create simulation engine
-    sim = SimulationEngine(physics_engine=physics, render_engine=render)
-
-    run_demo(sim)
+    run_demo(env)
 
 
 def main_legacy():
-    """Run demo using legacy direct class instantiation."""
+    """Run demo using legacy direct engine instantiation."""
     print("=" * 60)
-    print("Legacy: Direct Class Instantiation")
+    print("Legacy: Direct Engine Instantiation")
     print("=" * 60)
     print()
     print("SimplePhysicsEngine(...) → direct instantiation")
     print("OpenCVRenderEngine(...)  → direct instantiation")
+    print("SimulationEngine(...)    → manual assembly")
     print()
 
     # Create engines directly
@@ -119,14 +125,20 @@ def main_legacy():
     # Create simulation engine
     sim = SimulationEngine(physics_engine=physics, render_engine=render)
 
-    run_demo(sim)
+    print(f"✓ SimulationEngine: {type(sim).__name__}(...)")
+    print()
+
+    # Wrap in environment for consistent API
+    env = SimulationEnv(engine=sim)
+
+    run_demo(env)
 
 
-def run_demo(sim: SimulationEngine):
+def run_demo(env: SimulationEnv):
     """Main demo loop."""
     # Reset and get initial state
-    state = sim.reset()
-    print(f"Initial position: ({state.position[0]:.1f}, {state.position[1]:.1f})")
+    obs, info = env.reset()
+    print(f"Initial observation shape: {obs.shape}")
     print("Press any key to make a random move, 'q' or ESC to quit.\n")
 
     # Main loop
@@ -134,24 +146,18 @@ def run_demo(sim: SimulationEngine):
     step_count = 0
 
     while running:
-        # Render current state
-        image = sim.render()
+        # Current observation
+        image = obs
 
         # Convert RGB to BGR for OpenCV display
         display_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         # Add info text
-        info_text = f"Step: {step_count} | Pos: ({state.position[0]:.1f}, {state.position[1]:.1f})"
+        info_text = f"Step: {step_count}"
         cv2.putText(
             display_image, info_text, (10, 25),
             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1
         )
-
-        if state.extra.get("hit_wall", False):
-            cv2.putText(
-                display_image, "HIT WALL!", (10, 50),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2
-            )
 
         # Show image
         cv2.imshow("Ball in Box Demo", display_image)
@@ -162,32 +168,32 @@ def run_demo(sim: SimulationEngine):
         if key == ord('q') or key == 27:  # 'q' or ESC
             running = False
         else:
-            # Random action: angle (0-360) and distance (10-50)
-            angle = np.random.randint(0, 360)
-            distance = np.random.randint(10, 51)
+            # Random action: [angle, distance]
+            action = [np.random.randint(0, 360), np.random.randint(10, 51)]
 
-            # Apply action and step
-            sim.apply_action([angle, distance])
-            state = sim.step()
+            # Step environment
+            obs, reward, terminated, truncated, info = env.step(action)
             step_count += 1
 
-            print(f"Step {step_count}: angle={angle}°, distance={distance}px -> "
-                  f"pos=({state.position[0]:.1f}, {state.position[1]:.1f})"
-                  f"{' [HIT WALL]' if state.extra.get('hit_wall') else ''}")
+            print(f"Step {step_count}: action=[{action[0]}°, {action[1]}px]")
+
+            if terminated or truncated:
+                print("Episode ended!")
+                running = False
 
     cv2.destroyAllWindows()
-    sim.close()
+    env.close()
     print("\nDemo finished!")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Ball in Box Demo - Shows Modern and Legacy Engine Creation"
+        description="Ball in Box Demo - Shows Modern and Legacy Approaches"
     )
     parser.add_argument(
         "--legacy",
         action="store_true",
-        help="Use legacy direct class instantiation instead of factory pattern"
+        help="Use legacy direct engine instantiation instead of config-based approach"
     )
     args = parser.parse_args()
 

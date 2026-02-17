@@ -16,6 +16,7 @@ import gymnasium as gym
 from rlive_common.utils import get_logger
 from rlive_sim.config import SimulationConfig, config as default_config
 from rlive_sim.engine import SimulationEngine
+from rlive_sim.engine.factories import SimulationEngineFactory
 
 logger = get_logger(__name__)
 
@@ -80,7 +81,7 @@ class SimulationEnv(gym.Env):
     def __init__(
         self,
         engine: SimulationEngine | None = None,
-        config: SimulationConfig | None = None, # TODO: Implement engine creation from config (Full support for integrated, physics, render configs)
+        config: SimulationConfig | None = None,
         max_episode_steps: int | None = None,
         render_mode: str | None = None,
         options: dict[str, Any] | None = None,
@@ -107,7 +108,7 @@ class SimulationEnv(gym.Env):
         if engine is not None:
             self.engine = engine
         else:
-            self.engine = self._create_engine_from_config(**kwargs)
+            self.engine = SimulationEngineFactory(self._config, **kwargs)
 
         # Environment settings
         self._max_episode_steps = max_episode_steps or self._config.max_episode_steps
@@ -127,37 +128,6 @@ class SimulationEnv(gym.Env):
         # Goal variables
         self.goal_position: tuple[int, int] | None = None
 
-
-    def _create_engine_from_config(self, **kwargs: Any) -> SimulationEngine:
-        """Create a SimulationEngine from configuration.
-
-        This method creates the appropriate engine based on the config.
-        Currently returns a placeholder - implement actual engine creation
-        when concrete engines are available.
-
-        Args:
-            **kwargs: Additional arguments for engine creation.
-
-        Returns:
-            SimulationEngine: Configured simulation engine.
-
-        Raises:
-            NotImplementedError: When trying to create engines from config
-                before concrete implementations are available.
-        """
-        # TODO: Implement factory pattern to create engines from config
-        # For now, raise informative error
-        raise NotImplementedError(
-            "Engine creation from config is not yet implemented. "
-            "Please provide a pre-configured SimulationEngine via the "
-            "'engine' parameter. Example:\n"
-            "  from rlive_sim.engine import SimulationEngine, PyMunkPhysicsEngine, MitsubaRenderEngine\n"
-            "  engine = SimulationEngine(\n"
-            "      physics_engine=PyMunkPhysicsEngine(),\n"
-            "      render_engine=MitsubaRenderEngine(),\n"
-            "  )\n"
-            "  env = SimulationEnv(engine=engine)"
-        )
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
