@@ -16,8 +16,8 @@ from typing import Any
 import numpy as np
 
 
-# TODO: Create pydantic model for scenestate like Physicsstate
-# TODO: Maybe overkill, because the scene does not really change between the steps only the position of the Robot -> New class physics + render = EnvironmentState
+# TODO: Create Pydantic model for SceneState like PhysicsState
+# TODO: Consider if this is overkill - scene primarily changes via physics updates
 class SceneState:
     """Represents the current situation of the scene.
 
@@ -45,6 +45,14 @@ class BaseRenderEngine(ABC):
         height: Image height in pixels.
         channels: Number of color channels (e.g., 3 for RGB, 4 for RGBA).
 
+    Methods:
+        render(scene_state): Render the current scene and return an image.
+        setup_scene(scene_config): Set up the scene with given configuration.
+        get_image(): Get the last rendered image without re-rendering.
+        set_camera_pose(position, target, up): Set the camera position and orientation.
+        get_resolution(): Get the current render resolution as (height, width, channels).
+        close(): Clean up resources.
+
     Examples:
         Using render engine with scene data:
 
@@ -59,9 +67,9 @@ class BaseRenderEngine(ABC):
 
     def __init__(
         self,
-        width: int = 640, # TODO: set in Config
-        height: int = 480, # TODO: set in Config
-        channels: int = 3, # TODO: set in Config
+        width: int = 640,  # TODO: set in RenderConfig instead
+        height: int = 480,  # TODO: set in RenderConfig instead
+        channels: int = 3,  # TODO: set in RenderConfig instead
     ) -> None:
         """Initialize the render engine.
 
@@ -116,7 +124,7 @@ class BaseRenderEngine(ABC):
         pass
     
     
-    # TODO: Make a Pydantic model for setting up a scene.
+    # TODO: Consider creating a Pydantic model for scene_config validation
     @abstractmethod
     def setup_scene(self, scene_config: dict[str, Any]) -> None:
         """Set up the scene with given configuration.
@@ -157,30 +165,7 @@ class BaseRenderEngine(ABC):
         pass
 
     @abstractmethod
-    def get_image(self) -> np.ndarray:
-        """Get the last rendered image without re-rendering.
-
-        This method returns the image from the most recent render() call.
-        Useful for efficient frame retrieval when you don't need to
-        re-render with updated scene state.
-
-        Returns:
-            np.ndarray: Last rendered image as uint8 array with shape
-                (height, width, channels). Returns a black/zero image if
-                render() has not been called yet.
-
-        Examples:
-            Retrieve image after rendering:
-
-                engine.render(scene_state)
-                image = engine.get_image()  # Returns same as last render()
-                # Process image (compute reward, display, etc.)
-        """
-        pass
-    
-    # TODO: Rename to set_camera_pose
-    @abstractmethod
-    def set_camera(
+    def set_camera_pose(
         self,
         position: list[float],
         target: list[float],

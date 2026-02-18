@@ -135,40 +135,33 @@ sim_config = SimulationConfig(
     use_integrated=False,  # Use separate engines
     physics=PhysicsConfig(
         backend=PhysicsBackend.SIMPLE,
-        box_width=640,
-        box_height=480,
-        ball_radius=20,
         dt=0.01,
+        extra={
+            "box_width": 640,
+            "box_height": 480,
+            "ball_radius": 20,
+        }
     ),
     render=RenderConfig(
         backend=RenderBackend.OPENCV,
         width=640,
         height=480,
+        extra={
+            "ball_radius": 20,
+            "ball_color": (255, 0, 0),
+            "box_color": (128, 128, 128),
+            "bg_color": (0, 0, 0),
+            "box_thickness": 2,
+        }
     ),
 )
 
-# Create engines from configuration
-physics = SimplePhysicsEngine(
-    box_width=sim_config.physics.box_width,
-    box_height=sim_config.physics.box_height,
-    ball_radius=sim_config.physics.ball_radius,
-    dt=sim_config.physics.dt,
-)
-
-render = OpenCVRenderEngine(
-    width=sim_config.render.width,
-    height=sim_config.render.height,
-)
-
-# Combine into simulation engine
-sim = SimulationEngine(physics_engine=physics, render_engine=render)
-
-# Create environment
-env = SimulationEnv(engine=sim, max_episode_steps=100)
+# Create environment with configuration - factory is called internally
+env = SimulationEnv(config=sim_config)
 
 # Use as normal Gymnasium environment
 obs, info = env.reset()
-obs, reward, terminated, truncated, info = env.step([45.0, 50.0])
+obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
 image = env.render()
 ```
 
@@ -195,19 +188,25 @@ obs, reward, terminated, truncated, info = env.step([45.0, 50.0])
 
 ### Integrated Engine Example
 
-For efficient simulation with integrated physics and rendering (e.g., MuJoCo, Godot):
+For efficient simulation with integrated physics and rendering (Godot backend - stub implementation):
 
 ```python
 from rlive_sim import SimulationEnv, SimulationEngine
 from rlive_sim.config import IntegratedConfig, IntegratedBackend
-from rlive_sim.engine import GodotIntegratedEngine  # or MuJoCoIntegratedEngine
+from rlive_sim.engine import GodotIntegratedEngine
 
-# Note: This is a conceptual example. Implementation depends on available backends.
+# Note: Godot backend is currently at stub level - this example shows the intended API design.
+# For production use, please use the Separate Engines approach with SimplePhysicsEngine + OpenCVRenderEngine.
 
 # Create integrated engine configuration
-config = IntegratedConfig(backend=IntegratedBackend.GODOT)
+config = IntegratedConfig(
+    backend=IntegratedBackend.GODOT,
+    dt=0.01,
+    width=1024,
+    height=768,
+)
 
-# Create integrated engine
+# Create integrated engine (currently stub - will be implemented in future)
 integrated = GodotIntegratedEngine(config)
 
 # Wrap in SimulationEngine for consistent API
@@ -258,6 +257,42 @@ Configure the environment through `SimulationConfig`:
 | `use_integrated` | bool | False | Use integrated engine if available |
 | `physics` | PhysicsConfig | default | Physics engine configuration |
 | `render` | RenderConfig | default | Render engine configuration |
+
+### Engine-Specific Parameters
+
+Physics and render engines may require parameters beyond the standard configuration. These are passed through the `extra` dictionary:
+
+```python
+from rlive_sim import SimulationEnv
+from rlive_sim.config import SimulationConfig, PhysicsConfig, RenderConfig, PhysicsBackend, RenderBackend
+
+config = SimulationConfig(
+    physics=PhysicsConfig(
+        backend=PhysicsBackend.SIMPLE,
+        dt=0.01,
+        # Engine-specific parameters go in 'extra'
+        extra={
+            "box_width": 640,      # Simulation box width in pixels
+            "box_height": 480,     # Simulation box height in pixels  
+            "ball_radius": 20,     # Ball radius in pixels
+        }
+    ),
+    render=RenderConfig(
+        backend=RenderBackend.OPENCV,
+        width=640,
+        height=480,
+        # Render-specific parameters go in 'extra'
+        extra={
+            "ball_color": (255, 0, 0),        # RGB tuple
+            "box_color": (128, 128, 128),
+            "bg_color": (0, 0, 0),
+            "box_thickness": 2,
+        }
+    ),
+)
+
+env = SimulationEnv(config=config)
+```
 
 ### Physics Configuration
 

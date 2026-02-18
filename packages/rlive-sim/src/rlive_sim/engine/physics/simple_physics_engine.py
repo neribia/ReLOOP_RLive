@@ -28,13 +28,25 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         box_width: Width of the bounding box in pixels.
         box_height: Height of the bounding box in pixels.
         ball_radius: Radius of the ball in pixels.
+        dt: Simulation timestep in seconds.
+        gravity: Gravity vector (always [0, 0, 0] for 2D top-down).
+
+    Methods:
+        reset(initial_state): Reset the ball to the initial position.
+        update(action, dt): Advance the simulation by one timestep (BasePhysicsEngine interface).
+        get_state(): Get the current physics state.
+        set_state(state): Directly set the physics state.
+        get_bounds(): Get the valid bounds for ball position.
+        close(): Clean up resources.
+
 
     Example:
-        ... engine = SimplePhysicsEngine(box_width=640, box_height=480)
-        ... state = engine.reset()
-        ... engine.apply_action([45, 50])  # Move 45° angle, 50 pixels
-        ... new_state = engine.step()
-        ... print(new_state.position[:2])  # [x, y] position
+        Creating and using the simple physics engine:
+
+            engine = SimplePhysicsEngine(box_width=640, box_height=480)
+            state = engine.reset()
+            new_state = engine.update([45, 50])  # Move 45° angle, 50 pixels
+            print(new_state.position[:2])  # [x, y] position
     """
 
     def __init__(
@@ -71,18 +83,61 @@ class SimplePhysicsEngine(BasePhysicsEngine):
             angular_velocity=[0.0, 0.0, 0.0],
         )
 
-    def step(self, dt: float | None = None) -> PhysicsState:
-        """Advance the simulation by applying the pending action.
+    def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
+        """Reset the ball to initial position.
+
+        Args:
+            initial_state: Optional initial state. If None, ball starts at center.
+
+        Returns:
+            PhysicsState: Initial state after reset.
+        """
+        if initial_state is not None:
+            # Validate and clamp position to box
+            x, y, z = initial_state.position
+            min_x = float(self.ball_radius)
+            max_x = float(self.box_width - self.ball_radius)
+            min_y = float(self.ball_radius)
+            max_y = float(self.box_height - self.ball_radius)
+
+            x = max(min_x, min(max_x, x))
+            y = max(min_y, min(max_y, y))
+
+            self._state = PhysicsState(
+                position=[x, y, z],
+                velocity=[0.0, 0.0, 0.0],
+                rotation=initial_state.rotation,
+                angular_velocity=[0.0, 0.0, 0.0],
+            )
+        else:
+            # Start at center
+            self._state = PhysicsState(
+                position=[float(self.box_width / 2), float(self.box_height / 2), 0.0],
+                velocity=[0.0, 0.0, 0.0],
+                rotation=[1.0, 0.0, 0.0, 0.0],
+                angular_velocity=[0.0, 0.0, 0.0],
+            )
+
+        self._pending_action = None
+        return self._state
+
+    def update(self, action: np.ndarray | list[float], dt: float | None = None) -> PhysicsState:
+        """Advance the physics simulation by applying the pending action.
 
         The ball moves in the direction specified by the angle for
         the given distance. If hitting a wall, it slides along the wall.
 
         Args:
+            action: Movement command as [angle_degrees, distance].
+                - angle_degrees: Direction of movement (0° = right, 90° = down).
+                - distance: How far to move in pixels.
             dt: Not used in this simple implementation.
 
         Returns:
             PhysicsState: Updated state after movement.
         """
+
+        self._apply_action(action)
         if self._pending_action is None:
             return self._state
 
@@ -133,44 +188,6 @@ class SimplePhysicsEngine(BasePhysicsEngine):
 
         return self._state
 
-    def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
-        """Reset the ball to initial position.
-
-        Args:
-            initial_state: Optional initial state. If None, ball starts at center.
-
-        Returns:
-            PhysicsState: Initial state after reset.
-        """
-        if initial_state is not None:
-            # Validate and clamp position to box
-            x, y, z = initial_state.position
-            min_x = float(self.ball_radius)
-            max_x = float(self.box_width - self.ball_radius)
-            min_y = float(self.ball_radius)
-            max_y = float(self.box_height - self.ball_radius)
-
-            x = max(min_x, min(max_x, x))
-            y = max(min_y, min(max_y, y))
-
-            self._state = PhysicsState(
-                position=[x, y, z],
-                velocity=[0.0, 0.0, 0.0],
-                rotation=initial_state.rotation,
-                angular_velocity=[0.0, 0.0, 0.0],
-            )
-        else:
-            # Start at center
-            self._state = PhysicsState(
-                position=[float(self.box_width / 2), float(self.box_height / 2), 0.0],
-                velocity=[0.0, 0.0, 0.0],
-                rotation=[1.0, 0.0, 0.0, 0.0],
-                angular_velocity=[0.0, 0.0, 0.0],
-            )
-
-        self._pending_action = None
-        return self._state
-
     def get_state(self) -> PhysicsState:
         """Get the current physics state.
 
@@ -179,7 +196,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         """
         return self._state
 
-    def apply_action(self, action: np.ndarray | list[float]) -> None:
+    def _apply_action(self, action: np.ndarray | list[float]) -> None:
         """Apply a movement action to the ball.
 
         Args:

@@ -46,10 +46,10 @@ class BaseIntegratedEngine(ABC):
     separate PhysicsEngine and RenderEngine with SimulationEngine orchestrator.
 
     Interface includes:
-        - Physics simulation: step(), apply_action(), reset(), get_state(), set_state()
-        - Rendering: render(), set_camera(), get_image()
-        - Integrated: step_and_render() for efficient combined updates
-        - Scene management: load_scene(), spawn_object(), remove_object()
+        - Physics simulation: reset(), update(), get_state(), set_state()
+        - Rendering: render(), set_camera_pose()
+        - Integrated: update_and_render() for efficient combined updates
+        - Scene management: setup_scene(), load_scene() (optional)
 
     Attributes:
         dt: Simulation timestep in seconds.
@@ -57,6 +57,13 @@ class BaseIntegratedEngine(ABC):
         width: Image width in pixels.
         height: Image height in pixels.
         channels: Number of color channels.
+
+    Methods:
+        reset(initial_state): Reset the simulation. Returns tuple[PhysicsState, np.ndarray].
+        update_and_render(action, dt): Advance physics and render together. Returns tuple[PhysicsState, np.ndarray].
+        get_resolution(): Get the render resolution as (height, width, channels).
+        setup_scene(scene_config): Set up the scene with given configuration.
+        close(): Clean up resources and shutdown the engine.
 
     Examples:
         Using an integrated engine with efficient combined updates:
@@ -116,8 +123,22 @@ class BaseIntegratedEngine(ABC):
         self.height = height
         self.channels = channels
 
+    # FIXME: What does reset need?
     @abstractmethod
-    def step_and_render(self, dt: float | None = None) -> tuple[PhysicsState, np.ndarray]:
+    def reset(self, initial_state: PhysicsState | None = None) -> tuple[PhysicsState, np.ndarray]:
+        """Reset the simulation to initial conditions.
+
+        Args:
+            initial_state: Optional initial state. Uses engine default if None.
+
+        Returns:
+            tuple[PhysicsState, np.ndarray]: Tuple of (updated_state, rendered_image).
+                The rendered_image has shape (height, width, channels) as uint8.
+        """
+        pass
+
+    @abstractmethod
+    def update_and_render(self, action: np.ndarray | list[float], dt: float | None = None) -> tuple[PhysicsState, np.ndarray]:
         """Advance physics and render in a single integrated call.
 
         This is the core method for integrated engines. It performs physics
@@ -125,6 +146,7 @@ class BaseIntegratedEngine(ABC):
         them separately as they can share intermediate computations.
 
         Args:
+            action: Action vector to apply.
             dt: Optional timestep override. Uses self.dt if None.
 
         Returns:
@@ -151,7 +173,17 @@ class BaseIntegratedEngine(ABC):
         pass
 
     @abstractmethod
-    def load_scene(self, scene_path: str) -> None:
+    def get_resolution(self) -> tuple[int, int, int]:
+        """Get the render resolution.
+
+        Returns:
+            tuple[int, int, int]: (height, width, channels).
+        """
+        pass
+
+    # TODO: Rewrite docstring
+    @abstractmethod
+    def setup_scene(self, scene_config: dict[str, Any]) -> None:
         """Load a pre-built scene file.
 
         Initializes the simulation with a scene loaded from disk. Scene format
@@ -160,10 +192,10 @@ class BaseIntegratedEngine(ABC):
         Call before reset() to set up the initial scene configuration.
 
         Args:
-            scene_path: Absolute or relative path to the scene file.
-                For Godot: .tscn or .escn files
-                For MuJoCo: .xml files with physics definitions
-                For Isaac Sim: .usd files
+            scene_config: Backend-specific scene configuration describing the
+                scene to construct. Typically a mapping or configuration object
+                that specifies assets, initial object placement, lighting, and
+                physics settings required by the integrated backend.
 
         Raises:
             FileNotFoundError: If scene file does not exist.
@@ -182,106 +214,6 @@ class BaseIntegratedEngine(ABC):
 
                 # Can spawn additional objects on top of scene
                 agent = engine.spawn_object("sphere", position=[0, 1, 0])
-        """
-        pass
-
-    @abstractmethod
-    def spawn_object(
-        self,
-        object_type: str,
-        position: list[float],
-        rotation: list[float] | None = None,
-        **kwargs: Any,
-    ) -> str:
-        """Spawn a new object into the active scene.
-
-        Dynamically creates a new physics/visual object in the simulation.
-        Returns a unique ID that can be used for later reference/manipulation.
-
-        Args:
-            object_type: Type name for the object (e.g., "sphere", "box", "cylinder").
-                Supported types depend on the integrated backend.
-            position: Initial position [x, y, z] in world coordinates.
-            rotation: Optional rotation as quaternion [w, x, y, z].
-                Defaults to identity [1, 0, 0, 0] (no rotation).
-            **kwargs: Additional backend-specific parameters such as:
-                - size: Dimensions for box/cylinder shapes
-                - radius: Radius for sphere
-                - color: RGB color [r, g, b] in [0, 1] range
-                - material: Physics material (friction, restitution, etc.)
-                - static: Whether object is kinematic/static
-                - mass: Object mass for dynamic objects
-
-        Returns:
-            str: Unique object identifier for reference in future calls.
-
-        Raises:
-            ValueError: If object_type is not supported.
-
-        Examples:
-            Spawning various object types with different properties:
-
-                # Simple sphere
-                ball = engine.spawn_object(
-                    "sphere",
-                    position=[0.0, 2.0, 0.0],
-                    radius=0.5,
-                    color=[1.0, 0.0, 0.0]
-                )
-
-                # Static ground box
-                ground = engine.spawn_object(
-                    "box",
-                    position=[0.0, -1.0, 0.0],
-                    size=[10.0, 0.5, 10.0],
-                    static=True,
-                    color=[0.5, 0.5, 0.5]
-                )
-
-                # Rotated cylinder
-                pole = engine.spawn_object(
-                    "cylinder",
-                    position=[3.0, 0.0, 0.0],
-                    rotation=[0.707, 0.0, 0.707, 0.0],  # 90° around Y
-                    radius=0.1,
-                    height=2.0
-                )
-        """
-        pass
-
-    @abstractmethod
-    def remove_object(self, object_id: str) -> None:
-        """Remove an object from the active scene.
-
-        Deletes a previously spawned object and frees associated resources
-        (physics body, visuals, memory).
-
-        Args:
-            object_id: Unique identifier returned by spawn_object().
-
-        Raises:
-            ValueError: If object_id does not exist or is invalid.
-
-        Examples:
-            Object lifecycle management:
-
-                # Spawn temporary obstacle
-                obstacle = engine.spawn_object(
-                    "box",
-                    position=[5.0, 0.0, 0.0],
-                    size=[0.5, 2.0, 0.5]
-                )
-
-                # ... run simulation ...
-
-                # Clean up when done
-                engine.remove_object(obstacle)
-
-                # Spawn does not return None; error if object already removed
-                try:
-                    engine.remove_object(obstacle)  # Will raise ValueError
-                except ValueError:
-                    print("Object already removed")
         """
         pass
 

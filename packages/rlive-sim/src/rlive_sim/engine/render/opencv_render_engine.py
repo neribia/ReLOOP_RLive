@@ -20,23 +20,36 @@ from rlive_sim.config import RenderBackend
 class OpenCVRenderEngine(BaseRenderEngine):
     """OpenCV-based 2D render engine.
 
-    Renders a simple scene with a blue ball inside a gray box on a
-    black background. Fast and lightweight for simple simulations.
+    Renders a simple scene with a colored ball inside a colored box on a
+    colored background. Fast and lightweight for simple 2D simulations.
 
     Attributes:
         ball_radius: Radius of the ball in pixels.
-        ball_color: Ball color in BGR format (default: blue).
+        ball_color: Ball color in BGR format (default: red).
         box_color: Box border color in BGR format (default: gray).
         bg_color: Background color in BGR format (default: black).
         box_thickness: Thickness of the box border in pixels.
+        box_margin: Margin between image edge and box in pixels.
+        width: Image width in pixels (from BaseRenderEngine).
+        height: Image height in pixels (from BaseRenderEngine).
+        channels: Number of color channels (from BaseRenderEngine).
+
+    Methods:
+        render(scene_state): Render the scene with ball and box.
+        setup_scene(scene_config): Configure rendering parameters (colors, sizes).
+        set_camera_pose(position, target, up): Store camera pose (unused in 2D).
+        get_image(): Get the last rendered image without re-rendering.
+        get_resolution(): Get the render resolution as (height, width, channels).
+        close(): Clean up resources.
 
     Example:
-        ... engine = OpenCVRenderEngine(width=640, height=480, ball_radius=20)
-        ... engine.setup_scene({})
-        ... scene_state = {"objects": [{"position": [320, 240, 0]}]}
-        ... image = engine.render(scene_state)
-        ... image.shape
-        (480, 640, 3)
+        Creating and using the OpenCV render engine:
+
+            engine = OpenCVRenderEngine(width=640, height=480, ball_radius=20)
+            engine.setup_scene({"ball_color": (255, 0, 0)})
+            scene_state = {"objects": [{"position": [320, 240, 0]}]}
+            image = engine.render(scene_state)
+            print(image.shape)  # (480, 640, 3)
     """
 
     def __init__(
@@ -134,7 +147,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
             dtype=np.uint8,
         )
 
-    def set_camera(
+    def set_camera_pose(
         self,
         position: list[float],
         target: list[float],

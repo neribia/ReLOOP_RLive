@@ -38,6 +38,14 @@ class SimulationEnv(gym.Env):
         obs: Current observation (rendered image).
         goal_position: Current goal position for reward calculation.
 
+    Methods:
+        reset: Reset the environment to initial state.
+        step: Execute one step in the environment.
+        render: Render the current environment state.
+        close: Clean up environment resources.
+        calculate_reward: Calculate reward based on observation and goal.
+        set_random_goal: Set a random goal position within the observation space.
+
     Examples:
         Using default configuration:
 
@@ -145,13 +153,13 @@ class SimulationEnv(gym.Env):
         logger.info("Resetting environment.")
 
         # Reset the simulation engine
-        self.engine.reset()
+        state, self.obs = self.engine.reset()
+
         self._current_step = 0
         self._episode += 1
 
-        # Set random goal and get initial observation
+        # Set random goal
         self.set_random_goal()
-        self.obs = self.engine.get_observation()
 
         info: dict[str, Any] = {
             "status": "ok",
@@ -179,12 +187,8 @@ class SimulationEnv(gym.Env):
         """
         logger.info(f"Making a step with action: {action}")
 
-        # Apply action and step physics
-        self.engine.apply_action(action)
-        physics_state = self.engine.step()
-
-        # Get rendered observation
-        self.obs = self.engine.render()
+        # Apply action and step physics and rendering
+        physics_state, self.obs = self.engine.update_and_render(action)
         self._current_step += 1
 
         # Calculate reward and check termination

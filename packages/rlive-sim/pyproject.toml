@@ -1,7 +1,7 @@
 [project]
 name = "rlive-sim"
 version = "0.1.0"
-description = "Add your description here"
+description = "Flexible simulation package for reinforcement learning with pluggable physics and rendering backends"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [

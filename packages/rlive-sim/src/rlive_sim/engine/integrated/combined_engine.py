@@ -29,7 +29,7 @@ class CombinedEngine(BaseIntegratedEngine):
     carefully coordinated separate engines.
 
     This is NOT a true integrated engine - it's an adapter that sequences
-    physics.step() then render() calls. For maximum efficiency, use
+    physics.simulate() then render() calls. For maximum efficiency, use
     dedicated integrated engines when available.
 
     Attributes:
@@ -41,6 +41,13 @@ class CombinedEngine(BaseIntegratedEngine):
         height: Image height in pixels (from render engine).
         channels: Number of color channels (from render engine).
 
+    Methods:
+        reset(initial_state): Reset the physics simulation. Returns (state, image).
+        update_and_render(action, dt): Advance physics and render in sequence. Returns (state, image).
+        update_and_render(action, dt): Alias to update_and_render() for backward compatibility.
+        get_resolution(): Get the render resolution as (height, width, channels).
+        close(): Clean up resources from both wrapped engines.
+
     Examples:
         Creating a combined engine from separate implementations:
 
@@ -49,8 +56,7 @@ class CombinedEngine(BaseIntegratedEngine):
             combined = CombinedEngine(physics, renderer)
 
             state = combined.reset()
-            combined.apply_action([45.0, 50.0])  # angle, distance
-            state, image = combined.step_and_render()
+            state, image = combined.simulate_and_render([45.0, 50.0])# angle, distance
 
             # image is uint8 numpy array ready for display/processing
     """
@@ -81,6 +87,7 @@ class CombinedEngine(BaseIntegratedEngine):
                 f"got {type(render_engine).__name__}"
             )
 
+        # TODO: Does this wrapper need these parameters? Maybe not, since it delegates to the wrapped engines.
         # Extract parameters from wrapped engines
         super().__init__(
             dt=physics_engine.dt,
@@ -93,180 +100,80 @@ class CombinedEngine(BaseIntegratedEngine):
         self.physics_engine = physics_engine
         self.render_engine = render_engine
 
-    # Physics engine delegation methods
-    def step(self, dt: float | None = None) -> PhysicsState:
-        """Advance physics by one timestep.
-
-        Delegates to the wrapped physics engine.
-
-        Args:
-            dt: Optional timestep override. Uses self.dt if None.
-
-        Returns:
-            PhysicsState: The updated physics state.
-        """
-        return self.physics_engine.step(dt)
-
-    def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
+    def reset(self, initial_state: PhysicsState | None = None) -> tuple[PhysicsState, np.ndarray]:
         """Reset the physics simulation to initial conditions.
 
-        Delegates to the wrapped physics engine.
+        Delegates to the wrapped physics engine, then renders initial state.
 
         Args:
             initial_state: Optional initial state. Uses engine default if None.
 
         Returns:
-            PhysicsState: The initial physics state after reset.
+            tuple[PhysicsState, np.ndarray]: Tuple of (initial_state, rendered_image).
         """
-        return self.physics_engine.reset(initial_state)
+        state = self.physics_engine.reset(initial_state)
+        scene_state = self._build_scene_state(state)
+        image = self.render_engine.render(scene_state)
+        return state, image
 
-    def get_state(self) -> PhysicsState:
-        """Get the current physics state.
+    # Combined methods
+    def update_and_render(self, action: np.ndarray | list[float], dt: float | None = None) -> tuple[PhysicsState, np.ndarray]:
+        """Advance physics and render in sequence.
 
-        Delegates to the wrapped physics engine.
-
-        Returns:
-            PhysicsState: The current simulation state.
-        """
-        return self.physics_engine.get_state()
-
-    def set_state(self, state: PhysicsState) -> None:
-        """Set the physics state directly.
-
-        Delegates to the wrapped physics engine.
-
-        Args:
-            state: The state to set.
-        """
-        self.physics_engine.set_state(state)
-
-    def apply_action(self, action: np.ndarray | list[float]) -> None:
-        """Apply an action to the physics simulation.
-
-        Delegates to the wrapped physics engine.
+        For separate engines, this calls update() then render() sequentially.
+        The render uses the physics state after the simulation step.
 
         Args:
             action: Action vector to apply.
-        """
-        self.physics_engine.apply_action(action)
-
-    # Render engine delegation methods
-    def render(self, scene_state: dict[str, Any]) -> np.ndarray:
-        """Render the current scene.
-
-        Delegates to the wrapped render engine.
-
-        Args:
-            scene_state: Dictionary containing scene information.
-
-        Returns:
-            np.ndarray: Rendered image as uint8 array with shape
-                (height, width, channels).
-        """
-        return self.render_engine.render(scene_state)
-
-    def get_image(self) -> np.ndarray:
-        """Get the last rendered image without re-rendering.
-
-        Delegates to the wrapped render engine.
-
-        Returns:
-            np.ndarray: Last rendered image.
-        """
-        return self.render_engine.get_image()
-
-    def setup_scene(self, scene_config: dict[str, Any]) -> None:
-        """Set up the scene with given configuration.
-
-        Delegates to the wrapped render engine.
-
-        Args:
-            scene_config: Dictionary containing scene setup parameters.
-        """
-        self.render_engine.setup_scene(scene_config)
-
-    def set_camera(
-        self,
-        position: list[float],
-        target: list[float],
-        up: list[float] | None = None,
-    ) -> None:
-        """Set the camera position and orientation.
-
-        Delegates to the wrapped render engine.
-
-        Args:
-            position: Camera position [x, y, z] in world coordinates.
-            target: Point the camera looks at [x, y, z].
-            up: Up vector [x, y, z]. Defaults to [0, 0, 1] if None.
-        """
-        self.render_engine.set_camera(position, target, up)
-
-    # Combined methods
-    def step_and_render(self, dt: float | None = None) -> tuple[PhysicsState, np.ndarray]:
-        """Advance physics and render in sequence.
-
-        For separate engines, this calls step() then render() sequentially.
-        The render uses the physics state after the step.
-
-        Args:
             dt: Optional timestep override.
 
         Returns:
             tuple[PhysicsState, np.ndarray]: Updated state and rendered image.
         """
-        state = self.step(dt)
+        state = self.physics_engine.update(action, dt)
         scene_state = self._build_scene_state(state)
-        image = self.render(scene_state)
+        image = self.render_engine.render(scene_state)
         return state, image
 
-    # Unified engine abstract methods (not implemented for separate engines)
-    def load_scene(self, scene_path: str) -> None:
-        """Load a scene from file.
 
-        Not implemented for separate engines. Use setup_scene() instead
-        with a configuration dictionary.
+    def get_resolution(self) -> tuple[int, int, int]:
+        """Get the render resolution.
+
+        Returns:
+            tuple[int, int, int]: (height, width, channels).
+        """
+        return self.render_engine.get_resolution()
+
+    def setup_scene(self, scene_config: dict[str, Any]) -> None:
+        """Set up the scene using a configuration dictionary.
+
+        Initializes the simulation with a scene configuration. The exact
+        schema of ``scene_config`` depends on the underlying physics and
+        render engines wrapped by this adapter.
+
+        Call before reset() to set up the initial scene configuration.
+
+        Args:
+            scene_config: Dictionary describing the scene to initialize.
+                This may include objects, their properties, environment
+                parameters, camera settings, etc.
 
         Raises:
-            NotImplementedError: Separate engines don't support scene files.
+            NotImplementedError: This adapter does not implement scene setup
+                by configuration. Subclasses should override this method if
+                scene configuration is supported.
+
+        Examples:
+            Providing a basic scene configuration:
+
+                engine = CombinedEngine(physics_engine, render_engine)
+                scene_config = {
+                    "objects": [...],
+                    "environment": {...},
+                }
+                engine.setup_scene(scene_config)
         """
-        raise NotImplementedError(
-            "CombinedEngine does not support load_scene(). "
-            "Use setup_scene() with a configuration dictionary instead."
-        )
-
-    def spawn_object(
-        self,
-        object_type: str,
-        position: list[float],
-        rotation: list[float] | None = None,
-        **kwargs: Any,
-    ) -> str:
-        """Spawn an object in the scene.
-
-        Not implemented for separate engines as object spawning is typically
-        an engine-specific feature.
-
-        Raises:
-            NotImplementedError: Separate engines don't support dynamic spawning.
-        """
-        raise NotImplementedError(
-            "CombinedEngine does not support spawn_object(). "
-            "Configure objects statically in setup_scene() instead."
-        )
-
-    def remove_object(self, object_id: str) -> None:
-        """Remove an object from the scene.
-
-        Not implemented for separate engines.
-
-        Raises:
-            NotImplementedError: Separate engines don't support dynamic removal.
-        """
-        raise NotImplementedError(
-            "CombinedEngine does not support remove_object(). "
-            "Configure objects statically in setup_scene() instead."
-        )
+        raise NotImplementedError()
 
     # Utility method
     def _build_scene_state(self, state: PhysicsState) -> dict[str, Any]:

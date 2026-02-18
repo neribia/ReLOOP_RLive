@@ -44,8 +44,16 @@ class SimulationEngine:
     integrated engine interface, allowing uniform method handling.
 
     Attributes:
-        _engine: Internal integrated engine (either passed directly or created
-            by wrapping separate engines).
+        _engine: Internal integrated engine (either passed directly or created by wrapping
+            separate engines). Implements BaseIntegratedEngine interface.
+
+    Methods:
+        reset(initial_state): Reset the simulation to initial conditions. Returns (state, image).
+        update_and_render(action, dt): Advance physics and render in one call. Returns (state, image).
+        update_and_render(action, dt): Alias to update_and_render() for backward compatibility.
+        get_resolution(): Get the render resolution as (height, width, channels).
+        setup_scene(scene_config): Set up the scene with given configuration.
+        close(): Clean up all engine resources.
 
     Examples:
         Using separate engines:
@@ -55,9 +63,7 @@ class SimulationEngine:
             sim = SimulationEngine(physics_engine=physics, render_engine=renderer)
 
             state = sim.reset()
-            sim.apply_action([45.0, 50.0])
-            state = sim.step()
-            image = sim.render()
+            state = sim.update_and_render()
 
         Using an integrated engine:
 
@@ -70,7 +76,7 @@ class SimulationEngine:
 
             state = sim.reset()
             sim.apply_action([1.0, 0.0])
-            state, image = sim.step_and_render()  # Efficient combined call
+            state, image = sim.simulate_and_render()  # Efficient combined call
     """
 
     def __init__(
@@ -137,7 +143,7 @@ class SimulationEngine:
                 "render_engine."
             )
 
-        # Wrap separate engines in CombinedEngine if needed
+        # Wrap separate engines in CombinedEngine to unify interface
         if integrated_engine is not None:
             self._engine = integrated_engine
         else:
@@ -146,105 +152,36 @@ class SimulationEngine:
         # Cache for last state (used for rendering in separate mode)
         self._last_state: PhysicsState | None = None
 
-    # TODO: Different name, because step normaly sets an action and returns an observation
-    def step(self, dt: float | None = None) -> PhysicsState:
-        """Advance the simulation by one timestep.
-
-        Args:
-            dt: Optional timestep override. Uses engine default if None.
-
-        Returns:
-            PhysicsState: The updated physics state after the step.
-        """
-        state = self._engine.step(dt)
-        self._last_state = state
-        return state
-
-    # TODO: Same as step. Name maybe misleading
-    def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
+    def reset(self, initial_state: PhysicsState | None = None) -> tuple[PhysicsState, np.ndarray]:
         """Reset the simulation to initial conditions.
 
         Args:
             initial_state: Optional initial state. Uses engine default if None.
 
         Returns:
-            PhysicsState: The initial physics state after reset.
+            tuple[PhysicsState, np.ndarray]: Tuple of (initial_state, rendered_image).
         """
-        state = self._engine.reset(initial_state)
+        state, image = self._engine.reset(initial_state)
         self._last_state = state
-        return state
+        return state, image
 
-    # TODO: LLM said it's better to first set action and then take step, but is it really?
-    def apply_action(self, action: np.ndarray | list[float]) -> None:
-        """Apply an action to the simulation.
-
-        Args:
-            action: Action vector to apply. Format depends on engine.
-        """
-        self._engine.apply_action(action)
-
-    def render(self, scene_state: dict[str, Any] | None = None) -> np.ndarray:
-        """Render the current scene.
-
-        Args:
-            scene_state: Optional scene state for rendering. If None,
-                uses the last physics state to build scene state.
-
-        Returns:
-            np.ndarray: Rendered image as uint8 array with shape
-                (height, width, channels).
-        """
-        if scene_state is None:
-            scene_state = self._build_scene_state()
-
-        return self._engine.render(scene_state)
-
-    
-    # TODO: This should be step to match the gym.Env api
-    def step_and_render(
-        self, dt: float | None = None
+    def update_and_render(
+        self, action: np.ndarray | list[float], dt: float | None = None
     ) -> tuple[PhysicsState, np.ndarray]:
         """Advance physics and render in a single call.
 
         This is more efficient for unified engines.
 
         Args:
+            action: The action vector to apply.
             dt: Optional timestep override.
 
         Returns:
             tuple[PhysicsState, np.ndarray]: Updated state and rendered image.
         """
-        state, image = self._engine.step_and_render(dt)
+        state, image = self._engine.update_and_render(action, dt)
         self._last_state = state
         return state, image
-
-    def get_state(self) -> PhysicsState:
-        """Get the current physics state.
-
-        Returns:
-            PhysicsState: The current state of the simulation.
-        """
-        return self._engine.get_state()
-
-    def set_state(self, state: PhysicsState) -> None:
-        """Set the physics state directly.
-
-        Args:
-            state: The state to set.
-        """
-        self._engine.set_state(state)
-        self._last_state = state
-
-    def get_observation(self) -> np.ndarray:
-        """Get the current observation (rendered image).
-
-        Convenience method that returns the last rendered image or
-        renders a new one if needed.
-
-        Returns:
-            np.ndarray: Current observation image.
-        """
-        return self._engine.get_image()
 
     def get_resolution(self) -> tuple[int, int, int]:
         """Get the render resolution.
@@ -261,27 +198,6 @@ class SimulationEngine:
             scene_config: Dictionary containing scene setup parameters.
         """
         self._engine.setup_scene(scene_config)
-
-    def _build_scene_state(self) -> dict[str, Any]:
-        """Build scene state from the last physics state.
-
-        Returns:
-            dict[str, Any]: Scene state dictionary for rendering.
-        """
-        if self._last_state is None:
-            return {}
-
-        return {
-            "objects": [
-                {
-                    "id": "main",
-                    "position": self._last_state.position,
-                    "rotation": self._last_state.rotation,
-                    "velocity": self._last_state.velocity,
-                }
-            ],
-            "physics_state": self._last_state.model_dump(),
-        }
 
     def close(self) -> None:
         """Clean up all engine resources."""

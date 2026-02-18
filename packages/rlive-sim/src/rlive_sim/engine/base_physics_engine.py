@@ -32,6 +32,10 @@ class PhysicsState(BaseModel):
         angular_velocity: 3D angular velocity vector [wx, wy, wz].
         extra: Additional custom state data (e.g., joint angles, contact forces).
 
+    Methods:
+        to_array(): Convert state to a flat numpy array for ML models.
+        from_array(arr): Create PhysicsState from a flat numpy array.
+
     Examples:
         Creating a physics state with position and velocity:
 
@@ -142,13 +146,19 @@ class BasePhysicsEngine(ABC):
         dt: Simulation timestep in seconds. # TODO: Change from time to time_steps
         gravity: Gravity vector [gx, gy, gz].
 
+    Methods:
+        reset(initial_state): Reset the simulation to initial conditions.
+        update(action, dt): Advance the simulation by one timestep (abstract).
+        get_state(): Get the current physics state.
+        set_state(state): Set the physics state directly.
+        close(): Clean up resources.
+
     Examples:
         Basic usage pattern with SimulationEngine:
 
             engine = MyPhysicsEngine(dt=0.01, gravity=[0, 0, -9.81])
             state = engine.reset()
-            engine.apply_action([1.0, 0.0])  # Apply action
-            new_state = engine.step()  # Advance simulation
+            new_state = engine.update([1.0, 0.0])  # Advance simulation with action
             current = engine.get_state()  # Get current state
     """
 
@@ -162,39 +172,6 @@ class BasePhysicsEngine(ABC):
         self.dt = dt
         self.gravity = gravity if gravity is not None else [0.0, 0.0, -9.81]
         self._state: PhysicsState = PhysicsState()
-
-    # TODO: Is step a good choise as a name?
-    @abstractmethod
-    def step(self, dt: float | None = None) -> PhysicsState:
-        """Advance the physics simulation by one timestep.
-
-        This method updates all objects in the simulation according to applied
-        actions, forces, and constraints. Call apply_action() before step()
-        to provide control inputs.
-
-        Attributes:
-            dt: Optional timestep override in seconds. Uses self.dt if None.
-
-        Returns:
-            PhysicsState: The updated physics state after the simulation step.
-
-        Examples:
-            Basic simulation loop with action and step:
-
-                engine = MyPhysicsEngine()
-                state = engine.reset()
-
-                for i in range(100):
-                    action = [1.0, 0.0]  # Some control input
-                    engine.apply_action(action)
-                    state = engine.step()  # Advances by self.dt
-                    print(f"Step {i}: position={state.position}")
-
-            Using custom timestep:
-
-                state = engine.step(dt=0.02)  # Override to 20ms
-        """
-        pass
 
     @abstractmethod
     def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
@@ -227,6 +204,54 @@ class BasePhysicsEngine(ABC):
         pass
 
     @abstractmethod
+    def update(self, action: np.ndarray | list[float], dt: float | None = None) -> PhysicsState:
+        """Advance the physics simulation by one timestep.
+
+        This method updates all objects in the simulation according to applied
+        actions, forces, and constraints.
+
+        Args:
+            action: Action vector to apply. Format depends on implementation.
+                For example, [angle_degrees, distance_pixels] for ball-in-box,
+                or [force_x, force_y, force_z] for 3D physics.
+            dt: Optional timestep override in seconds. Uses self.dt if None.
+
+        Returns:
+            PhysicsState: Updated physics state after the simulation step.
+
+        Examples:
+            Updating physics with an action:
+
+                engine = MyPhysicsEngine()
+                state = engine.reset()
+
+                # Apply action: [45 degree angle, 50 pixel distance]
+                new_state = engine.update([45, 50])
+
+                # With custom timestep
+                new_state = engine.update([45, 50], dt=0.005)
+        """
+        pass
+            PhysicsState: The updated physics state after the simulation step.
+
+        Examples:
+            Basic simulation loop with action and step:
+
+                engine = MyPhysicsEngine()
+                state = engine.reset()
+
+                for i in range(100):
+                    action = [1.0, 0.0]  # Some control input
+                    state = engine.step(action)  # Advances by self.dt
+                    print(f"Step {i}: position={state.position}")
+
+            Using custom timestep:
+
+                state = engine.step(dt=0.02)  # Override to 20ms
+        """
+        pass
+
+    @abstractmethod
     def get_state(self) -> PhysicsState:
         """Get the current physics state.
 
@@ -242,32 +267,6 @@ class BasePhysicsEngine(ABC):
                 state = engine.get_state()
                 print(f"Position: {state.position}")  # [x, y, z]
                 print(f"Velocity: {state.velocity}")  # [vx, vy, vz]
-        """
-        pass
-
-    @abstractmethod
-    def apply_action(self, action: np.ndarray | list[float]) -> None:
-        """Apply an action (force, torque, velocity) to the simulation.
-
-        This registers the action to be applied during the next step() call.
-        The action format and interpretation depend on the specific engine.
-
-        Args:
-            action: Action vector to apply. Format depends on implementation.
-                For example, [angle_degrees, distance_pixels] for ball-in-box,
-                or [force_x, force_y, force_z] for 3D physics.
-
-        Examples:
-            Applying movement actions:
-
-                # Ball-in-box: angle and distance
-                engine.apply_action([45.0, 50.0])
-                state = engine.step()
-
-                # Multi-agent: apply multiple actions before step
-                engine.apply_action([1.0, 0.0])  # Agent 1
-                engine.apply_action([0.0, 1.0])  # Agent 2
-                state = engine.step()  # Both applied simultaneously
         """
         pass
 
