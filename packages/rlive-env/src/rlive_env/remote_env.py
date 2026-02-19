@@ -172,13 +172,12 @@ class RemoteWorldEnv(gym.Env):
             logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
             # Ball localisation before draw_goal
-            goal_reached, reward = self.calculate_reward(observation=data.observation)
+            terminated, reward = self.calculate_reward(observation=data.observation)
 
             # Draw goal after ball localisation
             self.obs = self._draw_goal(data.observation)
 
-            terminated = False  # if success
-            truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps) or goal_reached
+            truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps)
             info = data.info
             self._episode += 1
             info["episode"] = f"{self._episode}/{self._max_episode_steps if self._max_episode_steps is not None else '∞'}"
@@ -232,6 +231,7 @@ class RemoteWorldEnv(gym.Env):
 
         # Check if goal is reached
         goal_reached = self.ball_location.is_within_radius(self.goal_position, cfg.GOAL_RADIUS) # TODO: radius as Env option.
+        logger.debug(f"Ball location: {self.ball_location.as_tuple()}, Goal position: {self.goal_position}, Goal reached: {goal_reached}")
 
         if self.reward_mode == "sparse":
             # Sparse reward: +1.0 only when goal is reached
@@ -251,6 +251,7 @@ class RemoteWorldEnv(gym.Env):
         return goal_reached, reward
 
     def set_random_goal(self):
+        # TODO: The Goal should be full visible in the observation
         height, width, _ = self.observation_space.shape
 
         x = int(self.np_random.integers(0, width))
