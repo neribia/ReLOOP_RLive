@@ -32,6 +32,8 @@ import time
 import cv2 as cv
 import numpy as np
 
+from rlive_env.localisation.processors import ImageAbsDiff
+
 # Add the packages to path for direct script execution
 SCRIPT_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(SCRIPT_DIR / "packages" / "rlive-env" / "src"))
@@ -39,7 +41,7 @@ sys.path.insert(0, str(SCRIPT_DIR / "packages" / "rlive-common" / "src"))
 
 from rlive_env.localisation import BallLocalisator, BallLocation
 from rlive_env.localisation.processors import *
-from rlive_env.localisation.extractors import ContourExtractor
+from rlive_env.localisation.extractors import *
 
 
 class KeyHandler:
@@ -52,6 +54,10 @@ class KeyHandler:
     KEY_S = ord('s')
     KEY_R = ord('r')
     KEY_G = ord('g')
+    KEY_SPACE = ord(' ')
+    KEY_M = ord('m')
+    KEY_PLUS = ord('+')
+    KEY_MINUS = ord('-')
 
     # Number keys (top row)
     KEY_1 = ord('1')
@@ -97,6 +103,26 @@ class KeyHandler:
     def is_set_goal(key: int) -> bool:
         """Check if set goal key was pressed."""
         return key == KeyHandler.KEY_G
+
+    @staticmethod
+    def is_manual_step(key: int) -> bool:
+        """Check if manual frame step key was pressed (space)."""
+        return key == KeyHandler.KEY_SPACE
+
+    @staticmethod
+    def is_increase_skip(key: int) -> bool:
+        """Check if increase skip frames key was pressed (+ or =)."""
+        return key == KeyHandler.KEY_PLUS or key == ord('=')
+
+    @staticmethod
+    def is_decrease_skip(key: int) -> bool:
+        """Check if decrease skip frames key was pressed (-)."""
+        return key == KeyHandler.KEY_MINUS
+
+    @staticmethod
+    def is_toggle_manual_mode(key: int) -> bool:
+        """Check if toggle manual mode key was pressed (m)."""
+        return key == KeyHandler.KEY_M
 
     @staticmethod
     def is_previous_stage(key: int) -> bool:
@@ -168,7 +194,7 @@ class VideoSource:
             self._cap = cv.VideoCapture(self.source)
         else:
             # Webcam
-            self._cap = cv.VideoCapture(self.source)
+            self._cap = cv.VideoCapture(self.source, cv.CAP_DSHOW)
 
         if not self._cap.isOpened():
             raise RuntimeError(f"Could not open video source: {self.source}")
@@ -241,6 +267,8 @@ class TrackingDemo:
         custom_pipeline: ImagePipeline | None = None,
         custom_extractor = None,
         scale_factor: float = 1.0,
+        manual_mode: bool = False,
+        skip_frames: int = 0,
     ) -> None:
         """Initialize the tracking demo.
 
@@ -254,6 +282,8 @@ class TrackingDemo:
             custom_pipeline: Optional custom ImagePipeline to use
             custom_extractor: Optional custom extractor instance to use
             scale_factor: Scale factor for display windows (1.0 = original size, 0.5 = half size, etc.)
+            manual_mode: Enable manual frame stepping (press SPACE to go to next frame)
+            skip_frames: Number of frames to skip between detections (0 = no skip, process every frame)
         """
         # Initialize video source
         self.video_source = VideoSource(source, width, height, target_fps=target_fps)
@@ -279,6 +309,12 @@ class TrackingDemo:
 
         # Window scale factor
         self.scale_factor = scale_factor
+
+        # Manual mode and frame skipping
+        self.manual_mode = manual_mode
+        self.skip_frames = skip_frames
+        self.frame_step_requested = False
+        self.frames_skipped = 0
 
     def _mouse_callback(self, event: int, x: int, y: int, flags: int, param) -> None:
         """Handle mouse events."""
@@ -328,6 +364,15 @@ class TrackingDemo:
         if self.debug_stages:
             info_lines.append(f"Debug Stage: {self.current_stage + 1}/{len(self.debug_stages)}")
 
+        # Add manual mode and skip frames info
+        if self.manual_mode:
+            info_lines.append(f"Mode: MANUAL (Press SPACE for next frame)")
+        else:
+            info_lines.append(f"Mode: AUTO")
+
+        if self.skip_frames > 0:
+            info_lines.append(f"Skip Frames: {self.skip_frames} ({self.frames_skipped} skipped)")
+
         if ball and self.goal_position:
             distance = ball.distance_to(self.goal_position)
             info_lines.append(f"Distance: {distance:.1f}px")
@@ -341,7 +386,7 @@ class TrackingDemo:
             y_offset += 20
 
         # Draw controls help at bottom
-        help_text = "Q:Quit | Click:Goal | D:Debug | Left/Right:Stage | S:Save | R:Reset"
+        help_text = "Q:Quit | Click:Goal | D:Debug | M:Manual | +:SkipPlus | -:SkipMinus | SPACE:NextFrame | S:Save | R:Reset"
         h = annotated.shape[0]
         cv.putText(annotated, help_text, (10, h - 10), cv.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
 
@@ -385,6 +430,22 @@ class TrackingDemo:
         elif KeyHandler.is_set_goal(key):
             self.goal_position = self.mouse_position
             print(f"Goal set to mouse position: {self.goal_position}")
+        elif KeyHandler.is_toggle_manual_mode(key):
+            self.manual_mode = not self.manual_mode
+            self.frame_step_requested = False
+            print(f"Manual mode: {'ON (Press SPACE for next frame)' if self.manual_mode else 'OFF (Auto playback)'}")
+        elif KeyHandler.is_manual_step(key):
+            if self.manual_mode:
+                self.frame_step_requested = True
+                print("Manual step: Next frame requested")
+        elif KeyHandler.is_increase_skip(key):
+            self.skip_frames += 5
+            self.frames_skipped = 0
+            print(f"Skip frames set to: {self.skip_frames}")
+        elif KeyHandler.is_decrease_skip(key):
+            self.skip_frames = max(0, self.skip_frames - 5)
+            self.frames_skipped = 0
+            print(f"Skip frames set to: {self.skip_frames}")
 
         return False
 
@@ -417,10 +478,16 @@ class TrackingDemo:
         print("  Click: Set goal position")
         print("  Q/ESC: Quit")
         print("  D: Toggle debug view")
+        print("  M: Toggle manual mode (press SPACE to step through frames)")
+        print("  +/-: Increase/decrease skip frames (for later use in actual implementation)")
         print("  Left/Right Arrow: Navigate debug stages")
         print("  S: Save current frame")
         print("  R: Reset goal\n")
 
+        if self.manual_mode:
+            print("Starting in MANUAL MODE - Press SPACE to advance frames")
+        if self.skip_frames > 0:
+            print(f"Skip frames is set to: {self.skip_frames}")
 
         window_name = "Ball Localisation Demo"
         debug_window_name = "Debug View"
@@ -443,6 +510,21 @@ class TrackingDemo:
 
                 self.frame_count += 1
 
+                # Handle frame skipping
+                if self.skip_frames > 0:
+                    if self.frames_skipped < self.skip_frames:
+                        self.frames_skipped += 1
+                        # Display the frame but skip processing for now
+                        display_frame = self._draw_overlay(frame, None)
+                        cv.imshow(window_name, self._resize_frame(display_frame))
+
+                        key = cv.waitKey(1) & 0xFF
+                        if self._handle_key_input(key, display_frame, debug_window_name):
+                            break
+                        continue
+                    else:
+                        self.frames_skipped = 0
+
                 # Execute pipeline with debug=True to capture intermediate stages
                 self.localiser.pipeline.execute(frame, debug=True)
                 self.debug_stages = self.localiser.pipeline.get_intermediate_results()
@@ -450,7 +532,6 @@ class TrackingDemo:
                 # Get ball position using the debug-executed pipeline result
                 result = self.localiser.get_position_with_debug(frame)
                 ball = result.location if result else None
-
 
                 display_frame = self._draw_overlay(frame, ball)
                 cv.imshow(window_name, self._resize_frame(display_frame))
@@ -460,6 +541,23 @@ class TrackingDemo:
                     debug_img = self.debug_stages[self.current_stage]
                     if len(debug_img.shape) == 2:
                         debug_img = cv.cvtColor(debug_img, cv.COLOR_GRAY2BGR)
+
+                    # Add stage name label to debug image
+                    num_pipeline_steps = len(self.localiser.pipeline.steps)
+                    stage_label = f"Stage {self.current_stage}/{len(self.debug_stages) - 1}: "
+                    if self.current_stage == 0:
+                        stage_label += "Original"
+                    elif self.current_stage <= num_pipeline_steps:
+                        step = self.localiser.pipeline.steps[self.current_stage - 1]
+                        stage_label += getattr(step, "name", type(step).__name__)
+                    else:
+                        # Extractor debug image (appended after pipeline steps)
+                        stage_label += f"Extractor: {self.localiser.extractor.name}"
+
+                    cv.rectangle(debug_img, (0, 0), (len(stage_label) * 11, 28), (0, 0, 0), -1)
+                    cv.putText(debug_img, stage_label, (5, 20),
+                              cv.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+
                     cv.imshow(debug_window_name, self._resize_frame(debug_img))
                 elif not self.show_debug:
                     try:
@@ -468,10 +566,22 @@ class TrackingDemo:
                     except:
                         pass
 
-                key = cv.waitKey(1) & 0xFF
-
-                if self._handle_key_input(key, display_frame, debug_window_name):
-                    break
+                # Handle keyboard input and frame stepping
+                if self.manual_mode:
+                    # In manual mode, wait for key press (0 timeout = wait indefinitely)
+                    key = cv.waitKey(0) & 0xFF
+                    if self._handle_key_input(key, display_frame, debug_window_name):
+                        break
+                    # Check if SPACE was pressed to advance
+                    if not self.frame_step_requested:
+                        # If SPACE wasn't pressed, wait again
+                        continue
+                    self.frame_step_requested = False
+                else:
+                    # In auto mode, check for key presses with short timeout
+                    key = cv.waitKey(1) & 0xFF
+                    if self._handle_key_input(key, display_frame, debug_window_name):
+                        break
 
 
         except KeyboardInterrupt:
@@ -486,7 +596,7 @@ def main():
 
     # ========== CONFIGURATION ==========
     # Video source settings
-    VIDEO_SOURCE = "demo_video.mp4"  # Use 0 for webcam, or path to video file
+    VIDEO_SOURCE = 1# "demo_video.mp4"  # Use 0 for webcam, or path to video file
     FRAME_WIDTH = 640 # Frame width for webcam
     FRAME_HEIGHT = 480 # Frame height for webcam
     TARGET_FPS = 30  # Target frames per second
@@ -500,18 +610,25 @@ def main():
     # Display settings
     SCALE_FACTOR = 2.0  # Scale factor for display windows (1.0 = original, 0.5 = half size, 2.0 = double size)
 
+    # Manual mode and frame skipping
+    MANUAL_MODE = False  # Set to True to enable manual frame stepping (press SPACE for next frame)
+    SKIP_FRAMES = 0  # Number of frames to skip between detections (0 = no skip, process every frame)
+                      # Example: 5 will skip 5 frames, process the 6th frame, then skip 5 more, etc.
+
     # Custom pipeline processors
     custom_pipeline = ImagePipeline([
-        GrayscaleProcessor(),
-        GaussianBlurProcessor(kernel_size=5, sigma=2.0),
-        LaplacianProcessor(ksize=3),
-        ThresholdProcessor(threshold_value=30, max_value=255),
-        DilationProcessor(kernel_size=(5, 5), iterations=2),
+        HSVProcessor(
+            lower_hue=90, upper_hue=130,  # blue hue range
+            lower_sat=50, upper_sat=255,  # require some color (not gray)
+            lower_val=50, upper_val=255,  # require some brightness (not black)
+            apply_mask=True,
+        ),
+        DilationProcessor(kernel_size=(7, 7), iterations=3),
     ])
 
     # Custom extractor configuration - loads defaults from config module
     # Override specific parameters as needed:
-    custom_extractor = ContourExtractor(min_contour_area=10)
+    custom_extractor = ContourExtractor(min_contour_area=50)
     # Or use defaults:
     # custom_extractor = ContourExtractor()
     # ====================================
@@ -527,6 +644,8 @@ def main():
         custom_pipeline=custom_pipeline,
         custom_extractor=custom_extractor,
         scale_factor=SCALE_FACTOR,
+        manual_mode=MANUAL_MODE,
+        skip_frames=SKIP_FRAMES,
     )
     demo.run()
 
