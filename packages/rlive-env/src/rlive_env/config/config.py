@@ -61,7 +61,7 @@ Radius around the center point to consider as goal reached (in pixels).
 default: 50
 """
 
-GOAL_COLOUR: tuple[int, int, int] = (0, 255, 0)
+GOAL_COLOUR: tuple[int, int, int] = (255, 0, 0)
 """
 Colour of the goal circle in RGB format.
 
