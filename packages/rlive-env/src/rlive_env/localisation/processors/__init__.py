@@ -7,8 +7,14 @@ from rlive_env.localisation.processors.canny import CannyProcessor
 from rlive_env.localisation.processors.laplacian import LaplacianProcessor
 from rlive_env.localisation.processors.threshold import ThresholdProcessor
 from rlive_env.localisation.processors.dilation import DilationProcessor
+from rlive_env.localisation.processors.erosion import ErosionProcessor
 from rlive_env.localisation.processors.fft_bandpass import FFTBandpassProcessor
+from rlive_env.localisation.processors.hsv import HSVProcessor
+from rlive_env.localisation.processors.channel_extractor import ChannelExtractorProcessor
+from rlive_env.localisation.processors.mog2 import MOG2BackgroundSubtractorProcessor
+from rlive_env.localisation.processors.clahe import CLAHEProcessor
 from rlive_env.localisation.processors.pipeline import ImagePipeline
+from rlive_env.localisation.processors.image_absdiff import ImageAbsDiff
 
 __all__ = [
     "AbstractProcessor",
@@ -18,7 +24,12 @@ __all__ = [
     "LaplacianProcessor",
     "ThresholdProcessor",
     "DilationProcessor",
+    "ErosionProcessor",
     "FFTBandpassProcessor",
+    "HSVProcessor",
+    "ChannelExtractorProcessor",
+    "MOG2BackgroundSubtractorProcessor",
+    "CLAHEProcessor",
     "ImagePipeline",
 ]
 
