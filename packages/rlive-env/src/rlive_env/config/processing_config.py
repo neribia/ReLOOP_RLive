@@ -91,6 +91,43 @@ FFT bandpass filter upper frequency.
 default: 100
 """
 
+# --- HSV Color Space ---
+HSV_LOWER_HUE: int = int(os.getenv("BALL_HSV_LOWER_HUE", "100"))
+"""
+HSV lower hue bound (0-180 in OpenCV, where 180 = 360 degrees).
+default: 100
+"""
+
+HSV_UPPER_HUE: int = int(os.getenv("BALL_HSV_UPPER_HUE", "130"))
+"""
+HSV upper hue bound (0-180 in OpenCV).
+default: 130
+"""
+
+HSV_LOWER_SAT: int = int(os.getenv("BALL_HSV_LOWER_SAT", "100"))
+"""
+HSV lower saturation bound (0-255).
+default: 100
+"""
+
+HSV_UPPER_SAT: int = int(os.getenv("BALL_HSV_UPPER_SAT", "255"))
+"""
+HSV upper saturation bound (0-255).
+default: 255
+"""
+
+HSV_LOWER_VAL: int = int(os.getenv("BALL_HSV_LOWER_VAL", "50"))
+"""
+HSV lower value/brightness bound (0-255).
+default: 50
+"""
+
+HSV_UPPER_VAL: int = int(os.getenv("BALL_HSV_UPPER_VAL", "255"))
+"""
+HSV upper value/brightness bound (0-255).
+default: 255
+"""
+
 # --- Pipeline Control ---
 ENABLE_PROCESSING_PIPELINE: bool = os.getenv("BALL_ENABLE_PROCESSING_PIPELINE", "true").lower() == "true"
 """
