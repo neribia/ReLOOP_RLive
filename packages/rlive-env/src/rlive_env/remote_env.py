@@ -161,8 +161,8 @@ class RemoteWorldEnv(gym.Env):
         Returns:
             - obs (np.ndarray): The next observation after taking the action.
             - reward (float): The reward received after taking the action.
-            - terminated (bool): Whether the episode has terminated.
-            - truncated (bool): Whether the episode has been truncated.
+            - terminated (bool): True if episode ended naturally (success/failure)
+            - truncated (bool): True if episode ended due to time/step limit
             - info (dict): Additional information about the step.
         """
         logger.info(f"Making a step with action: {action}")
@@ -186,7 +186,7 @@ class RemoteWorldEnv(gym.Env):
         except Exception as e:
             logger.exception("Failed to step environment")
             self._disconnect()
-            raise RuntimeError(f"Failed to step environment: {e}")
+            return self.obs, 0.0, False, True, {"error": str(e)}  # Return truncated=True to end episode on error
 
     def render(self):
         logger.debug(f"OpenCV rendering mode: {self.render_mode}")
@@ -219,18 +219,16 @@ class RemoteWorldEnv(gym.Env):
         """
         if self.goal_position is None:
             logger.warning("Goal position not set, returning zero reward")
-            return False, 0.0
+            raise RuntimeError("Goal position not set, cannot calculate reward")
 
         # Locate the ball in the observation
         # Note: observation might be RGB, convert to BGR for OpenCV
         bgr_image = cv.cvtColor(observation, cv.COLOR_RGB2BGR)
         self.ball_location = self.localiser.get_position(bgr_image)
 
-        # TODO: What happens im Ball was not found?
         if self.ball_location is None:
             logger.debug("Ball not detected in observation")
-            # Return small negative reward when ball is not visible
-            return False, -0.1
+            raise RuntimeError("Ball not detected in observation")
 
         # Check if goal is reached
         goal_reached = self.ball_location.is_within_radius(self.goal_position, cfg.GOAL_RADIUS) # TODO: radius as Env option.

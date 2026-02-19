@@ -7,15 +7,9 @@ import numpy as np
 
 from rlive_env.localisation.ball_location import BallLocation
 from rlive_env.localisation.extractors.base import AbstractBallExtractor
-from rlive_env.localisation.extractors import HoughCircleExtractor, ContourExtractor
+from rlive_env.localisation.extractors import *
 from rlive_env.localisation.processors.pipeline import ImagePipeline
-from rlive_env.localisation.processors import (
-    GrayscaleProcessor,
-    GaussianBlurProcessor,
-    LaplacianProcessor,
-    ThresholdProcessor,
-    DilationProcessor,
-)
+from rlive_env.localisation.processors import *
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -90,6 +84,8 @@ class BallLocalisator:
         self,
         extractor: Optional[AbstractBallExtractor] = None,
         pipeline: Optional[ImagePipeline] = None,
+        target_width: int = 640,
+        target_height: int = 480,
     ):
         """Initialize the BallLocalisator with dependency injection.
 
@@ -98,10 +94,14 @@ class BallLocalisator:
                       If None, uses default HoughCircleExtractor.
             pipeline: ImagePipeline for preprocessing.
                      If None, uses default pipeline with standard processors.
+            target_width: Fixed width to resize images to. Default 640.
+            target_height: Fixed height to resize images to. Default 480.
         """
         self.extractor = extractor or self._create_default_extractor()
         self.pipeline = pipeline or self._create_default_pipeline()
         self.last_result: Optional[DetectionResult] = None
+        self.target_width = target_width
+        self.target_height = target_height
 
     @staticmethod
     def _create_default_extractor() -> AbstractBallExtractor:
@@ -110,7 +110,7 @@ class BallLocalisator:
         Returns:
             AbstractBallExtractor instance.
         """
-        return ContourExtractor()
+        return ContourExtractor(min_contour_area=50)
 
     @staticmethod
     def _create_default_pipeline() -> ImagePipeline:
@@ -120,11 +120,14 @@ class BallLocalisator:
             ImagePipeline with standard processors.
         """
         processors = [
-            GrayscaleProcessor(),
-            GaussianBlurProcessor(kernel_size=5, sigma=2.0),
-            LaplacianProcessor(ksize=3),
-            ThresholdProcessor(threshold_value=30, max_value=255),
-            DilationProcessor(kernel_size=(5, 5), iterations=2),
+            HSVProcessor(
+                lower_hue=90, upper_hue=130,  # blue hue range
+                lower_sat=50, upper_sat=255,  # require some color (not gray)
+                lower_val=50, upper_val=255,  # require some brightness (not black)
+                apply_mask=True,
+            ),
+            DilationProcessor(kernel_size=(7, 7), iterations=3),
+        DilationProcessor(kernel_size=(7, 7), iterations=3),
         ]
         return ImagePipeline(processors)
 
@@ -132,7 +135,8 @@ class BallLocalisator:
         """Get the ball position from an image.
 
         Executes the pipeline to process the image, then uses the injected
-        extractor to detect the ball.
+        extractor to detect the ball. Image is resized to a fixed size
+        before processing to ensure consistent behavior.
 
         Args:
             image: BGR or RGB image as numpy array.
@@ -160,21 +164,24 @@ class BallLocalisator:
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
         """
-        if image is None or image.size == 0:
-            logger.warning("Empty image provided")
-            self.last_result = DetectionResult(location=None, debug_image=None)
-            return None
-
-        # Execute processing pipeline
-        processed = self.pipeline.execute(image)
-
-        if processed is None:
-            logger.error("Pipeline execution failed")
-            self.last_result = DetectionResult(location=None, debug_image=None)
-            return None
-
-        # Extract ball position
         try:
+            # Validate input
+            if image is None or image.size == 0:
+                logger.warning("Empty image provided")
+                raise ValueError("Empty image provided")
+
+            # Resize image to fixed size for consistent processing
+            resized = cv.resize(image, (self.target_width, self.target_height))
+            logger.debug(f"Image resized to {self.target_width}x{self.target_height}")
+
+            # Execute processing pipeline
+            processed = self.pipeline.execute(resized)
+
+            if processed is None:
+                logger.error("Pipeline execution failed")
+                raise RuntimeError("Pipeline execution failed")
+
+            # Extract ball position
             logger.debug(f"Extracting ball using {self.extractor.name}...")
             location = self.extractor.extract(processed)
 
@@ -199,8 +206,8 @@ class BallLocalisator:
                 return None
 
         except Exception as e:
-            logger.error(f"{self.extractor.name} extraction failed: {e}")
-            self.last_result = DetectionResult(location=None, debug_image=processed)
+            logger.error(f"Ball localization failed: {e}")
+            self.last_result = DetectionResult(location=None, debug_image=None)
             return None
 
     def get_position_with_debug(self, image: np.ndarray) -> DetectionResult:
