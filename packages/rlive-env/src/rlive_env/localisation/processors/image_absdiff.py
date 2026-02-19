@@ -41,14 +41,14 @@ class ImageAbsDiff(AbstractProcessor):
         """Return extractor name."""
         return "ImageAbsDiff"
 
-    def process(self, image: np.ndarray) -> BallLocation | None:
+    def process(self, image: np.ndarray) -> np.ndarray | None:
         """Makes a absolut diff from two images
 
         Args:
             image: Current binary or grayscale image.
 
         Returns:
-            BallLocation if motion detected, None otherwise.
+            image (np.ndarray): Absolute difference image, or None if no previous frame.
         """
         if image is None or image.size == 0:
             logger.debug(f"{self.name}: Empty image provided")

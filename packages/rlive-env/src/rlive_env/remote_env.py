@@ -127,6 +127,7 @@ class RemoteWorldEnv(gym.Env):
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         logger.info("Resetting environment.")
+        self._episode = 0
 
         # Verify server status before reset
         try:
@@ -177,9 +178,9 @@ class RemoteWorldEnv(gym.Env):
             # Draw goal after ball localisation
             self.obs = self._draw_goal(data.observation)
 
+            self._episode += 1
             truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps)
             info = data.info
-            self._episode += 1
             info["episode"] = f"{self._episode}/{self._max_episode_steps if self._max_episode_steps is not None else '∞'}"
             return self.obs, reward, terminated, truncated, info
         except Exception as e:

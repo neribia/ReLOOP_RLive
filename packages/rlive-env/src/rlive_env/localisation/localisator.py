@@ -127,7 +127,6 @@ class BallLocalisator:
                 apply_mask=True,
             ),
             DilationProcessor(kernel_size=(7, 7), iterations=3),
-        DilationProcessor(kernel_size=(7, 7), iterations=3),
         ]
         return ImagePipeline(processors)
 

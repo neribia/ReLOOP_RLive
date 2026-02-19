@@ -32,8 +32,6 @@ import time
 import cv2 as cv
 import numpy as np
 
-from rlive_env.localisation.processors import ImageAbsDiff
-
 # Add the packages to path for direct script execution
 SCRIPT_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(SCRIPT_DIR / "packages" / "rlive-env" / "src"))
