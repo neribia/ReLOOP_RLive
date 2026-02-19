@@ -168,14 +168,15 @@ def run_demo(env: SimulationEnv):
         if key == ord('q') or key == 27:  # 'q' or ESC
             running = False
         else:
-            # Random action: [angle, distance]
-            action = [np.random.randint(0, 360), np.random.randint(10, 51)]
+            # Random action: heading/angle only (0-360 degrees)
+            # Engine will use default distance
+            action = np.random.randint(0, 360)
 
             # Step environment
             obs, reward, terminated, truncated, info = env.step(action)
             step_count += 1
 
-            print(f"Step {step_count}: action=[{action[0]}°, {action[1]}px]")
+            print(f"Step {step_count}: action=[{action}°]")
 
             if terminated or truncated:
                 print("Episode ended!")

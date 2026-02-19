@@ -158,7 +158,7 @@ class BasePhysicsEngine(ABC):
 
             engine = MyPhysicsEngine(dt=0.01, gravity=[0, 0, -9.81])
             state = engine.reset()
-            new_state = engine.update([1.0, 0.0])  # Advance simulation with action
+            new_state = engine.update([1.0])  # Advance simulation with action
             current = engine.get_state()  # Get current state
     """
 
@@ -230,24 +230,6 @@ class BasePhysicsEngine(ABC):
 
                 # With custom timestep
                 new_state = engine.update([45, 50], dt=0.005)
-        """
-        pass
-            PhysicsState: The updated physics state after the simulation step.
-
-        Examples:
-            Basic simulation loop with action and step:
-
-                engine = MyPhysicsEngine()
-                state = engine.reset()
-
-                for i in range(100):
-                    action = [1.0, 0.0]  # Some control input
-                    state = engine.step(action)  # Advances by self.dt
-                    print(f"Step {i}: position={state.position}")
-
-            Using custom timestep:
-
-                state = engine.step(dt=0.02)  # Override to 20ms
         """
         pass
 

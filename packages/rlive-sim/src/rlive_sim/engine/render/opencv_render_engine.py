@@ -72,7 +72,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
             height: Image height in pixels.
             channels: Number of color channels.
             ball_radius: Radius of the ball in pixels.
-            ball_color: Ball color in BGR (blue).
+            ball_color: Ball color in BGR (default: blue).
             box_color: Box border color in BGR (gray).
             bg_color: Background color in BGR (black).
             box_thickness: Box border thickness.

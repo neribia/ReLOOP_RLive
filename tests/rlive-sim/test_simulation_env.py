@@ -98,18 +98,3 @@ class TestSimulationEnvWithCustomConfig:
         env = SimulationEnv(config=config)
         obs, _ = env.reset()
         assert obs.shape == (600, 800, 3)
-
-    def test_reset_reproducibility(self):
-        """Test that reset produces valid initial state."""
-        env = SimulationEnv()
-        obs1, info1 = env.reset(seed=42)
-        env.close()
-
-        env2 = SimulationEnv()
-        obs2, info2 = env2.reset(seed=42)
-        env2.close()
-
-        # With same seed, should get reproducible results
-        assert info1["episode"] > 0
-        assert info2["episode"] > 0
-

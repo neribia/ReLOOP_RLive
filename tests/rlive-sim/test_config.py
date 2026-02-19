@@ -124,8 +124,12 @@ class TestIntegratedConfig:
         assert config.height == 480
         assert config.channels == 3
 
-    def test_backend_required(self):
-        """Test that backend can be optional."""
+    def test_backend_optional_none(self):
+        """Test that backend can be None (optional)."""
+        config = IntegratedConfig()
+        assert config.backend is None
+
+    def test_backend_optional_set(self):
+        """Test that backend can be set when provided."""
         config = IntegratedConfig(backend=IntegratedBackend.GODOT)
         assert config.backend == IntegratedBackend.GODOT
-

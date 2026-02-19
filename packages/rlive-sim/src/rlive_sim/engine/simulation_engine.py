@@ -20,7 +20,7 @@ from rlive_sim.engine.base_integrated_engine import BaseIntegratedEngine
 from rlive_sim.engine.integrated.combined_engine import CombinedEngine
 
 
-# TODO: Create a class, that gathers all information crated during a step??
+# TODO: Create a class, that gathers all information created during a step??
 
 
 class SimulationEngine:
@@ -50,7 +50,6 @@ class SimulationEngine:
     Methods:
         reset(initial_state): Reset the simulation to initial conditions. Returns (state, image).
         update_and_render(action, dt): Advance physics and render in one call. Returns (state, image).
-        update_and_render(action, dt): Alias to update_and_render() for backward compatibility.
         get_resolution(): Get the render resolution as (height, width, channels).
         setup_scene(scene_config): Set up the scene with given configuration.
         close(): Clean up all engine resources.
@@ -75,7 +74,7 @@ class SimulationEngine:
             sim = SimulationEngine(integrated_engine=integrated)
 
             state = sim.reset()
-            sim.apply_action([1.0, 0.0])
+            sim.apply_action([1.0])
             state, image = sim.simulate_and_render()  # Efficient combined call
     """
 

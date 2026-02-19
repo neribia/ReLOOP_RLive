@@ -55,7 +55,7 @@ class PyMunkPhysicsEngine(BasePhysicsEngine):
     ) -> None:
         """Initialize the PyMunk physics engine.
 
-        Attributes:
+        Args:
             dt: Simulation timestep in seconds. Defaults to 0.01.
             gravity: Gravity vector [gx, gy, gz]. Only x, y used.
                 Defaults to [0, -9.81, 0] for 2D.
@@ -75,7 +75,7 @@ class PyMunkPhysicsEngine(BasePhysicsEngine):
     def step(self, dt: float | None = None) -> PhysicsState:
         """Advance the physics simulation by one timestep.
 
-        Attributes:
+        Args:
             dt: Optional timestep override. Uses self.dt if None.
 
         Returns:
@@ -93,7 +93,7 @@ class PyMunkPhysicsEngine(BasePhysicsEngine):
     def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
         """Reset the physics simulation to initial conditions.
 
-        Attributes:
+        Args:
             initial_state: Optional initial state. Uses default if None.
 
         Returns:
@@ -127,7 +127,7 @@ class PyMunkPhysicsEngine(BasePhysicsEngine):
 
         For PyMunk, actions are typically 2D forces [fx, fy].
 
-        Attributes:
+        Args:
             action: Force vector [fx, fy] or [fx, fy, torque].
 
         Raises:
@@ -141,7 +141,7 @@ class PyMunkPhysicsEngine(BasePhysicsEngine):
     def set_state(self, state: PhysicsState) -> None:
         """Set the physics state directly.
 
-        Attributes:
+        Args:
             state: The state to set.
 
         Raises:

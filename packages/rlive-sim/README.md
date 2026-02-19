@@ -253,8 +253,8 @@ Configure the environment through `SimulationConfig`:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `max_episode_steps` | int | 500 | Maximum steps per episode |
-| `use_integrated` | bool | False | Use integrated engine if available |
+| `max_episode_steps` | int | 100     | Maximum steps per episode |
+| `use_integrated` | bool | False   | Use integrated engine if available |
 | `physics` | PhysicsConfig | default | Physics engine configuration |
 | `render` | RenderConfig | default | Render engine configuration |
 

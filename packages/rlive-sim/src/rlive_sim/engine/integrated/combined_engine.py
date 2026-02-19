@@ -44,7 +44,6 @@ class CombinedEngine(BaseIntegratedEngine):
     Methods:
         reset(initial_state): Reset the physics simulation. Returns (state, image).
         update_and_render(action, dt): Advance physics and render in sequence. Returns (state, image).
-        update_and_render(action, dt): Alias to update_and_render() for backward compatibility.
         get_resolution(): Get the render resolution as (height, width, channels).
         close(): Clean up resources from both wrapped engines.
 

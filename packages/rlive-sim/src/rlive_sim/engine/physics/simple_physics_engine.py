@@ -20,9 +20,9 @@ from rlive_sim.config import PhysicsBackend
 class SimplePhysicsEngine(BasePhysicsEngine):
     """Simple 2D physics engine with a ball in a box.
 
-    The ball moves based on an angle and distance. When hitting walls,
-    the ball slides along the wall (remaining movement is clamped to
-    stay inside the box).
+    The ball moves based on an angle and optional distance. When hitting walls,
+    the ball slides along the wall (remaining movement is clamped to stay inside
+    the box). If only an angle is provided, uses a default distance of 20 pixels.
 
     Attributes:
         box_width: Width of the bounding box in pixels.
@@ -45,7 +45,12 @@ class SimplePhysicsEngine(BasePhysicsEngine):
 
             engine = SimplePhysicsEngine(box_width=640, box_height=480)
             state = engine.reset()
-            new_state = engine.update([45, 50])  # Move 45° angle, 50 pixels
+
+            # Action as single angle (uses default 20px distance)
+            new_state = engine.update(45)  # Move 45°, distance=20px
+
+            # Or action as [angle, distance]
+            new_state = engine.update([45])  # Move 45° angle, 50 pixels
             print(new_state.position[:2])  # [x, y] position
     """
 
@@ -71,6 +76,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         self.box_width = box_width
         self.box_height = box_height
         self.ball_radius = ball_radius
+        self.distance = 20.0
 
         # Pending action: [angle_degrees, distance]
         self._pending_action: list[float] | None = None
@@ -128,9 +134,9 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         the given distance. If hitting a wall, it slides along the wall.
 
         Args:
-            action: Movement command as [angle_degrees, distance].
-                - angle_degrees: Direction of movement (0° = right, 90° = down).
-                - distance: How far to move in pixels.
+            action: Movement command as either:
+                - Single angle (float/int): Direction of movement in degrees (0° = right, 90° = down)
+                  Uses default distance of 20 pixels.
             dt: Not used in this simple implementation.
 
         Returns:
@@ -200,23 +206,17 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         """Apply a movement action to the ball.
 
         Args:
-            action: Movement command as [angle_degrees, distance].
-                - angle_degrees: Direction of movement (0° = right, 90° = down).
-                - distance: How far to move in pixels.
+            action: Movement command as either:
+                - Single angle (float/int): Direction of movement in degrees (0° = right, 90° = down)
+                  Uses default distance of 20 pixels.
 
         Example:
-            ... engine.apply_action([0, 10])    # Move 10 pixels to the right
-            ... engine.apply_action([90, 20])   # Move 20 pixels down
-            ... engine.apply_action([180, 15])  # Move 15 pixels to the left
+            ... engine.apply_action(45)              # Move 45°, distance=20px (default)
         """
         if isinstance(action, np.ndarray):
             action = action.tolist()
 
-        if len(action) >= 2:
-            self._pending_action = [float(action[0]), float(action[1])]
-        else:
-            # If only angle given, use default distance
-            self._pending_action = [float(action[0]), 10.0]
+        self._pending_action = [float(action[0]), self.distance]
 
     def set_state(self, state: PhysicsState) -> None:
         """Set the physics state directly.

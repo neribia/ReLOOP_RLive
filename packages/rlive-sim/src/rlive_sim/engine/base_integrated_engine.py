@@ -76,28 +76,13 @@ class BaseIntegratedEngine(ABC):
             state = engine.reset()
 
             for step_idx in range(100):
-                action = [1.0, 0.0]  # Move forward
-                engine.apply_action(action)
-                state, image = engine.step_and_render()
+                action = [1.0]  # Move forward
+                state, image = engine.update_and_render(action)
 
                 # Process state and image together
                 reward = compute_reward(state)
                 if should_visualize:
                     display_image(image)
-
-        Loading and manipulating scenes:
-
-            engine.load_scene("path/to/scene.xml")
-
-            # Spawn dynamic objects
-            ball_id = engine.spawn_object(
-                "sphere",
-                position=[0.0, 1.0, 0.0],
-                radius=0.5
-            )
-
-            # Remove when done
-            engine.remove_object(ball_id)
     """
 
     def __init__(
