@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+import platform
 
 from rlive_world.camera.base_camera import BaseCamera
 
@@ -12,7 +13,16 @@ class Webcam(BaseCamera):
 
     def setup(self) -> None:
         """Initialisiert die Webcam."""
-        self.cam = cv.VideoCapture(self.cam_index)
+        # Detect platform and use appropriate backend
+        system = platform.system()
+        if system == "Windows":
+            backend = cv.CAP_DSHOW
+        elif system == "Linux":
+            backend = cv.CAP_V4L2
+        else:
+            backend = None
+
+        self.cam = cv.VideoCapture(self.cam_index, backend) if backend else cv.VideoCapture(self.cam_index)
         if not self.cam.isOpened():
             raise RuntimeError(f"Camera {self.cam_index} could not be opened!")
 
