@@ -251,13 +251,24 @@ class RemoteWorldEnv(gym.Env):
         return goal_reached, reward
 
     def set_random_goal(self):
-        # TODO: The Goal should be full visible in the observation
+        """Set a random goal position that is fully visible in the observation.
+
+        The goal is constrained to be at least GOAL_RADIUS away from the borders
+        to ensure the entire goal circle is visible.
+        """
         height, width, _ = self.observation_space.shape
 
-        x = int(self.np_random.integers(0, width))
-        y = int(self.np_random.integers(0, height))
+        # Ensure goal is fully visible by constraining it away from borders
+        min_x = cfg.GOAL_RADIUS
+        max_x = width - cfg.GOAL_RADIUS
+        min_y = cfg.GOAL_RADIUS
+        max_y = height - cfg.GOAL_RADIUS
+
+        x = int(self.np_random.integers(min_x, max_x))
+        y = int(self.np_random.integers(min_y, max_y))
 
         self.goal_position = (x, y)
+        logger.debug(f"Random goal set at {self.goal_position} (constrained to {min_x}-{max_x}, {min_y}-{max_y})")
 
     def _draw_goal(self, image: np.ndarray) -> np.ndarray:
         """Draw transparent goal indicator."""
