@@ -65,3 +65,35 @@ class DummySpheroEduAPI:
             "z": self.sensors["acc_z"],
         }
 
+    # ---------------------------------------------------------
+    # LED Matrix display methods (8x8 matrix)
+    # ---------------------------------------------------------
+
+    def set_matrix_pixel(self, x: int, y: int, color):
+        """Set a single pixel on the 8x8 LED matrix."""
+        logger.debug(f"[DUMMY] set_matrix_pixel: x={x}, y={y}, color={color}")
+
+    def set_matrix_character(self, char: str, color):
+        """Display a character on the 8x8 LED matrix."""
+        logger.debug(f"[DUMMY] set_matrix_character: char='{char}', color={color}")
+
+    def set_matrix_fill(self, x1: int, y1: int, x2: int, y2: int, color):
+        """Fill a rectangular region on the 8x8 LED matrix."""
+        logger.debug(f"[DUMMY] set_matrix_fill: ({x1},{y1}) to ({x2},{y2}), color={color}")
+
+    def scroll_matrix_text(self, text: str, color, fps: int = 5, wait: bool = True):
+        """Scroll text across the 8x8 LED matrix."""
+        logger.debug(f"[DUMMY] scroll_matrix_text: text='{text}', color={color}, fps={fps}, wait={wait}")
+
+    def register_matrix_animation(self, frames, palette, fps: int, transition: bool):
+        """Register a matrix animation."""
+        palette_len = len(palette) if palette is not None else 0
+        logger.debug(f"[DUMMY] register_matrix_animation: frames={len(frames)}, palette={palette_len}, fps={fps}, transition={transition}")
+
+    def play_matrix_animation(self, animation_id: int, loop: bool = True):
+        """Play a matrix animation."""
+        logger.debug(f"[DUMMY] play_matrix_animation: animation_id={animation_id}, loop={loop}")
+
+    def clear_matrix(self):
+        """Clear the matrix animation."""
+        logger.debug("[DUMMY] clear_matrix")

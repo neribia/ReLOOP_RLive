@@ -1,13 +1,22 @@
 """ Config-file for rlive-world package."""
 import os
 import sys
-from os.path import abspath, dirname, join
+from pathlib import Path
+
+from rlive_common.utils.path_utils import find_project_root
+from rlive_common.utils.import_utils import get_rgb_env
 
 # --- Base Configuration --------------------------------------------------------
 
 PACKAGE_NAME = "rlive-world"
-BUNDLE_DIR = getattr(sys, "_MEIPASS", abspath(join(dirname(__file__), "..", "..")))
-APP_HOME = os.getenv("APP_HOME", f"{BUNDLE_DIR}")
+
+# Project root directory (auto-detected)
+PROJECT_ROOT = find_project_root(__file__)
+
+# Bundle directory (for PyInstaller compatibility)
+BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_ROOT))
+
+APP_HOME = os.getenv("APP_HOME", str(BUNDLE_DIR))
 
 # --- Server config ------------------------------------------------------------
 WORLD_HOST: str = os.getenv("WORLD_HOST", "0.0.0.0")
@@ -93,6 +102,27 @@ SPHEROBOLTPLUS_SCANNING_TIME: float = float(os.getenv("SPHEROBOLTPLUS_SCANNING_T
 Scanning time for the Sphero Bolt+ robot.
 
 default: 3
+"""
+
+SPHEROBOLTPLUS_DISPLAY_COLOR_R: int = get_rgb_env("SPHEROBOLTPLUS_DISPLAY_COLOR_R", "255")
+"""
+Red component of the default display color (0-255).
+
+default: 255
+"""
+
+SPHEROBOLTPLUS_DISPLAY_COLOR_G: int = get_rgb_env("SPHEROBOLTPLUS_DISPLAY_COLOR_G", "255")
+"""
+Green component of the default display color (0-255).
+
+default: 255
+"""
+
+SPHEROBOLTPLUS_DISPLAY_COLOR_B: int = get_rgb_env("SPHEROBOLTPLUS_DISPLAY_COLOR_B", "255")
+"""
+Blue component of the default display color (0-255).
+
+default: 255
 """
 
 # --- debug config ------------------------------------------------------------

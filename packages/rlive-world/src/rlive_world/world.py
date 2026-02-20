@@ -5,7 +5,7 @@ import numpy as np
 
 
 from rlive_world.camera import CameraService, CameraConfig
-from rlive_world.bolt.sphero_bolt_plus import SpheroBoltPlus  # FIXME: make daccessible over bolt(__init__)
+from rlive_world.bolt import SpheroBoltPlus
 from rlive_world.bolt.boltdummys import DummySpheroEduAPI, DummyFinder
 from rlive_common.core.response import BaseResponse, ResetResponse, AttachHardwareResponse, DetachHardwareResponse
 from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
