@@ -61,7 +61,7 @@ Radius around the center point to consider as goal reached (in pixels).
 default: 50
 """
 
-GOAL_COLOUR: tuple[int, int, int] = (0, 255, 0)
+GOAL_COLOUR: tuple[int, int, int] = (255, 0, 0)
 """
 Colour of the goal circle in RGB format.
 
@@ -73,6 +73,17 @@ GOAL_ALPHA: float = float(os.getenv("GOAL_ALPHA", "0.5"))
 Alpha value of the goal circle overlay (0.0 = invisible, 1.0 = fully visible).
 
 default: 0.5
+"""
+
+# --- Reward config -----------------------------------------------------------
+
+REWARD_MODE: str = os.getenv("REWARD_MODE", "dense")
+"""
+Reward calculation mode: 'dense' or 'sparse'.
+- dense: Distance-based reward (closer to goal = higher reward)
+- sparse: Binary reward (+1.0 only when goal reached)
+
+default: dense
 """
 
 # --- debug config ------------------------------------------------------------
