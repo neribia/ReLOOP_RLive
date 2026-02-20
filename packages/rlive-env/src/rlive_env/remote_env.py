@@ -144,7 +144,7 @@ class RemoteWorldEnv(gym.Env):
             data: ResetResponse = self.iface.reset()
             logger.info(f"reset data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
-            self.obs = data.observation
+            self.obs = self._draw_goal(data.observation)
             info = data.info
             return self.obs, info
         except Exception as e:
