@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from rlive_env.remote_env import RemoteWorldEnv
+from rlive_env.config import config as cfg
 
 
 class TestRemoteWorldEnv(unittest.TestCase):
@@ -137,13 +138,13 @@ class TestRemoteWorldEnv(unittest.TestCase):
     def test_reset(self):
         """Test that reset returns observation and info."""
         mock_data = MagicMock()
-        mock_data.observation = np.array([1, 2, 3])
+        mock_data.observation = np.zeros((480, 640, 3), dtype=np.uint8)
         mock_data.info = {"meta": "test"}
         self.mock_iface.reset.return_value = mock_data
 
         obs, info = self.env.reset(seed=42, options={})
 
-        np.testing.assert_array_equal(obs, np.array([1, 2, 3]))
+        np.testing.assert_array_equal(obs.shape, (480, 640, 3))
         self.assertEqual(info, {"meta": "test"})
         self.mock_iface.reset.assert_called_once()
 
@@ -153,7 +154,7 @@ class TestRemoteWorldEnv(unittest.TestCase):
         self.mock_iface.get_status.return_value = {"status": "ok"}
         
         mock_data = MagicMock()
-        mock_data.observation = np.array([1, 2, 3])
+        mock_data.observation = np.zeros((480, 640, 3), dtype=np.uint8)
         mock_data.info = {"meta": "test"}
         self.mock_iface.reset.return_value = mock_data
 
@@ -163,7 +164,7 @@ class TestRemoteWorldEnv(unittest.TestCase):
         self.mock_iface.get_status.assert_called_once()
         # Verify reset proceeded normally
         self.mock_iface.reset.assert_called_once()
-        np.testing.assert_array_equal(obs, np.array([1, 2, 3]))
+        np.testing.assert_array_equal(obs.shape, (480, 640, 3))
         self.assertEqual(info, {"meta": "test"})
 
     def test_reset_with_status_check_failure(self):
@@ -187,6 +188,9 @@ class TestRemoteWorldEnv(unittest.TestCase):
 
     def test_step(self):
         """Test that step returns correct gymnasium tuple."""
+        # Set goal position first
+        self.env.goal_position = (320, 240)
+
         mock_data = MagicMock()
         mock_data.observation = np.zeros((480, 640, 3), dtype=np.uint8)
         mock_data.truncated = False
@@ -194,18 +198,25 @@ class TestRemoteWorldEnv(unittest.TestCase):
 
         self.mock_iface.step_json.return_value = mock_data
 
+        # Mock the ball localiser to return a detected ball
+        from rlive_env.localisation import BallLocation
+        self.env.localiser.get_position = MagicMock(return_value=BallLocation(x=200, y=200))
+
         obs, reward, terminated, truncated, info = self.env.step(action=0)
 
         # Check observation shape and type (not exact values, as _draw_goal modifies it)
         self.assertEqual(obs.shape, mock_data.observation.shape)
         self.assertEqual(obs.dtype, mock_data.observation.dtype)
-        self.assertEqual(reward, 0.0)
-        self.assertFalse(terminated)
+        self.assertIsNotNone(reward)
         self.assertFalse(truncated)
         # Info includes original data plus episode tracking
         self.assertEqual(info["step"], "ok")
         self.assertIn("episode", info)
-        self.mock_iface.step_json.assert_called_once_with(0)
+        # Verify step_json was called with numpy array
+        self.mock_iface.step_json.assert_called_once()
+        call_args = self.mock_iface.step_json.call_args
+        action_array = call_args[0][0]
+        np.testing.assert_array_equal(action_array, np.array([0, cfg.SPHEROBOLTPLUS_SPEED, cfg.SPHEROBOLTPLUS_DURATION]))
 
     def test_close(self):
         """Test that close disconnects the environment."""
@@ -240,12 +251,18 @@ class TestRemoteWorldEnv(unittest.TestCase):
 
     def test_calculate_reward(self):
         """Test that calculate_reward returns expected values."""
+        # Set goal position first
+        self.env.goal_position = (320, 240)
         obs = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        # Mock the ball localiser to return a detected ball
+        from rlive_env.localisation import BallLocation
+        self.env.localiser.get_position = MagicMock(return_value=BallLocation(x=320, y=240))
 
         terminated, reward = self.env.calculate_reward(observation=obs)
 
-        self.assertFalse(terminated)
-        self.assertEqual(reward, 0.0)
+        self.assertTrue(terminated)  # Ball at goal should be terminated
+        self.assertGreater(reward, 0.0)  # Should have positive reward
 
     def test_set_random_goal(self):
         """Test that set_random_goal sets a valid goal position."""

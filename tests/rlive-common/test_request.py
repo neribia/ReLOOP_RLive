@@ -2,6 +2,8 @@
 
 import unittest
 
+import numpy as np
+
 from rlive_common.core.request import (
     StepRequest,
     ResetRequest,
@@ -16,8 +18,9 @@ class TestRequest(unittest.TestCase):
 
     def test_step_request_creation(self):
         """Test that StepRequest can be created with action."""
-        request = StepRequest(action=5)
-        self.assertEqual(request.action, 5)
+        action = np.array([90, 50, 100])
+        request = StepRequest(action=action)
+        np.testing.assert_array_equal(request.action, action)
 
     def test_reset_request_creation(self):
         """Test that ResetRequest can be created."""

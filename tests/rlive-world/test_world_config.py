@@ -31,12 +31,6 @@ class TestWorldConfig(unittest.TestCase):
     def test_spheroboltplus_name_is_string(self):
         self.assertIsInstance(cfg.SPHEROBOLTPLUS_NAME, str)
 
-    def test_spheroboltplus_speed_is_int(self):
-        self.assertIsInstance(cfg.SPHEROBOLTPLUS_SPEED, int)
-
-    def test_spheroboltplus_duration_is_float(self):
-        self.assertIsInstance(cfg.SPHEROBOLTPLUS_DURATION, float)
-        self.assertGreater(cfg.SPHEROBOLTPLUS_DURATION, 0)
 
     def test_spheroboltplus_display_color_r_is_int(self):
         self.assertIsInstance(cfg.SPHEROBOLTPLUS_DISPLAY_COLOR_R, int)

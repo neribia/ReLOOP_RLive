@@ -112,12 +112,12 @@ class TestWorldInterface(unittest.TestCase):
             self.assertEqual(req.method, "POST")
             self.assertEqual(req.url.path, "/step_json")
 
-            self.assert_json_body(req, StepRequest(action=7))
+            self.assert_json_body(req, StepRequest(action=np.array([90, 50, 100])))
 
             return Response(200, json=expected.model_dump())
 
         iface = self.make_iface(handler)
-        result = iface.step_json(action=7)
+        result = iface.step_json(action=np.array([90, 50, 100]))
 
         self.assertIsInstance(result, StepResponseJSON)
         self.assert_numpy_image(result.observation, expected.observation)
@@ -140,7 +140,7 @@ class TestWorldInterface(unittest.TestCase):
             self.assertEqual(req.method, "POST")
             self.assertEqual(req.url.path, "/step_multipart")
 
-            self.assert_json_body(req, StepRequest(action=5))
+            self.assert_json_body(req, StepRequest(action=np.array([45, 30, 50])))
 
             return Response(
                 status_code=200,
@@ -149,7 +149,7 @@ class TestWorldInterface(unittest.TestCase):
             )
 
         iface = self.make_iface(handler)
-        result = iface.step_multipart(5)
+        result = iface.step_multipart(np.array([45, 30, 50]))
 
         self.assertIsInstance(result, StepResponseMultipart)
         self.assert_numpy_image(result.observation, expected.observation)
@@ -162,7 +162,7 @@ class TestWorldInterface(unittest.TestCase):
 
         iface = self.make_iface(handler)
         with self.assertRaises(ValueError):
-            iface.step_multipart(5)
+            iface.step_multipart(np.array([0, 20, 50]))
 
     # -------------------------------------------------------------
     # /attach_hardware

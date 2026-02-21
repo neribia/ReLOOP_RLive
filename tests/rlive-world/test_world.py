@@ -100,7 +100,7 @@ class TestWorld(unittest.TestCase):
     def test_step_requires_hardware(self):
         """Test that step raises error when hardware not attached."""
         world = ToyWorld()
-        request = StepRequest(action=5)
+        request = StepRequest(action=np.array([90, 50, 1]))
 
         # Should raise RuntimeError
         with self.assertRaises(RuntimeError) as context:
@@ -150,13 +150,14 @@ class TestWorld(unittest.TestCase):
         world.robot = MagicMock()
         world.robot.move = MagicMock()
 
-        request = StepRequest(action=5)
+        action = np.array([90, 50, 1])
+        request = StepRequest(action=action)
         result = world.step(request)
 
         self.assertIsInstance(result, BaseResponse)
         self.assertEqual(result.observation.shape, (480, 640, 3))
         self.assertEqual(result.observation.dtype, np.uint8)
-        world.robot.move.assert_called_once_with(5)
+        world.robot.move.assert_called_once_with(heading=90, speed=50, duration=1.0)
 
         # Clean up
         world.detach_hardware(DetachHardwareRequest())
