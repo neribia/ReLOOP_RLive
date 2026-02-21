@@ -168,6 +168,8 @@ class RemoteWorldEnv(gym.Env):
         """
         logger.info(f"Making a step with action: {action}")
 
+        action = np.array([action, cfg.SPHEROBOLTPLUS_SPEED, cfg.SPHEROBOLTPLUS_DURATION])
+
         try:
             data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(action) # self.iface.step_multipart(action)
             logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")

@@ -86,6 +86,23 @@ Reward calculation mode: 'dense' or 'sparse'.
 default: dense
 """
 
+# --- Sphero Bolt+ config -----------------------------------------------------
+
+SPHEROBOLTPLUS_SPEED: int = int(os.getenv("SPHEROBOLTPLUS_SPEED", "50"))
+"""
+Speed of the Sphero Bolt+ robot. (-255, 255)
+
+default: 50
+"""
+
+SPHEROBOLTPLUS_DURATION: float = float(os.getenv("SPHEROBOLTPLUS_DURATION", "1"))
+"""
+Moving duration (in s) of the Sphero Bolt+ robot.
+
+default: 1
+"""
+
+
 # --- debug config ------------------------------------------------------------
 
 DEBUG: bool = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]

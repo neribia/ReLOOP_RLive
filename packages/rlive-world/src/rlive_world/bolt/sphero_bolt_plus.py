@@ -99,13 +99,13 @@ class SpheroBoltPlus(BaseRobot):
         if not self.api:
             raise RuntimeError("Robot is not connected.")
 
-    def move(self, heading: int, speed=cfg.SPHEROBOLTPLUS_SPEED, duration=cfg.SPHEROBOLTPLUS_DURATION):
+    def move(self, heading: int, speed: int, duration: float):
         """Move the Sphero in a relative direction.
 
         Attributes:
-            - heading: Moving direktion (0-360°)
-            - speed: Moving speed (-255 - 255)
-            - duration: Moving duration (seconds)
+            - heading (int): Moving direktion (0-360°)
+            - speed (int): Moving speed (-255 - 255)
+            - duration (float): Moving duration (seconds)
 
         Return: None
         """

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 
+from rlive_common.core.types import NumpyArray
 
 class AttachHardwareRequest(BaseModel):
     """Request body for POST /connect."""
@@ -25,4 +26,4 @@ class ResetRequest(BaseRequest):
 class StepRequest(BaseRequest):
     """Request body for POST /step."""
 
-    action: int = Field(..., description="Discrete action ID to execute in the world.")
+    action: NumpyArray = Field(..., description="Action to take in the environment, represented as a NumPy array. The specific shape and meaning of the array depend on the environment's action space.")
