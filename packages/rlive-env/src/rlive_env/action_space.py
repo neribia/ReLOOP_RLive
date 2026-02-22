@@ -172,7 +172,7 @@ class CartesianActionTransformer(BaseActionTransformer):
             duration = float(cfg.SPHEROBOLTPLUS_DURATION)
 
             logger.debug(f"Transformed velocity [{vx}, {vy}] -> [{heading}, {speed}, {duration}]")
-            return np.array([heading, speed, duration], dtype=np.int32)
+            return np.array([heading, speed, duration], dtype=np.float32)
 
         except (TypeError, ValueError) as e:
             logger.error(f"Failed to transform action {action}: {e}")
@@ -232,7 +232,7 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
             duration = float(cfg.SPHEROBOLTPLUS_DURATION)
 
             logger.debug(f"Transformed position [{x}, {y}] -> heading {heading}° -> [{heading}, {speed}, {duration}]")
-            return np.array([heading, speed, duration], dtype=np.int32)
+            return np.array([heading, speed, duration], dtype=np.float32)
 
         except (TypeError, ValueError) as e:
             logger.error(f"Failed to transform action {action}: {e}")
