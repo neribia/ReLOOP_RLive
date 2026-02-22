@@ -1,6 +1,6 @@
 import os
 
-from rlive_env.remote_env import RemoteWorldEnv
+from rlive_env import RemoteWorldEnv, ActionSpaceType
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -12,7 +12,12 @@ def main() -> None:
                "robot_name": "BP-D217",
                "use_dummy": False,
                }
-    env = RemoteWorldEnv(max_episode_steps=10, base_url=base_url, render_mode="opencv", options=options)
+    env = RemoteWorldEnv(
+        max_episode_steps=10,
+        base_url=base_url,
+        render_mode="opencv",
+        action_space_type = ActionSpaceType.POLAR,
+        options=options)
 
     obs, info = env.reset()
     env.render()

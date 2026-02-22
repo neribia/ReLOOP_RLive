@@ -107,7 +107,7 @@ class WorldInterface:
         data = self._request("POST", "/step_json", json=payload)
         return StepResponseJSON(**data)
 
-    def step_multipart(self, action: int) -> StepResponseMultipart:
+    def step_multipart(self, action: np.ndarray) -> StepResponseMultipart:
         """Call POST /step_multipart and decode multipart/mixed response."""
         payload = StepRequest(action=action).model_dump()
         response: Response = self._request("POST", "/step_multipart", json=payload, expect_json=False)

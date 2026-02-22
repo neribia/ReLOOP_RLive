@@ -18,28 +18,29 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-# Registry for action space transformers
-_ACTION_SPACE_REGISTRY: dict[str, Type["BaseActionTransformer"]] = {}
-
-
-def register_action_transformer(name: str):
-    """Decorator to register an action space transformer.
-
-    Args:
-        name: Unique identifier for this transformer (e.g., 'polar', 'cartesian')
-    """
-    def decorator(cls: Type["BaseActionTransformer"]):
-        _ACTION_SPACE_REGISTRY[name] = cls
-        logger.debug(f"Registered action transformer: {name} -> {cls.__name__}")
-        return cls
-    return decorator
-
 
 class ActionSpaceType(Enum):
     """Enumeration of supported action space types."""
     POLAR = "polar"
     CARTESIAN = "cartesian"
     CONTINUOUS_POLAR = "continuous_polar"
+
+
+# Registry for action space transformers - uses ActionSpaceType enum as key
+_ACTION_SPACE_REGISTRY: dict[ActionSpaceType, Type["BaseActionTransformer"]] = {}
+
+
+def register_action_transformer(action_type: ActionSpaceType):
+    """Decorator to register an action space transformer.
+
+    Args:
+        action_type: ActionSpaceType enum to register this transformer for
+    """
+    def decorator(cls: Type["BaseActionTransformer"]):
+        _ACTION_SPACE_REGISTRY[action_type] = cls
+        logger.debug(f"Registered action transformer: {action_type} -> {cls.__name__}")
+        return cls
+    return decorator
 
 
 class BaseActionTransformer(ABC):
@@ -74,7 +75,7 @@ class BaseActionTransformer(ABC):
         pass
 
 
-@register_action_transformer(ActionSpaceType.POLAR.value)
+@register_action_transformer(ActionSpaceType.POLAR)
 class PolarActionTransformer(BaseActionTransformer):
     """Transform discrete heading actions to robot commands.
 
@@ -123,7 +124,7 @@ class PolarActionTransformer(BaseActionTransformer):
             raise ValueError(f"Invalid action format: {e}") from e
 
 
-@register_action_transformer(ActionSpaceType.CARTESIAN.value)
+@register_action_transformer(ActionSpaceType.CARTESIAN)
 class CartesianActionTransformer(BaseActionTransformer):
     """Transform continuous (x, y) velocity to robot heading and speed.
 
@@ -178,7 +179,7 @@ class CartesianActionTransformer(BaseActionTransformer):
             raise ValueError(f"Invalid action format: {e}") from e
 
 
-@register_action_transformer(ActionSpaceType.CONTINUOUS_POLAR.value)
+@register_action_transformer(ActionSpaceType.CONTINUOUS_POLAR)
 class ContinuousPolarActionTransformer(BaseActionTransformer):
     """Transform continuous (x, y) position to robot heading only.
 
@@ -238,11 +239,12 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
             raise ValueError(f"Invalid action format: {e}") from e
 
 
-def get_action_transformer(action_space_type: str) -> BaseActionTransformer:
+def get_action_transformer(action_space_type: ActionSpaceType | str) -> BaseActionTransformer:
     """Factory function to get an action transformer instance.
 
     Args:
-        action_space_type: Name of the transformer (e.g., 'polar', 'cartesian')
+        action_space_type: ActionSpaceType enum or string name of transformer
+                          (e.g., ActionSpaceType.POLAR or 'polar')
 
     Returns:
         BaseActionTransformer: Instance of the requested transformer
@@ -250,10 +252,18 @@ def get_action_transformer(action_space_type: str) -> BaseActionTransformer:
     Raises:
         ValueError: If transformer type is not registered
     """
+    # Convert string to ActionSpaceType enum if needed
+    if isinstance(action_space_type, str):
+        try:
+            action_space_type = ActionSpaceType(action_space_type)
+        except ValueError as e:
+            available = [t.value for t in ActionSpaceType]
+            raise ValueError(f"Unknown action space type '{action_space_type}'. "
+                           f"Available: {available}") from e
+
     if action_space_type not in _ACTION_SPACE_REGISTRY:
         available = list(_ACTION_SPACE_REGISTRY.keys())
         raise ValueError(f"Unknown action space type '{action_space_type}'. "
                         f"Available: {available}")
 
-    transformer_class = _ACTION_SPACE_REGISTRY[action_space_type]
-    return transformer_class()
+    return _ACTION_SPACE_REGISTRY[action_space_type]()

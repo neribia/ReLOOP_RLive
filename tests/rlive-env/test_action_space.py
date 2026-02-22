@@ -263,13 +263,14 @@ class TestActionTransformerFactory(unittest.TestCase):
 
     def test_registry_contains_all_transformers(self):
         """Test that all transformers are registered."""
-        self.assertIn('polar', _ACTION_SPACE_REGISTRY)
-        self.assertIn('cartesian', _ACTION_SPACE_REGISTRY)
-        self.assertIn('continuous_polar', _ACTION_SPACE_REGISTRY)
+        self.assertIn(ActionSpaceType.POLAR, _ACTION_SPACE_REGISTRY)
+        self.assertIn(ActionSpaceType.CARTESIAN, _ACTION_SPACE_REGISTRY)
+        self.assertIn(ActionSpaceType.CONTINUOUS_POLAR, _ACTION_SPACE_REGISTRY)
 
     def test_registry_values_are_classes(self):
         """Test that registry values are transformer classes."""
-        for name, transformer_class in _ACTION_SPACE_REGISTRY.items():
+        for action_type, transformer_class in _ACTION_SPACE_REGISTRY.items():
+            self.assertIsInstance(action_type, ActionSpaceType)
             self.assertTrue(issubclass(transformer_class, BaseActionTransformer))
 
 
