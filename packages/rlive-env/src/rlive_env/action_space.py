@@ -85,13 +85,13 @@ class PolarActionTransformer(BaseActionTransformer):
 
     def get_action_space(self) -> gym.Space:
         """Return a discrete action space for heading angles (0-359)."""
-        return gym.spaces.Discrete(360)
+        return gym.spaces.Discrete(360, start=-179)
 
     def transform_action(self, action: Any) -> np.ndarray:
         """Transform heading action to [heading, speed, duration].
 
         Args:
-            action: Integer heading (0-359) or iterable with single element
+            action: Integer heading (-170-360) or iterable with single element # FIXME: 0-359 vs -179-180
 
         Returns:
             np.ndarray: [heading, speed, duration]
@@ -110,14 +110,14 @@ class PolarActionTransformer(BaseActionTransformer):
                 raise ValueError(f"Cannot convert {type(action)} to heading")
 
             # Validate heading range
-            if not (0 <= heading < 360):
+            if not (-179 <= heading <= 180):
                 raise ValueError(f"Heading must be in range [0, 360), got {heading}")
 
             speed = int(cfg.SPHEROBOLTPLUS_SPEED)
             duration = float(cfg.SPHEROBOLTPLUS_DURATION)
 
             logger.debug(f"Transformed action {action} -> [{heading}, {speed}, {duration}]")
-            return np.array([heading, speed, duration], dtype=np.int32)
+            return np.array([heading, speed, duration], dtype=np.float32)
 
         except (TypeError, ValueError) as e:
             logger.error(f"Failed to transform action {action}: {e}")
