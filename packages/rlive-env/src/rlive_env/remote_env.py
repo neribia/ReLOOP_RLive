@@ -65,6 +65,9 @@ class RemoteWorldEnv(gym.Env):
         # Goal variables
         self.goal_position = None
 
+        # Decay for reset
+        self._decay = 5
+
         # Calculate max possible distance for reward normalization (diagonal of observation space)
         height, width, _ = self.observation_space.shape
         self._max_distance = math.sqrt(width ** 2 + height ** 2)
@@ -151,6 +154,11 @@ class RemoteWorldEnv(gym.Env):
             raise RuntimeError(f"Server connection error: {e}")
 
         self.set_random_goal()
+
+        actions = []
+        for i in range(self._decay):
+            action = self.action_space.sample()
+            actions.append(self.action_transformer.transform_action(action))
 
         try:
             data: ResetResponse = self.iface.reset()
