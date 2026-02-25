@@ -117,6 +117,9 @@ class World:
         if not self._hardware_attached:
             raise RuntimeError("Hardware not attached. Call attach_hardware() first.")
 
+        for action in req.actions:
+            self._move_robot(action)
+
         obs = self._make_observation()
         info: dict[str, Any] = {"msg": "reset", "status": "ok"}
         return ResetResponse(observation=obs, info=info)

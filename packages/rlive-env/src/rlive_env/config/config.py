@@ -75,6 +75,15 @@ Alpha value of the goal circle overlay (0.0 = invisible, 1.0 = fully visible).
 default: 0.5
 """
 
+# --- Reset settings -----------------------------------------------------------
+NUMBER_RESET_ACTIONS: int = int(os.getenv("DECAY_STEPS", "5"))
+"""
+Number of steps to decouple the episodes in the reset phase.
+
+default: 5
+"""
+
+
 # --- Reward config -----------------------------------------------------------
 
 REWARD_MODE: str = os.getenv("REWARD_MODE", "dense")

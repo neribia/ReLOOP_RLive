@@ -70,6 +70,9 @@ class RemoteWorldEnv(gym.Env):
         # Goal variables
         self.goal_position = None
 
+        # Decay for reset
+        self._decay = cfg.NUMBER_RESET_ACTIONS
+
         # Calculate max possible distance for reward normalization (diagonal of observation space)
         height, width, _ = self.observation_space.shape
         self._max_distance = math.sqrt(width ** 2 + height ** 2)
@@ -157,8 +160,13 @@ class RemoteWorldEnv(gym.Env):
 
         self.set_random_goal()
 
+        actions = []
+        for _ in range(self._decay):
+            action = self.action_space.sample()
+            actions.append(self.action_transformer.transform(action))
+
         try:
-            data: ResetResponse = self.iface.reset()
+            data: ResetResponse = self.iface.reset(actions)
             logger.info(f"reset data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
             self.obs = self._draw_goal(data.observation)
