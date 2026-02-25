@@ -11,8 +11,13 @@ dependencies = [
     "opencv-python>=4.12.0.88",
 ]
 
+
+
 [project.optional-dependencies]
-all = []
+all = [
+    "mujoco>=3.5.0"
+]
+mujoco = ["mujoco>=3.5.0"]
 
 [tool.uv.sources]
 rlive-common = { workspace = true }

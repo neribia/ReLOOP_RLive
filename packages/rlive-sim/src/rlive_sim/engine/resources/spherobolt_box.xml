@@ -1,0 +1,75 @@
+<?xml version="1.0" ?>
+<!--
+MuJoCo scene for SpheroBolt+ rolling simulation in a box.
+
+Box dimensions: 0.8m x 0.6m x 0.05m walls
+SpheroBolt+ radius: 0.0375m (37.5mm)
+Camera: top-down, centered above box
+-->
+<mujoco model="spherobolt_box">
+  <compiler angle="degree" inertiafromgeom="true" />
+
+  <!-- Global settings -->
+  <option gravity="0 0 -9.81" timestep="0.001" />
+
+  <!-- World body (static) -->
+  <worldbody>
+    <!-- Ground plane (below the box) -->
+    <geom name="ground" type="plane" pos="0 0 -0.1" size="2 2 1" />
+
+    <!-- Box arena walls (static bodies) -->
+    <!-- Bottom plane (inside box floor) -->
+    <body name="box_floor" pos="0 0 0">
+      <geom name="floor_geom" type="plane" pos="0 0 0" size="0.4 0.3 1" />
+    </body>
+
+    <!-- Four walls -->
+    <!-- Front wall (y = +0.3m) -->
+    <body name="wall_front" pos="0 0.3 0.05">
+      <geom name="wall_front_geom" type="box" pos="0 0 0" size="0.4 0.025 0.05" />
+    </body>
+
+    <!-- Back wall (y = -0.3m) -->
+    <body name="wall_back" pos="0 -0.3 0.05">
+      <geom name="wall_back_geom" type="box" pos="0 0 0" size="0.4 0.025 0.05" />
+    </body>
+
+    <!-- Right wall (x = +0.4m) -->
+    <body name="wall_right" pos="0.4 0 0.05">
+      <geom name="wall_right_geom" type="box" pos="0 0 0" size="0.025 0.3 0.05" />
+    </body>
+
+    <!-- Left wall (x = -0.4m) -->
+    <body name="wall_left" pos="-0.4 0 0.05">
+      <geom name="wall_left_geom" type="box" pos="0 0 0" size="0.025 0.3 0.05" />
+    </body>
+
+    <!-- SpheroBolt+ sphere (dynamic body) -->
+    <body name="sphere" pos="0 0 0.0375">
+      <joint name="sphere_x" type="slide" pos="0 0 0" axis="1 0 0" damping="0.1" />
+      <joint name="sphere_y" type="slide" pos="0 0 0" axis="0 1 0" damping="0.1" />
+      <joint name="sphere_z" type="slide" pos="0 0 0" axis="0 0 1" damping="0.01" />
+      <joint name="sphere_rot_x" type="hinge" pos="0 0 0" axis="1 0 0" damping="0.01" />
+      <joint name="sphere_rot_y" type="hinge" pos="0 0 0" axis="0 1 0" damping="0.01" />
+      <joint name="sphere_rot_z" type="hinge" pos="0 0 0" axis="0 0 1" damping="0.01" />
+      <geom name="sphere_geom" type="sphere" size="0.0375" mass="0.12"
+             friction="1.0 0.1 0.1" />
+    </body>
+
+    <!-- Camera: top-down view centered on box -->
+    <camera name="top_camera" mode="fixed" pos="0 0 0.7" xyaxes="1 0 0 0 1 0" />
+  </worldbody>
+
+  <!-- Actuators for controlling sphere motion -->
+  <actuator>
+    <!-- Velocity control for x-axis -->
+    <velocity name="sphere_vx" joint="sphere_x" kv="10" />
+    <!-- Velocity control for y-axis -->
+    <velocity name="sphere_vy" joint="sphere_y" kv="10" />
+  </actuator>
+</mujoco>
+
+
+
+
+
