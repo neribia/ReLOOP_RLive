@@ -118,10 +118,13 @@ __all__ = [
     # Physics implementations
     "SimplePhysicsEngine",
     "PyMunkPhysicsEngine",
+    "MujocoPhysicsEngine",
     # Render implementations
     "OpenCVRenderEngine",
     "MitsubaRenderEngine",
+    "MujocoRenderEngine",
     # Integrated implementations
     "CombinedEngine",
     "GodotIntegratedEngine",
+    "MujocoIntegratedEngine",
 ]

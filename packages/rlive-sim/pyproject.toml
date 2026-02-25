@@ -11,11 +11,14 @@ dependencies = [
     "opencv-python>=4.12.0.88",
 ]
 
+[project.optional-dependencies]
+mujoco = ["mujoco>=3.5.0"]
+
 [tool.uv.sources]
 rlive-common = { workspace = true }
 
-# [project.scripts]
-# rlive-env = "rlive_sim.cli:main"
+[project.scripts]
+rlive-sim = "rlive_sim.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]
