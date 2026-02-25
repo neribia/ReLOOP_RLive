@@ -79,25 +79,25 @@ class BaseActionTransformer(ABC):
 class PolarActionTransformer(BaseActionTransformer):
     """Transform discrete heading actions to robot commands.
 
-    The agent provides a heading (0-359 degrees), and speed/duration are
-    configured defaults.
+    The agent provides a heading in range [-179, 180] degrees, and speed/duration
+    are configured defaults.
     """
 
     def get_action_space(self) -> gym.Space:
-        """Return a discrete action space for heading angles (-179 - 180)."""
+        """Return a discrete action space for heading angles in range [-179, 180]."""
         return gym.spaces.Discrete(360, start=-179)
 
     def transform_action(self, action: Any) -> np.ndarray:
         """Transform heading action to [heading, speed, duration].
 
         Args:
-            action: Integer heading (-179 - 180) or iterable with single element # FIXME: 0-359 vs -179-180
+            action: Integer heading (-179 - 180) or iterable with single element
 
         Returns:
             np.ndarray: [heading, speed, duration]
 
         Raises:
-            ValueError: If action is not a valid heading
+            ValueError: If action is not a valid heading in [-179, 180]
         """
         try:
             if isinstance(action, (list, tuple, np.ndarray)):
@@ -109,9 +109,9 @@ class PolarActionTransformer(BaseActionTransformer):
             else:
                 raise ValueError(f"Cannot convert {type(action)} to heading")
 
-            # Validate heading range
+            # Validate heading range [-179, 180]
             if not (-179 <= heading <= 180):
-                raise ValueError(f"Heading must be in range [-179, 180), got {heading}")
+                raise ValueError(f"Heading must be in range [-179, 180], got {heading}")
 
             speed = int(cfg.SPHEROBOLTPLUS_SPEED)
             duration = float(cfg.SPHEROBOLTPLUS_DURATION)
@@ -162,8 +162,8 @@ class CartesianActionTransformer(BaseActionTransformer):
             vx, vy = action[0], action[1]
 
             # Calculate heading from atan2 (0-359 degrees)
-            heading_rad = math.atan2(vy, vx + 1e-9)  # epsilon to avoid division by zero
-            heading = int(round(math.degrees(heading_rad))) % 360
+            heading_rad = math.atan2(vy, vx)  # atan2 can handel division by 0
+            heading = round(math.degrees(heading_rad))
 
             # Calculate speed from magnitude, scaled to [0, 255]
             magnitude = math.sqrt(vx ** 2 + vy ** 2)
@@ -209,7 +209,7 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
             action: 2D position vector [x, y] in range [-1, 1]
 
         Returns:
-            np.ndarray: [heading (0-359), speed (0-255), duration]
+            np.ndarray: [heading (-179 - 180), speed (0-255), duration]
 
         Raises:
             ValueError: If action is not a 2D vector
@@ -222,10 +222,9 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
 
             x, y = action[0], action[1]
 
-            # Calculate heading from atan2 (0-359 degrees)
             # atan2 returns angle in radians from -pi to pi
-            heading_rad = math.atan2(y, x + 1e-9)  # epsilon to avoid division by zero # FIXME: Does atan2 return rad or deg?
-            heading = int(round(math.degrees(heading_rad))) % 360
+            heading_rad = math.atan2(y, x)  # atan handles (0, 0) case by returning 0
+            heading = round(math.degrees(heading_rad))
 
             # Use configured defaults for speed and duration
             speed = int(cfg.SPHEROBOLTPLUS_SPEED)

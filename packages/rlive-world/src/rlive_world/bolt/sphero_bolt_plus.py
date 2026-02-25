@@ -103,7 +103,7 @@ class SpheroBoltPlus(BaseRobot):
         """Move the Sphero in a relative direction.
 
         Attributes:
-            - heading (int): Moving direktion (0-360°)
+            - heading (int): Moving direction (0-360°)
             - speed (int): Moving speed (-255 - 255)
             - duration (float): Moving duration (seconds)
 

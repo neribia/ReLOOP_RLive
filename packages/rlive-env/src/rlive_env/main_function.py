@@ -10,7 +10,7 @@ def main() -> None:
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
     options = {"camera_type": "webcam",
                "robot_name": "BP-D217",
-               "use_dummy": False,
+               "use_dummy": True,
                }
     env = RemoteWorldEnv(
         max_episode_steps=10,

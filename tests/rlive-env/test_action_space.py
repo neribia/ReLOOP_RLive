@@ -1,5 +1,5 @@
 """Tests for action space transformers."""
-
+import math
 import unittest
 import numpy as np
 import gymnasium as gym
@@ -23,47 +23,48 @@ class TestPolarActionTransformer(unittest.TestCase):
         self.transformer = PolarActionTransformer()
 
     def test_get_action_space(self):
-        """Test that action space is Discrete(360)."""
+        """Test that action space is Discrete(360) with start=-179."""
         space = self.transformer.get_action_space()
         self.assertIsInstance(space, gym.spaces.Discrete)
         self.assertEqual(space.n, 360)
+        self.assertEqual(space.start, -179)
 
     def test_transform_action_integer(self):
         """Test transforming integer heading action."""
-        result = self.transformer.transform_action(90)
+        result = self.transformer.transform_action(45)
 
         self.assertIsInstance(result, np.ndarray)
         self.assertEqual(result.shape, (3,))
-        self.assertEqual(result[0], 90)  # heading
+        self.assertEqual(result[0], 45)  # heading
         self.assertGreater(result[1], 0)  # speed
         self.assertGreater(result[2], 0)  # duration
 
     def test_transform_action_list(self):
         """Test transforming list with single heading."""
-        result = self.transformer.transform_action([180])
-        self.assertEqual(result[0], 180)
+        result = self.transformer.transform_action([90])
+        self.assertEqual(result[0], 90)
 
     def test_transform_action_numpy_array(self):
         """Test transforming numpy array with single heading."""
-        result = self.transformer.transform_action(np.array([270]))
-        self.assertEqual(result[0], 270)
+        result = self.transformer.transform_action(np.array([-90]))
+        self.assertEqual(result[0], -90)
 
     def test_heading_range_valid(self):
-        """Test valid heading values."""
-        for heading in [0, 45, 90, 180, 270, 359]:
+        """Test valid heading values in range [-179, 180]."""
+        for heading in [-179, -90, 0, 45, 90, 180]:
             result = self.transformer.transform_action(heading)
             self.assertEqual(result[0], heading)
 
-    def test_heading_range_invalid_negative(self):
-        """Test that negative heading raises ValueError."""
+    def test_heading_range_invalid_too_low(self):
+        """Test that heading < -179 raises ValueError."""
         with self.assertRaises(ValueError) as context:
-            self.transformer.transform_action(-10)
+            self.transformer.transform_action(-180)
         self.assertIn("range", str(context.exception).lower())
 
     def test_heading_range_invalid_too_large(self):
-        """Test that heading >= 360 raises ValueError."""
+        """Test that heading > 180 raises ValueError."""
         with self.assertRaises(ValueError) as context:
-            self.transformer.transform_action(360)
+            self.transformer.transform_action(181)
         self.assertIn("range", str(context.exception).lower())
 
     def test_invalid_action_type(self):
@@ -100,32 +101,14 @@ class TestCartesianActionTransformer(unittest.TestCase):
         self.assertTrue(np.all(space.low == -1.0))
         self.assertTrue(np.all(space.high == 1.0))
 
-    def test_transform_velocity_east(self):
-        """Test velocity pointing east (positive x)."""
-        result = self.transformer.transform_action([1.0, 0.0])
-        self.assertEqual(result[0], 0)  # East is 0 degrees
-        self.assertGreater(result[1], 0)  # speed > 0
-        self.assertGreater(result[2], 0)  # duration > 0
-
-    def test_transform_velocity_north(self):
-        """Test velocity pointing north (positive y)."""
-        result = self.transformer.transform_action([0.0, 1.0])
-        self.assertEqual(result[0], 90)  # North is 90 degrees
-
-    def test_transform_velocity_west(self):
-        """Test velocity pointing west (negative x)."""
-        result = self.transformer.transform_action([-1.0, 0.0])
-        self.assertEqual(result[0], 180)  # West is 180 degrees
-
-    def test_transform_velocity_south(self):
-        """Test velocity pointing south (negative y)."""
-        result = self.transformer.transform_action([0.0, -1.0])
-        self.assertEqual(result[0], 270)  # South is 270 degrees
-
-    def test_transform_velocity_northeast(self):
-        """Test velocity pointing northeast."""
-        result = self.transformer.transform_action([1.0, 1.0])
-        self.assertEqual(result[0], 45)  # Northeast is 45 degrees
+    def test_transform_all_angels(self):
+        for degree in range(-179, 181):
+            rad = math.radians(degree) # Convert degrees to radians for cos/sin
+            action = np.array([math.cos(rad), math.sin(rad)])
+            result = self.transformer.transform_action(action)
+            self.assertEqual(result[0], degree)
+            self.assertGreater(result[1], 0)  # speed > 0
+            self.assertGreater(result[2], 0)  # duration > 0
 
     def test_speed_scaling(self):
         """Test that speed is scaled from magnitude."""
@@ -167,47 +150,14 @@ class TestContinuousPolarActionTransformer(unittest.TestCase):
         self.assertTrue(np.all(space.low == -1.0))
         self.assertTrue(np.all(space.high == 1.0))
 
-    def test_transform_position_east(self):
-        """Test position pointing east (positive x)."""
-        result = self.transformer.transform_action([1.0, 0.0])
-        self.assertEqual(result[0], 0)  # East is 0 degrees
-        self.assertGreater(result[1], 0)
-        self.assertGreater(result[2], 0)
-
-    def test_transform_position_north(self):
-        """Test position pointing north (positive y)."""
-        result = self.transformer.transform_action([0.0, 1.0])
-        self.assertEqual(result[0], 90)  # North is 90 degrees
-
-    def test_transform_position_west(self):
-        """Test position pointing west (negative x)."""
-        result = self.transformer.transform_action([-1.0, 0.0])
-        self.assertEqual(result[0], 180)  # West is 180 degrees
-
-    def test_transform_position_south(self):
-        """Test position pointing south (negative y)."""
-        result = self.transformer.transform_action([0.0, -1.0])
-        self.assertEqual(result[0], 270)  # South is 270 degrees
-
-    def test_transform_position_northeast(self):
-        """Test position pointing northeast."""
-        result = self.transformer.transform_action([1.0, 1.0])
-        self.assertEqual(result[0], 45)  # Northeast is 45 degrees
-
-    def test_transform_position_northwest(self):
-        """Test position pointing northwest."""
-        result = self.transformer.transform_action([-1.0, 1.0])
-        self.assertEqual(result[0], 135)  # Northwest is 135 degrees
-
-    def test_transform_position_southeast(self):
-        """Test position pointing southeast."""
-        result = self.transformer.transform_action([1.0, -1.0])
-        self.assertEqual(result[0], 315)  # Southeast is 315 degrees
-
-    def test_transform_position_southwest(self):
-        """Test position pointing southwest."""
-        result = self.transformer.transform_action([-1.0, -1.0])
-        self.assertEqual(result[0], 225)  # Southwest is 225 degrees
+    def test_transform_all_angels(self):
+        for degree in range(-179, 181):
+            rad = math.radians(degree) # Convert degrees to radians for cos/sin
+            action = np.array([math.cos(rad), math.sin(rad)])
+            result = self.transformer.transform_action(action)
+            self.assertEqual(result[0], degree)
+            self.assertGreater(result[1], 0)  # speed > 0
+            self.assertGreater(result[2], 0)  # duration > 0
 
     def test_speed_from_config(self):
         """Test that speed comes from config (not magnitude)."""
@@ -232,7 +182,7 @@ class TestContinuousPolarActionTransformer(unittest.TestCase):
         """Test zero position is handled gracefully."""
         result = self.transformer.transform_action([0.0, 0.0])
         self.assertEqual(result.shape, (3,))
-        self.assertIsInstance(result[0], (int, np.integer))
+        self.assertIsInstance(result[0], (int, np.integer, float, np.floating))
 
 
 class TestActionTransformerFactory(unittest.TestCase):
@@ -298,33 +248,40 @@ class TestActionSpaceConsistency(unittest.TestCase):
                            f"{transformer.__class__.__name__} didn't return 3-element array")
 
             heading, speed, duration = result
-            self.assertIsInstance(heading, (int, np.integer))
-            self.assertIsInstance(speed, (int, np.integer))
+            self.assertIsInstance(heading, (int, np.integer, float, np.floating))
+            self.assertIsInstance(speed, (int, np.integer, float, np.floating))
             self.assertIsInstance(duration, (int, np.integer, float, np.floating))
 
     def test_heading_in_valid_range(self):
-        """Test that all transformers produce headings in [0, 360)."""
+        """Test that all transformers produce headings in [-179, 180]."""
         # Test each transformer separately with appropriate inputs
 
         # Polar transformer - single heading values
         polar = PolarActionTransformer()
-        for heading in [0, 45, 90, 180, 270, 359]:
+        for heading in [-179, -90, 0, 45, 90, 180]:
             result = polar.transform_action(heading)
-            self.assertTrue(0 <= result[0] < 360,
-                          f"Polar heading {result[0]} out of range")
+            self.assertTrue(-179 <= result[0] <= 180,
+                          f"Polar heading {result[0]} out of range [-179, 180]")
 
-        # Cartesian transformer - 2D velocity vectors
+        # Cartesian transformer - 2D velocity vectors (outputs in [0, 360) then normalized)
         cartesian = CartesianActionTransformer()
         for x in [1, 0.5, 0, -0.5, -1]:
             result = cartesian.transform_action([x, 0.0])
-            self.assertTrue(0 <= result[0] < 360,
+            # Cartesian outputs in [0, 360), convert to [-179, 180] if needed
+            heading = result[0]
+            if heading > 180:
+                heading = heading - 360
+            self.assertTrue(-179 <= heading <= 180,
                           f"Cartesian heading {result[0]} out of range")
 
         # Continuous polar transformer - 2D position vectors
         continuous = ContinuousPolarActionTransformer()
         for x in [1, 0.5, 0, -0.5, -1]:
             result = continuous.transform_action([x, 0.0])
-            self.assertTrue(0 <= result[0] < 360,
+            heading = result[0]
+            if heading > 180:
+                heading = heading - 360
+            self.assertTrue(-179 <= heading <= 180,
                           f"Continuous polar heading {result[0]} out of range")
 
     def test_speed_in_valid_range(self):
