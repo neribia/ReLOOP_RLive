@@ -95,9 +95,9 @@ class WorldInterface:
         data = self._request("POST", "/detach_hardware", json=payload)
         return DetachHardwareResponse(**data)
 
-    def reset(self) -> ResetResponse:
+    def reset(self, actions: list[np.ndarray]) -> ResetResponse:
         """Call POST /reset on the world server with retries."""
-        payload = ResetRequest().model_dump()
+        payload = ResetRequest(actions=actions).model_dump()
         data = self._request("POST", "/reset", json=payload)
         return ResetResponse(**data)
 

@@ -22,7 +22,7 @@ class BaseRequest(BaseModel):
 class ResetRequest(BaseRequest):
     """Request body for POST /reset."""
 
-    actions: list[NumpyArray] = Field(..., description="List of possible actions in the environment, where each action is represented as a NumPy array. The specific shape and meaning of each array depend on the environment's action space.")
+    actions: list[NumpyArray] = Field(..., description="List of actions to execute during reset in the environment, where each action is represented as a NumPy array. The specific shape and meaning of each array depend on the environment's action space.")
 
 
 class StepRequest(BaseRequest):
