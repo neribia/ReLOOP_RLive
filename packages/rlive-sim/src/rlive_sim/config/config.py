@@ -23,7 +23,7 @@ class PhysicsBackend(str, Enum):
 
     SIMPLE = "simple"
     # PYMUNK = "pymunk"
-    # MUJOCO = "mujoco"
+    MUJOCO = "mujoco"
     # PYBULLET = "pybullet"
     # BOX2D = "box2d"
 
@@ -32,6 +32,7 @@ class RenderBackend(str, Enum):
     """Available render engine backends."""
 
     OPENCV = "opencv"
+    MUJOCO = "mujoco"
     # MITSUBA = "mitsuba"
     # BLENDER = "blender"
     # OPENGL = "opengl"
@@ -47,7 +48,7 @@ class IntegratedBackend(str, Enum):
 
     GODOT = "godot"
     # UNITY = "unity"
-    # MUJOCO = "mujoco"  # MuJoCo with built-in rendering
+    MUJOCO = "mujoco"  # MuJoCo with built-in rendering
     # ISAAC_SIM = "isaac_sim"
     # PYBULLET = "pybullet"  # PyBullet with OpenGL rendering
 
@@ -196,7 +197,7 @@ class SimulationConfig(BaseModel):
     physics: PhysicsConfig = Field(default_factory=PhysicsConfig)
     render: RenderConfig = Field(default_factory=RenderConfig)
     integrated: IntegratedConfig = Field(default_factory=IntegratedConfig)
-    max_episode_steps: int = Field(default=100, ge=1)
+    # max_episode_steps: int = Field(default=100, ge=1) # FIXME: This should be set in the environment or passed to the env, not here
     seed: int | None = Field(default=None, description="Random seed")
 
     def get_observation_shape(self) -> tuple[int, int, int]:
