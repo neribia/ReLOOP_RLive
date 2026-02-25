@@ -83,6 +83,18 @@ class World:
         # TODO: implement world setup from reset()
         pass
 
+    def _move_robot(self, action: np.ndarray) -> None:
+        """Move the robot according to the given action."""
+        logger.debug(f"Moving robot with action: {action}")
+        heading = int(action[0])
+        speed = int(action[1])
+        duration = float(action[2])
+
+        if self.robot is None:
+            raise RuntimeError("Robot not initialized.")
+
+        self.robot.move(heading=heading, speed=speed, duration=duration)
+
 
     def _make_observation(self) -> np.ndarray:
         """Make observation vector."""
@@ -117,10 +129,7 @@ class World:
         if not self._hardware_attached:
             raise RuntimeError("Hardware not attached. Call attach_hardware() first.")
 
-        if self.robot is None:
-            raise RuntimeError("Robot not initialized.")
-
-        self.robot.move(action)
+        self._move_robot(action)
 
         obs = self._make_observation()
 

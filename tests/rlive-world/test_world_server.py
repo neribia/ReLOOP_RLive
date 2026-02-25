@@ -70,7 +70,8 @@ class TestWorldAPI(unittest.TestCase):
         """Test POST /step_json returns correctly encoded observation."""
         with TestClient(app) as client:
             resources.world.step = fake_step
-            resp = client.post("/step_json", json={"action": 5})
+            action = np.array([90, 50, 1])
+            resp = client.post("/step_json", json={"action": action.tolist()})
             self.assertEqual(resp.status_code, 200)
             data = resp.json()
             self.assertIn("observation", data)
@@ -88,7 +89,8 @@ class TestWorldAPI(unittest.TestCase):
         """Test POST /step_multipart returns multipart response."""
         with TestClient(app) as client:
             resources.world.step = fake_step
-            resp = client.post("/step_multipart", json={"action": 5})
+            action = np.array([90, 50, 1])
+            resp = client.post("/step_multipart", json={"action": action.tolist()})
             self.assertEqual(resp.status_code, 200)
             self.assertTrue(resp.headers["content-type"].startswith("multipart/form-data"))
             self.assertIn(b"application/json", resp.content)

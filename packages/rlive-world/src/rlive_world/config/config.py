@@ -83,20 +83,6 @@ Name of the Sphero Bolt+ robot to connect to.
 default: SB-0001
 """
 
-SPHEROBOLTPLUS_SPEED: int = int(os.getenv("SPHEROBOLTPLUS_SPEED", "50"))
-"""
-Speed of the Sphero Bolt+ robot. (-255, 255)
-
-default: 50
-"""
-
-SPHEROBOLTPLUS_DURATION: float = float(os.getenv("SPHEROBOLTPLUS_DURATION", "1"))
-"""
-Moving duration (in s) of the Sphero Bolt+ robot.
-
-default: 1
-"""
-
 SPHEROBOLTPLUS_SCANNING_TIME: float = float(os.getenv("SPHEROBOLTPLUS_SCANNING_TIME", "3"))
 """
 Scanning time for the Sphero Bolt+ robot.

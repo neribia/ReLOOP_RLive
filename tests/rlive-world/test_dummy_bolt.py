@@ -213,7 +213,7 @@ class TestSpheroBoltPlusWithDummies(unittest.TestCase):
     def test_move_not_connected(self):
 
         with self.assertRaises(RuntimeError) as context:
-            self.robot.move(heading=90)
+            self.robot.move(heading=90, speed=50, duration=1)
 
         self.assertIn("not connected", str(context.exception))
 

@@ -4,6 +4,7 @@ from typing import Any, Optional
 import time
 
 import httpx
+import numpy as np
 from httpx import Response
 
 from rlive_world.config import config as cfg
@@ -100,13 +101,13 @@ class WorldInterface:
         data = self._request("POST", "/reset", json=payload)
         return ResetResponse(**data)
 
-    def step_json(self, action: int) -> StepResponseJSON:
+    def step_json(self, action: np.ndarray) -> StepResponseJSON:
         """Call POST /step_json and decode NumPy image."""
         payload = StepRequest(action=action).model_dump()
         data = self._request("POST", "/step_json", json=payload)
         return StepResponseJSON(**data)
 
-    def step_multipart(self, action: int) -> StepResponseMultipart:
+    def step_multipart(self, action: np.ndarray) -> StepResponseMultipart:
         """Call POST /step_multipart and decode multipart/mixed response."""
         payload = StepRequest(action=action).model_dump()
         response: Response = self._request("POST", "/step_multipart", json=payload, expect_json=False)

@@ -8,6 +8,7 @@ import gymnasium as gym
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
 from rlive_env.localisation import BallLocalisator, BallLocation
+from rlive_env.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, DetachHardwareResponse, AttachHardwareResponse
 from rlive_common.utils import get_logger
 
@@ -22,6 +23,7 @@ class RemoteWorldEnv(gym.Env):
 
     def __init__(self, max_episode_steps: int | None = 100, render_mode: str | None = None, auto_attach: bool = True, options: dict[str, Any] | None = None,
                  reward_mode: Literal["dense", "sparse"] | None = None,
+                 action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
                  **kwargs) -> None:
         """Initialize the environment.
 
@@ -30,13 +32,14 @@ class RemoteWorldEnv(gym.Env):
             - render_mode (Optional[str]): Rendering mode ('opencv' or None)
             - auto_attach (bool): Automatically attach hardware on init (default: True)
             - reward_mode (str): Reward calculation mode ('dense' or 'sparse'). Defaults to config value.
+            - action_space_type (ActionSpaceType): Action space transformer type. Default: ActionSpaceType.POLAR
             - base_url (Optional[str]): Base URL for remote environment.
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
         """
         super().__init__()
 
         self._max_episode_steps = max_episode_steps
-        self._episode = 0  # Start from 0 or 1? Other Env's as reference.
+        self._episode = 0
         self.render_mode = render_mode
         self.reward_mode: Literal["dense", "sparse"] | str = reward_mode or cfg.REWARD_MODE
         self.iface: WorldInterface | None = None
@@ -44,12 +47,26 @@ class RemoteWorldEnv(gym.Env):
         self._hardware_attached = False
         self.options = options or {}
 
+        # Action space transformer
+        logger.info(f"Setting up action space transformer: {action_space_type}")
+        try:
+            self.action_transformer = get_action_transformer(action_space_type)
+
+            # Explicitly validate the returned object
+            if not isinstance(self.action_transformer, BaseActionTransformer):
+                raise TypeError(f"Expected BaseTransformer, got {type(self.action_transformer).__name__}")
+
+            logger.debug(f"Action transformer initialized: {self.action_transformer.__class__.__name__}")
+        except (ValueError, TypeError) as e:
+            logger.error(f"Failed to initialize action transformer: {e}")
+            raise ValueError(f"Invalid action_space_type '{action_space_type}': {e}") from e
+
         # Ball localisation
         self.localiser = BallLocalisator()
         self.ball_location: BallLocation | None = None
 
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint8)
-        self.action_space = gym.spaces.Discrete(360, start=-179)  # placeholder (one valid action)
+        self.action_space = self.action_transformer.get_action_space()
         # Goal variables
         self.goal_position = None
 
@@ -157,7 +174,7 @@ class RemoteWorldEnv(gym.Env):
         Make a step in the environment with the given action.
 
         Attributes:
-            - action: The action to take in the environment.
+            - action: The action to take in the environment (format depends on action_space_type).
 
         Returns:
             - obs (np.ndarray): The next observation after taking the action.
@@ -168,8 +185,16 @@ class RemoteWorldEnv(gym.Env):
         """
         logger.info(f"Making a step with action: {action}")
 
+        # Transform action using the configured action space transformer
         try:
-            data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(action) # self.iface.step_multipart(action)
+            transformed_action = self.action_transformer.transform(action)
+            logger.debug(f"Action transformed from {action} to {transformed_action}")
+        except ValueError as e:
+            logger.error(f"Failed to transform action: {e}")
+            return self.obs, 0.0, False, True, {"error": f"Invalid action: {e}"}
+
+        try:
+            data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(transformed_action) # self.iface.step_multipart(transformed_action)
             logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
             # Ball localisation before draw_goal
@@ -185,7 +210,6 @@ class RemoteWorldEnv(gym.Env):
             return self.obs, reward, terminated, truncated, info
         except Exception as e:
             logger.exception("Failed to step environment")
-            self._disconnect()
             return self.obs, 0.0, False, True, {"error": str(e)}  # Return truncated=True to end episode on error
 
     def render(self):
