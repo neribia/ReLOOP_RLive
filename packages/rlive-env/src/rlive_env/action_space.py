@@ -60,7 +60,7 @@ class BaseActionTransformer(ABC):
         pass
 
     @abstractmethod
-    def transform_action(self, action: Any) -> np.ndarray:
+    def transform(self, action: Any) -> np.ndarray:
         """Transform agent action to robot command format.
 
         Args:
@@ -73,6 +73,41 @@ class BaseActionTransformer(ABC):
             ValueError: If action has invalid shape or type
         """
         pass
+
+    @staticmethod
+    def _calculate_heading_from_vector(self, x: float, y: float) -> int:
+        """Calculate heading angle from 2D vector coordinates.
+
+        Args:
+            x: X component of vector
+            y: Y component of vector
+        Returns:
+            int: Heading angle in degrees, range [-179, 180]
+        """
+        heading_rad = math.atan2(y, x)
+        return self._normalize_heading(math.degrees(heading_rad))
+
+    @staticmethod
+    def _normalize_heading(self, heading: float) -> int:
+        """Normalize heading to range [-179, 180].
+
+        Converts heading value to the valid range, treating -180 as 180.
+
+        Args:
+            heading: Raw heading angle in degrees
+
+        Returns:
+            int: Normalized heading in range [-179, 180]
+        """
+        # Normalize to [-180, 180] first
+        heading = ((heading + 180) % 360) - 180
+
+        # Convert -180 to 180
+        if heading == -180:
+            heading = 180
+
+        return int(round(heading))
+
 
 
 @register_action_transformer(ActionSpaceType.POLAR)
@@ -87,7 +122,7 @@ class PolarActionTransformer(BaseActionTransformer):
         """Return a discrete action space for heading angles in range [-179, 180]."""
         return gym.spaces.Discrete(360, start=-179)
 
-    def transform_action(self, action: Any) -> np.ndarray:
+    def transform(self, action: Any) -> np.ndarray:
         """Transform heading action to [heading, speed, duration].
 
         Args:
@@ -141,7 +176,7 @@ class CartesianActionTransformer(BaseActionTransformer):
         # Velocity components in range [-1, 1]
         return gym.spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
 
-    def transform_action(self, action: Any) -> np.ndarray:
+    def transform(self, action: Any) -> np.ndarray:
         """Transform [vx, vy] to [heading, speed, duration].
 
         Args:
@@ -161,9 +196,8 @@ class CartesianActionTransformer(BaseActionTransformer):
 
             vx, vy = action[0], action[1]
 
-            # Calculate heading from atan2 (0-359 degrees)
-            heading_rad = math.atan2(vy, vx)  # atan2 can handel division by 0
-            heading = round(math.degrees(heading_rad))
+            # Calculate heading from atan2 (normalize to [-179, 180])
+            heading = self._calculate_heading_from_vector(vx, vy)
 
             # Calculate speed from magnitude, scaled to [0, 255]
             magnitude = math.sqrt(vx ** 2 + vy ** 2)
@@ -199,7 +233,7 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
         # Position components in range [-1, 1] (normalized coordinates)
         return gym.spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
 
-    def transform_action(self, action: Any) -> np.ndarray:
+    def transform(self, action: Any) -> np.ndarray:
         """Transform [x, y] position to [heading, speed, duration].
 
         Calculates heading as the angle from origin to the (x, y) position.
@@ -222,9 +256,8 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
 
             x, y = action[0], action[1]
 
-            # atan2 returns angle in radians from -pi to pi
-            heading_rad = math.atan2(y, x)  # atan handles (0, 0) case by returning 0
-            heading = round(math.degrees(heading_rad))
+            # atan2 returns angle in radians from -pi to pi, normalize to [-179, 180]
+            heading = self._calculate_heading_from_vector(x, y)
 
             # Use configured defaults for speed and duration
             speed = int(cfg.SPHEROBOLTPLUS_SPEED)

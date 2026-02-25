@@ -31,7 +31,7 @@ class TestPolarActionTransformer(unittest.TestCase):
 
     def test_transform_action_integer(self):
         """Test transforming integer heading action."""
-        result = self.transformer.transform_action(45)
+        result = self.transformer.transform(45)
 
         self.assertIsInstance(result, np.ndarray)
         self.assertEqual(result.shape, (3,))
@@ -41,48 +41,48 @@ class TestPolarActionTransformer(unittest.TestCase):
 
     def test_transform_action_list(self):
         """Test transforming list with single heading."""
-        result = self.transformer.transform_action([90])
+        result = self.transformer.transform([90])
         self.assertEqual(result[0], 90)
 
     def test_transform_action_numpy_array(self):
         """Test transforming numpy array with single heading."""
-        result = self.transformer.transform_action(np.array([-90]))
+        result = self.transformer.transform(np.array([-90]))
         self.assertEqual(result[0], -90)
 
     def test_heading_range_valid(self):
         """Test valid heading values in range [-179, 180]."""
         for heading in [-179, -90, 0, 45, 90, 180]:
-            result = self.transformer.transform_action(heading)
+            result = self.transformer.transform(heading)
             self.assertEqual(result[0], heading)
 
     def test_heading_range_invalid_too_low(self):
         """Test that heading < -179 raises ValueError."""
         with self.assertRaises(ValueError) as context:
-            self.transformer.transform_action(-180)
+            self.transformer.transform(-180)
         self.assertIn("range", str(context.exception).lower())
 
     def test_heading_range_invalid_too_large(self):
         """Test that heading > 180 raises ValueError."""
         with self.assertRaises(ValueError) as context:
-            self.transformer.transform_action(181)
+            self.transformer.transform(181)
         self.assertIn("range", str(context.exception).lower())
 
     def test_invalid_action_type(self):
         """Test that invalid action type raises ValueError."""
         with self.assertRaises(ValueError):
-            self.transformer.transform_action("invalid")
+            self.transformer.transform("invalid")
 
     def test_invalid_action_list_length(self):
         """Test that list with wrong length raises ValueError."""
         with self.assertRaises(ValueError):
-            self.transformer.transform_action([90, 100])
+            self.transformer.transform([90, 100])
 
     def test_rounding(self):
         """Test that floating point headings are rounded correctly."""
-        result = self.transformer.transform_action([90.4])
+        result = self.transformer.transform([90.4])
         self.assertEqual(result[0], 90)
 
-        result = self.transformer.transform_action([90.6])
+        result = self.transformer.transform([90.6])
         self.assertEqual(result[0], 91)
 
 
@@ -105,33 +105,33 @@ class TestCartesianActionTransformer(unittest.TestCase):
         for degree in range(-179, 181):
             rad = math.radians(degree) # Convert degrees to radians for cos/sin
             action = np.array([math.cos(rad), math.sin(rad)])
-            result = self.transformer.transform_action(action)
+            result = self.transformer.transform(action)
             self.assertEqual(result[0], degree)
             self.assertGreater(result[1], 0)  # speed > 0
             self.assertGreater(result[2], 0)  # duration > 0
 
     def test_speed_scaling(self):
         """Test that speed is scaled from magnitude."""
-        result_small = self.transformer.transform_action([0.1, 0.0])
-        result_large = self.transformer.transform_action([1.0, 0.0])
+        result_small = self.transformer.transform([0.1, 0.0])
+        result_large = self.transformer.transform([1.0, 0.0])
         self.assertLess(result_small[1], result_large[1])
 
     def test_speed_capped_at_255(self):
         """Test that speed is capped at 255."""
-        result = self.transformer.transform_action([10.0, 10.0])
+        result = self.transformer.transform([10.0, 10.0])
         self.assertLessEqual(result[1], 255)
 
     def test_invalid_shape(self):
         """Test that wrong shape raises ValueError."""
         with self.assertRaises(ValueError):
-            self.transformer.transform_action([1.0])
+            self.transformer.transform([1.0])
 
         with self.assertRaises(ValueError):
-            self.transformer.transform_action([1.0, 1.0, 1.0])
+            self.transformer.transform([1.0, 1.0, 1.0])
 
     def test_zero_velocity(self):
         """Test zero velocity is handled correctly."""
-        result = self.transformer.transform_action([0.0, 0.0])
+        result = self.transformer.transform([0.0, 0.0])
         self.assertEqual(result[1], 0)
 
 
@@ -154,33 +154,33 @@ class TestContinuousPolarActionTransformer(unittest.TestCase):
         for degree in range(-179, 181):
             rad = math.radians(degree) # Convert degrees to radians for cos/sin
             action = np.array([math.cos(rad), math.sin(rad)])
-            result = self.transformer.transform_action(action)
+            result = self.transformer.transform(action)
             self.assertEqual(result[0], degree)
             self.assertGreater(result[1], 0)  # speed > 0
             self.assertGreater(result[2], 0)  # duration > 0
 
     def test_speed_from_config(self):
         """Test that speed comes from config (not magnitude)."""
-        result_small = self.transformer.transform_action([0.1, 0.0])
-        result_large = self.transformer.transform_action([1.0, 0.0])
+        result_small = self.transformer.transform([0.1, 0.0])
+        result_large = self.transformer.transform([1.0, 0.0])
         self.assertEqual(result_small[1], result_large[1])
 
     def test_invalid_shape(self):
         """Test that wrong shape raises ValueError."""
         with self.assertRaises(ValueError):
-            self.transformer.transform_action([1.0])
+            self.transformer.transform([1.0])
 
         with self.assertRaises(ValueError):
-            self.transformer.transform_action([1.0, 1.0, 1.0])
+            self.transformer.transform([1.0, 1.0, 1.0])
 
     def test_invalid_type(self):
         """Test that invalid type raises ValueError."""
         with self.assertRaises(ValueError):
-            self.transformer.transform_action("invalid")
+            self.transformer.transform("invalid")
 
     def test_zero_position(self):
         """Test zero position is handled gracefully."""
-        result = self.transformer.transform_action([0.0, 0.0])
+        result = self.transformer.transform([0.0, 0.0])
         self.assertEqual(result.shape, (3,))
         self.assertIsInstance(result[0], (int, np.integer, float, np.floating))
 
@@ -242,7 +242,7 @@ class TestActionSpaceConsistency(unittest.TestCase):
         ]
 
         for transformer, action in zip(transformers, test_actions):
-            result = transformer.transform_action(action)
+            result = transformer.transform(action)
 
             self.assertEqual(result.shape, (3,),
                            f"{transformer.__class__.__name__} didn't return 3-element array")
@@ -259,14 +259,14 @@ class TestActionSpaceConsistency(unittest.TestCase):
         # Polar transformer - single heading values
         polar = PolarActionTransformer()
         for heading in [-179, -90, 0, 45, 90, 180]:
-            result = polar.transform_action(heading)
+            result = polar.transform(heading)
             self.assertTrue(-179 <= result[0] <= 180,
                           f"Polar heading {result[0]} out of range [-179, 180]")
 
         # Cartesian transformer - 2D velocity vectors (outputs in [0, 360) then normalized)
         cartesian = CartesianActionTransformer()
         for x in [1, 0.5, 0, -0.5, -1]:
-            result = cartesian.transform_action([x, 0.0])
+            result = cartesian.transform([x, 0.0])
             # Cartesian outputs in [0, 360), convert to [-179, 180] if needed
             heading = result[0]
             if heading > 180:
@@ -277,7 +277,7 @@ class TestActionSpaceConsistency(unittest.TestCase):
         # Continuous polar transformer - 2D position vectors
         continuous = ContinuousPolarActionTransformer()
         for x in [1, 0.5, 0, -0.5, -1]:
-            result = continuous.transform_action([x, 0.0])
+            result = continuous.transform([x, 0.0])
             heading = result[0]
             if heading > 180:
                 heading = heading - 360
@@ -299,7 +299,7 @@ class TestActionSpaceConsistency(unittest.TestCase):
         ]
 
         for transformer, action in zip(transformers, test_actions):
-            result = transformer.transform_action(action)
+            result = transformer.transform(action)
             speed = result[1]
             self.assertTrue(0 <= speed <= 255,
                           f"Speed {speed} out of range for {transformer.__class__.__name__}")
@@ -319,7 +319,7 @@ class TestActionSpaceConsistency(unittest.TestCase):
         ]
 
         for transformer, action in zip(transformers, test_actions):
-            result = transformer.transform_action(action)
+            result = transformer.transform(action)
             duration = result[2]
             self.assertGreater(duration, 0,
                              f"Duration {duration} not positive for {transformer.__class__.__name__}")

@@ -8,7 +8,7 @@ import gymnasium as gym
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
 from rlive_env.localisation import BallLocalisator, BallLocation
-from rlive_env.action_space import get_action_transformer, ActionSpaceType
+from rlive_env.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, DetachHardwareResponse, AttachHardwareResponse
 from rlive_common.utils import get_logger
 
@@ -23,7 +23,7 @@ class RemoteWorldEnv(gym.Env):
 
     def __init__(self, max_episode_steps: int | None = 100, render_mode: str | None = None, auto_attach: bool = True, options: dict[str, Any] | None = None,
                  reward_mode: Literal["dense", "sparse"] | None = None,
-                 action_space_type: ActionSpaceType = ActionSpaceType.POLAR,
+                 action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
                  **kwargs) -> None:
         """Initialize the environment.
 
@@ -51,8 +51,13 @@ class RemoteWorldEnv(gym.Env):
         logger.info(f"Setting up action space transformer: {action_space_type}")
         try:
             self.action_transformer = get_action_transformer(action_space_type)
+
+            # Explicitly validate the returned object
+            if not isinstance(self.action_transformer, BaseActionTransformer):
+                raise TypeError(f"Expected BaseTransformer, got {type(self.action_transformer).__name__}")
+
             logger.debug(f"Action transformer initialized: {self.action_transformer.__class__.__name__}")
-        except ValueError as e:
+        except (ValueError, TypeError) as e:
             logger.error(f"Failed to initialize action transformer: {e}")
             raise ValueError(f"Invalid action_space_type '{action_space_type}': {e}") from e
 
@@ -182,7 +187,7 @@ class RemoteWorldEnv(gym.Env):
 
         # Transform action using the configured action space transformer
         try:
-            transformed_action = self.action_transformer.transform_action(action)
+            transformed_action = self.action_transformer.transform(action)
             logger.debug(f"Action transformed from {action} to {transformed_action}")
         except ValueError as e:
             logger.error(f"Failed to transform action: {e}")
