@@ -203,7 +203,7 @@ class RemoteWorldEnv(gym.Env):
 
         try:
             data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(transformed_action) # self.iface.step_multipart(transformed_action)
-            logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
+            logger.debug(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
             # Ball localisation before draw_goal
             terminated, reward = self.calculate_reward(observation=data.observation)
