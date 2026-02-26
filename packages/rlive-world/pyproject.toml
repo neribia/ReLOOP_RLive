@@ -1,7 +1,7 @@
 [project]
 name = "rlive_world"
 version = "0.1.0"
-description = "Add your description here"
+description = "Server-side package for controlling physical robots and managing the world state"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [

@@ -5,9 +5,10 @@ description = "Example utilities and demonstration scripts for the ReLoop_RLive 
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
+    "d3rlpy>=2.8.0",
     "rlive-common",
-    "rlive-env",
-    "rlive-sim",
+    "rlive-env[all]",
+    "rlive-sim[all]",
 ]
 
 [tool.uv.sources]
