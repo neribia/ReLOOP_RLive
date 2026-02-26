@@ -1,6 +1,6 @@
-# rlive-demo
+# rlive-example
 
-Demo utilities and example scripts for the ReLoop_RLive project.
+Example utilities and demonstration scripts for the ReLoop_RLive project.
 
 ## 📦 What's Included
 

@@ -12,7 +12,7 @@ members = [
     "packages/rlive-world",
     "packages/rlive-env",
     "packages/rlive-sim",
-    "packages/rlive-demo",
+    "packages/rlive-example",
 ]
 
 [dependency-groups]

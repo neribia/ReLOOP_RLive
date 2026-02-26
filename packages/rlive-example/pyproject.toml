@@ -1,7 +1,7 @@
 [project]
-name = "rlive-demo"
+name = "rlive-example"
 version = "0.1.0"
-description = "Demo utilities and examples for the ReLoop_RLive project"
+description = "Example utilities and demonstration scripts for the ReLoop_RLive project"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [

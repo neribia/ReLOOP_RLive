@@ -32,7 +32,7 @@ import time
 import cv2 as cv
 import numpy as np
 
-from rlive_demo.config import RESOURCES_DIR
+from rlive_example.config import RESOURCES_DIR
 
 from rlive_env.localisation import BallLocalisator, BallLocation
 from rlive_env.localisation.processors import *
