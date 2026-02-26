@@ -30,34 +30,38 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
+# Number of episodes to run
+NUM_EPISODES = 2
 
 def main() -> None:
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
     options = {"camera_type": "webcam",
                "robot_name": "BP-D217",
-               "use_dummy": True,
+               "use_dummy": False,
                }
+
     env = RemoteWorldEnv(
         max_episode_steps=10,
         base_url=base_url,
         render_mode="opencv",
-        action_space_type=ActionSpaceType.POLAR,
-        options=options)
+        action_space_type=ActionSpaceType.CARTESIAN,
+        options=options,
+    )
 
-    obs, info = env.reset()
-    env.render()
-    logger.info(f"reset -> obs={obs.shape}, info={info}")
 
-    done = False
-    while not done:
-        action = env.action_space.sample()
-        obs, reward, terminated, truncated, info = env.step(action)
+
+    for episode in range(NUM_EPISODES):
+        obs, info = env.reset()
         env.render()
-        done = truncated
-        logger.info(f"action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
-        if terminated or truncated:
-            obs, info = env.reset()
-            logger.info("Episode reset.")
+        logger.info(f"Episode {episode + 1}/{NUM_EPISODES} — reset -> obs={obs.shape}, info={info}")
+
+        done = False
+        while not done:
+            action = env.action_space.sample()
+            obs, reward, terminated, truncated, info = env.step(action)
+            env.render()
+            done = terminated or truncated
+            logger.info(f"action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
 
     env.close()
 
