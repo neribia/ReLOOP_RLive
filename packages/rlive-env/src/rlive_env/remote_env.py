@@ -160,12 +160,12 @@ class RemoteWorldEnv(gym.Env):
 
         self.set_random_goal()
 
-        actions = []
-        for _ in range(self._decay):
-            action = self.action_space.sample()
-            actions.append(self.action_transformer.transform(action))
-
         try:
+            actions = []
+            for _ in range(self._decay):
+                action = self.action_space.sample()
+                actions.append(self.action_transformer.transform(action))
+
             data: ResetResponse = self.iface.reset(actions)
             logger.info(f"reset data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 

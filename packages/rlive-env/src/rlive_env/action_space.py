@@ -74,7 +74,6 @@ class BaseActionTransformer(ABC):
         """
         pass
 
-    @staticmethod
     def _calculate_heading_from_vector(self, x: float, y: float) -> int:
         """Calculate heading angle from 2D vector coordinates.
 
@@ -87,7 +86,6 @@ class BaseActionTransformer(ABC):
         heading_rad = math.atan2(y, x)
         return self._normalize_heading(math.degrees(heading_rad))
 
-    @staticmethod
     def _normalize_heading(self, heading: float) -> int:
         """Normalize heading to range [-179, 180].
 
