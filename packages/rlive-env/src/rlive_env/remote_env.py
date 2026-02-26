@@ -191,7 +191,7 @@ class RemoteWorldEnv(gym.Env):
             - truncated (bool): True if episode ended due to time/step limit
             - info (dict): Additional information about the step.
         """
-        logger.info(f"Making a step with action: {action}")
+        logger.debug(f"Making a step with action: {action}")
 
         # Transform action using the configured action space transformer
         try:
@@ -220,13 +220,14 @@ class RemoteWorldEnv(gym.Env):
             logger.exception("Failed to step environment")
             return self.obs, 0.0, False, True, {"error": str(e)}  # Return truncated=True to end episode on error
 
-    def render(self):
+    def render(self, scale: float = 1.0) -> None:
         logger.debug(f"OpenCV rendering mode: {self.render_mode}")
         if self.render_mode == "opencv":
             if self.obs is not None:
                 show_image = self.localiser.annotate_image(self.obs,self.ball_location, self.goal_position, cfg.GOAL_RADIUS)
                 show_image = cv.cvtColor(show_image, cv.COLOR_RGB2BGR)
-                cv.imshow("Environment", show_image)
+                res_show_image = cv.resize(show_image, dsize=None, fx=scale, fy=scale)
+                cv.imshow("Environment", res_show_image)
                 cv.waitKey(1)
 
     def close(self) -> None:
