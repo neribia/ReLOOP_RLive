@@ -2,11 +2,12 @@
 
 from pathlib import Path
 
-# Base directory for the entire repository (two levels up from this file)
+# Base directory for the rlive-example workspace (four levels up from this file)
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 
-# Base directory of the rlive-example package
+# Source directory (src) of the rlive-example package
 PACKAGE_DIR = Path(__file__).parent.parent.parent
+# Base directory of the rlive-example package
 PACKAGE_ROOT = PACKAGE_DIR.parent
 
 # Resources directory
