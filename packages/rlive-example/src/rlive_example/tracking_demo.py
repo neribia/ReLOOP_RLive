@@ -32,10 +32,7 @@ import time
 import cv2 as cv
 import numpy as np
 
-# Add the packages to path for direct script execution
-SCRIPT_DIR = Path(__file__).parent.parent
-sys.path.insert(0, str(SCRIPT_DIR / "packages" / "rlive-env" / "src"))
-sys.path.insert(0, str(SCRIPT_DIR / "packages" / "rlive-common" / "src"))
+from rlive_example.config import RESOURCES_DIR
 
 from rlive_env.localisation import BallLocalisator, BallLocation
 from rlive_env.localisation.processors import *
@@ -284,7 +281,7 @@ class TrackingDemo:
             skip_frames: Number of frames to skip between detections (0 = no skip, process every frame)
         """
         # Initialize video source
-        self.video_source = VideoSource(source, width, height, target_fps=target_fps)
+        self.video_source = VideoSource(str(source), width, height, target_fps=target_fps)
         self.localiser = BallLocalisator()
 
         # Use custom pipeline if provided
@@ -594,7 +591,7 @@ def main():
 
     # ========== CONFIGURATION ==========
     # Video source settings
-    VIDEO_SOURCE = 1# "demo_video.mp4"  # Use 0 for webcam, or path to video file
+    VIDEO_SOURCE = RESOURCES_DIR / "demo_video.mp4"  # Use 0 for webcam, or path to video file
     FRAME_WIDTH = 640 # Frame width for webcam
     FRAME_HEIGHT = 480 # Frame height for webcam
     TARGET_FPS = 30  # Target frames per second

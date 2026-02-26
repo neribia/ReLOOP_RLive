@@ -1,3 +1,22 @@
+# rlive-example
+
+Example utilities and demonstration scripts for the ReLoop_RLive project.
+
+## 📦 What's Included
+
+This package provides demonstration and example code for using the ReLoop_RLive ecosystem:
+
+- Example scripts and workflows
+- Demo implementations
+
+## Installation
+
+To install this package, run:
+
+```bash
+uv sync 
+```
+
 # Demo Pipelines
 
 Pipelines and extractors for detecting a Sphero Bolt+ robot (transparent shell, blue LED strips)
@@ -170,3 +189,4 @@ pipeline = ImagePipeline([
 ])
 extractor = MomentsExtractor(min_contour_area=800, min_circularity=0.4)
 ```
+
