@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - '**'
+    paths:
+      - 'docs/**'
+      - '!docs/drafts/**'
 
 permissions:
   contents: write
