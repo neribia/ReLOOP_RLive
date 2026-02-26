@@ -5,13 +5,20 @@ description = "Example utilities and demonstration scripts for the ReLoop_RLive 
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
+    "torch>=2.0",
     "d3rlpy>=2.8.0",
     "rlive-common",
     "rlive-env[all]",
     "rlive-sim[all]",
 ]
 
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
 [tool.uv.sources]
+torch = { index = "pytorch-cu126" }
 rlive-common = { workspace = true }
 rlive-env = { workspace = true }
 rlive-sim = { workspace = true }
