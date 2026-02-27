@@ -160,12 +160,12 @@ class RemoteWorldEnv(gym.Env):
 
         self.set_random_goal()
 
-        actions = []
-        for _ in range(self._decay):
-            action = self.action_space.sample()
-            actions.append(self.action_transformer.transform(action))
-
         try:
+            actions = []
+            for _ in range(self._decay):
+                action = self.action_space.sample()
+                actions.append(self.action_transformer.transform(action))
+
             data: ResetResponse = self.iface.reset(actions)
             logger.info(f"reset data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
@@ -191,7 +191,7 @@ class RemoteWorldEnv(gym.Env):
             - truncated (bool): True if episode ended due to time/step limit
             - info (dict): Additional information about the step.
         """
-        logger.info(f"Making a step with action: {action}")
+        logger.debug(f"Making a step with action: {action}")
 
         # Transform action using the configured action space transformer
         try:
@@ -203,7 +203,7 @@ class RemoteWorldEnv(gym.Env):
 
         try:
             data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(transformed_action) # self.iface.step_multipart(transformed_action)
-            logger.info(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
+            logger.debug(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
             # Ball localisation before draw_goal
             terminated, reward = self.calculate_reward(observation=data.observation)
@@ -220,13 +220,19 @@ class RemoteWorldEnv(gym.Env):
             logger.exception("Failed to step environment")
             return self.obs, 0.0, False, True, {"error": str(e)}  # Return truncated=True to end episode on error
 
-    def render(self):
+    def render(self, scale: float = 1.0, visualize: bool = True) -> None:
         logger.debug(f"OpenCV rendering mode: {self.render_mode}")
+        if scale <= 0:
+            logger.warning(f"Invalid scale {scale}, must be > 0. Defaulting to 1.0.")
+            scale = 1.0
         if self.render_mode == "opencv":
             if self.obs is not None:
-                show_image = self.localiser.annotate_image(self.obs,self.ball_location, self.goal_position, cfg.GOAL_RADIUS)
+                show_image = self.obs.copy()
+                if visualize:
+                    show_image = self.localiser.annotate_image(show_image,self.ball_location, self.goal_position, cfg.GOAL_RADIUS)
                 show_image = cv.cvtColor(show_image, cv.COLOR_RGB2BGR)
-                cv.imshow("Environment", show_image)
+                res_show_image = cv.resize(show_image, dsize=None, fx=scale, fy=scale)
+                cv.imshow("Environment", res_show_image)
                 cv.waitKey(1)
 
     def close(self) -> None:

@@ -188,7 +188,7 @@ class BallLocalisator:
             extractor_debug_img = self.extractor.get_debug_image(processed)
 
             if location is not None:
-                logger.info(f"Ball located at {location.as_tuple()}")
+                logger.debug(f"Ball located at {location.as_tuple()}")
                 self.last_result = DetectionResult(
                     location=location,
                     debug_image=processed,

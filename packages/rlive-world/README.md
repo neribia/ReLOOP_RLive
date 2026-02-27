@@ -13,8 +13,8 @@ This package provides the world server and hardware control components:
   - Handles RL environment requests (reset, step, attach/detach hardware)
   - Supports both JSON and multipart responses
   
-- **Robot Control**: Sphero Bolt+ robot interface
-  - Direct BLE communication via `sphero_unsw`
+- **Robot Control**: Sphero Bolt+ robot interface (optional `bolt` dependency group)
+  - Direct BLE communication via `sphero_unsw` and `bleak`
   - Movement control, sensor reading
   - Dummy implementations for hardware-free testing
   

@@ -17,13 +17,15 @@ Demonstrator for the ReLoop project — a reinforcement learning environment for
 
 ## 📦 Project Structure
 
-This project is organized as a Python monorepo with three main packages:
+This project is organized as a Python monorepo with five main packages:
 
 ```
 packages/
 ├── rlive-common/    # Shared utilities, types, request/response models
 ├── rlive-env/       # Gymnasium-compatible remote environment client
-└── rlive-world/     # World server, robot control, and camera interfaces
+├── rlive-world/     # World server, robot control, and camera interfaces
+├── rlive-sim/       # Simulation environment with pluggable physics/render backends
+└── rlive-example/   # Example scripts and demonstration utilities
 ```
 
 ### Package Descriptions
@@ -39,8 +41,19 @@ packages/
   
 - **rlive-world**: Server-side package including:
   - FastAPI-based world server with REST endpoints
-  - Sphero Bolt+ robot control via BLE
+  - Sphero Bolt+ robot control via BLE (optional `bolt` dependency group)
   - Camera interfaces (PiCamera, Webcam, Dummy)
+
+- **rlive-sim**: Simulation package providing:
+  - `SimulationEnv`: A Gymnasium-compatible simulation environment
+  - Pluggable physics backends (Simple, PyMunk)
+  - Pluggable render backends (OpenCV, Mitsuba)
+  - Support for integrated engines (MuJoCo, Godot)
+
+- **rlive-example**: Example and demonstration scripts including:
+  - Tracking demo for ball detection
+  - Environment usage examples
+  - Dataset recording with d3rlpy
 
 ## 🚀 Installation
 
@@ -51,14 +64,14 @@ This project uses [uv](https://docs.astral.sh/uv/) — a fast Python package and
 To install all packages and dependency groups (including development and optional groups), run:
 
 ```bash
-uv sync --all-packages --all-groups
+uv sync --all-packages --all-groups --all-extras
 ```
 
 This will:
 
 - Create or update your virtual environment
-- Install all workspace packages (rlive-common, rlive-env, rlive-world)
-- Install every dependency group defined in your pyproject.toml (e.g., dev, docs, test, etc.)
+- Install all workspace packages (rlive-common, rlive-env, rlive-world, rlive-sim, rlive-example)
+- Install every dependency group defined in your pyproject.toml (e.g., dev, bolt, etc.)
 
 Once complete, you can activate the environment:
 
@@ -88,6 +101,16 @@ uv sync --package rlive-world
 **For Common utilities only:**
 ```bash
 uv sync --package rlive-common
+```
+
+**For Simulation Environment only:**
+```bash
+uv sync --package rlive-sim
+```
+
+**For Example Scripts only:**
+```bash
+uv sync --package rlive-example
 ```
 
 > **Note**: The `--group bolt` flag installs Sphero robot control libraries. Required for real hardware, optional for dummy mode.
@@ -202,6 +225,7 @@ Or run tests for a specific package:
 pytest tests/rlive-common/ -v
 pytest tests/rlive-env/ -v
 pytest tests/rlive-world/ -v
+pytest tests/rlive-sim/ -v
 ```
 
 ## 🛠️ Development

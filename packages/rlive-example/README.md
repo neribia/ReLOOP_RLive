@@ -8,14 +8,74 @@ This package provides demonstration and example code for using the ReLoop_RLive 
 
 - Example scripts and workflows
 - Demo implementations
+- Dataset recording with d3rlpy
 
-## Installation
+### Dependencies
 
-To install this package, run:
+- **rlive-common**: Shared utilities and types
+- **rlive-env**: Gymnasium-compatible remote environment
+- **rlive-sim**: Simulation environment
+- **d3rlpy**: Offline reinforcement learning library (dataset recording)
+
+### Example Scripts
+
+| Script | Description |
+|--------|-------------|
+| `tracking_demo.py` | Visual ball detection and tracking demo |
+| `rlive_env_example.py` | RemoteWorldEnv usage with real/dummy robot |
+| `sphero_bolt_plus_demo.py` | Sphero Bolt+ robot control demo |
+| `sphero_unsw_demo.py` | Sphero UNSW library demo |
+| `create_mdpdataset.py` | Record environment interactions as d3rlpy MDPDataset |
+
+## 🚀 Installation
+
+### As Part of the Full Project
 
 ```bash
-uv sync 
+# From project root
+uv sync --all-packages --all-groups --all-extras
 ```
+
+### Standalone Installation
+
+**From Repository Root** (`ReLoop_RLive/`):
+```bash
+# Install only rlive-example (includes rlive-common, rlive-env, rlive-sim as dependencies)
+uv sync --package rlive-example
+```
+
+**From Package Root** (`ReLoop_RLive/packages/rlive-example/`):
+```bash
+uv sync
+```
+
+## 📚 Usage
+
+### Tracking Demo
+
+```bash
+uv run python -m rlive_example.tracking_demo
+```
+
+### Environment Example
+
+```bash
+uv run python -m rlive_example.rlive_env_example
+```
+
+### Record Dataset
+
+```bash
+uv run python -m rlive_example.create_mdpdataset
+```
+
+The dataset is saved to `packages/rlive-example/resources/dataset.h5`.
+
+## 📄 License
+
+See LICENSE file in project root for details.
+
+---
 
 # Demo Pipelines
 
@@ -189,4 +249,3 @@ pipeline = ImagePipeline([
 ])
 extractor = MomentsExtractor(min_contour_area=800, min_circularity=0.4)
 ```
-
