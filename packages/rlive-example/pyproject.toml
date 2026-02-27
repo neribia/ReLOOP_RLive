@@ -3,12 +3,12 @@ name = "rlive-example"
 version = "0.1.0"
 description = "Example utilities and demonstration scripts for the ReLoop_RLive project"
 readme = "README.md"
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.10"
 dependencies = [
     "torch>=2.0",
     "d3rlpy>=2.8.0",
     "rlive-common",
-    "rlive-env[all]",
+    "rlive-env",
     "rlive-sim[all]",
 ]
 

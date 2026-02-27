@@ -3,9 +3,8 @@ name = "rlive_world"
 version = "0.1.0"
 description = "Server-side package for controlling physical robots and managing the world state"
 readme = "README.md"
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.10"
 dependencies = [
-    "asyncio>=4.0.0",
     "fastapi>=0.120.2",
     "numpy>=2.2.6",
     "opencv-python>=4.12.0.88",
@@ -15,7 +14,12 @@ dependencies = [
     "uvicorn>=0.38.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
+all = [
+    "bleak>=1.1.1",
+    "sphero-unsw>=0.1.8",
+    "spherov2>=0.12.1",
+]
 bolt = [
     "bleak>=1.1.1",
     "sphero-unsw>=0.1.8",

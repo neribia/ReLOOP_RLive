@@ -3,7 +3,7 @@ name = "rlive-common"
 version = "0.1.0"
 description = "Core functionality for ReLoop RLive"
 readme = "README.md"
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.10"
 dependencies = [
     "numpy>=2.2.6",
     "opencv-python>=4.12.0.88",
