@@ -15,7 +15,7 @@ def check_cuda() -> None:
         print(f"Device count:          {torch.cuda.device_count()}")
         for i in range(torch.cuda.device_count()):
             props = torch.cuda.get_device_properties(i)
-            vram = props.total_mem / (1024 ** 3)
+            vram = props.total_memory / (1024 ** 3)
             print(f"  [{i}] {props.name} ({vram:.1f} GB)")
         print(f"Current device:        {torch.cuda.current_device()}")
         print(f"Current device name:   {torch.cuda.get_device_name()}")

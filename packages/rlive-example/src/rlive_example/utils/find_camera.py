@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import math
+import platform
 
 def decode_fourcc(fourcc):
     return "".join([
@@ -35,8 +36,23 @@ def try_set_max_resolution(cap):
     return best_w, best_h
 
 
+def _get_capture_backend():
+    """Return the preferred OpenCV capture backend for the current OS."""
+    system = platform.system()
+    if system == "Windows":
+        return cv2.CAP_DSHOW
+    elif system == "Linux":
+        return cv2.CAP_V4L2
+    else:
+        return cv2.CAP_ANY
+
+
 def find_cameras_with_full_preview(max_index=10):
     print("Scanning cameras...\n")
+
+    backend = _get_capture_backend()
+    backend_name = {cv2.CAP_DSHOW: "DirectShow", cv2.CAP_V4L2: "V4L2"}.get(backend, "Auto")
+    print(f"Platform: {platform.system()} → using {backend_name} backend\n")
 
     frames = []
     camera_results = []
@@ -44,7 +60,7 @@ def find_cameras_with_full_preview(max_index=10):
     for index in range(max_index):
         print(f"--- Checking index {index} ---")
 
-        cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+        cap = cv2.VideoCapture(index, backend)
 
         if not cap.isOpened():
             print("❌ Not available\n")
@@ -61,20 +77,20 @@ def find_cameras_with_full_preview(max_index=10):
 
         fps = cap.get(cv2.CAP_PROP_FPS)
         fourcc = decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
-        backend = cap.getBackendName()
+        backend_used = cap.getBackendName()
 
         print("✅ Camera found")
         print(f"Resolution : {width} x {height}")
         print(f"FPS        : {fps}")
         print(f"FOURCC     : {fourcc}")
-        print(f"Backend    : {backend}\n")
+        print(f"Backend    : {backend_used}\n")
 
         camera_results.append({
             "index": index,
             "resolution": f"{width} x {height}",
             "fps": fps,
             "fourcc": fourcc,
-            "backend": backend
+            "backend": backend_used
         })
 
         # Grab updated frame at max resolution
@@ -89,7 +105,7 @@ def find_cameras_with_full_preview(max_index=10):
             f"Res: {width} x {height}",
             f"FPS: {fps:.2f}",
             f"FOURCC: {fourcc}",
-            f"Backend: {backend}"
+            f"Backend: {backend_used}"
         ]
 
         y = 30

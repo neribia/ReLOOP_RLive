@@ -220,11 +220,16 @@ class RemoteWorldEnv(gym.Env):
             logger.exception("Failed to step environment")
             return self.obs, 0.0, False, True, {"error": str(e)}  # Return truncated=True to end episode on error
 
-    def render(self, scale: float = 1.0) -> None:
+    def render(self, scale: float = 1.0, visualize: bool = True) -> None:
         logger.debug(f"OpenCV rendering mode: {self.render_mode}")
+        if scale <= 0:
+            logger.warning(f"Invalid scale {scale}, must be > 0. Defaulting to 1.0.")
+            scale = 1.0
         if self.render_mode == "opencv":
             if self.obs is not None:
-                show_image = self.localiser.annotate_image(self.obs,self.ball_location, self.goal_position, cfg.GOAL_RADIUS)
+                show_image = self.obs.copy()
+                if visualize:
+                    show_image = self.localiser.annotate_image(show_image,self.ball_location, self.goal_position, cfg.GOAL_RADIUS)
                 show_image = cv.cvtColor(show_image, cv.COLOR_RGB2BGR)
                 res_show_image = cv.resize(show_image, dsize=None, fx=scale, fy=scale)
                 cv.imshow("Environment", res_show_image)
