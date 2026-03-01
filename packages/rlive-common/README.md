@@ -45,6 +45,39 @@ uv sync --package rlive-common
 uv sync
 ```
 
+### Activating a Single Virtual Environment
+
+If you want to work with a single package's virtual environment (e.g., just `rlive-common`), you can activate its `.venv` directly:
+
+**PowerShell (Windows)**:
+```powershell
+.\.venv\Scripts\activate.ps1
+```
+
+**Bash/Zsh (Linux/macOS)**:
+```bash
+source .venv/bin/activate
+```
+
+After activation, you can use `uv sync --active` to sync dependencies for the current package:
+```bash
+uv sync --active
+```
+
+**What does `--active` do?**
+The `--active` flag tells `uv` to sync dependencies for the currently activated virtual environment instead of the entire workspace.
+
+**What does `--no-install-workspace` do?**
+The `--no-install-workspace` flag checks dependencies for compatibility with the workspace but does not install other workspace packages. This is useful when testing a single package in isolation:
+```bash
+uv sync --no-install-workspace
+```
+
+**To deactivate the virtual environment**:
+```bash
+deactivate
+```
+
 ## 📚 Usage
 
 ### Using Request/Response Models

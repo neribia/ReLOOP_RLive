@@ -115,6 +115,53 @@ uv sync --package rlive-example
 
 > **Note**: The `--group bolt` flag installs Sphero robot control libraries. Required for real hardware, optional for dummy mode.
 
+### Activating the Virtual Environment
+
+After installing packages, you can activate the workspace virtual environment:
+
+**PowerShell (Windows)**:
+```powershell
+.\.venv\Scripts\activate.ps1
+```
+
+**Bash/Zsh (Linux/macOS)**:
+```bash
+source .venv/bin/activate
+```
+
+After activation, your command prompt will show `(.venv)` prefix, indicating the virtual environment is active.
+
+#### Using `--active` Flag with Single Packages
+
+If you have multiple virtual environments and want to sync the currently active one:
+
+```bash
+uv sync --active
+```
+
+The `--active` flag tells `uv` to sync dependencies for the currently activated virtual environment instead of the entire workspace. This is useful when working with isolated package environments.
+
+#### Understanding `--no-install-workspace`
+
+The `--no-install-workspace` flag checks dependencies for compatibility with the workspace but does not install other workspace packages:
+
+```bash
+uv sync --no-install-workspace
+```
+
+This is useful when:
+- Testing a single package's dependencies in isolation
+- Reducing installation time by skipping other workspace packages
+- **Note**: Dependencies are still validated against the entire workspace, so conflicts will still be detected
+
+#### Deactivating the Virtual Environment
+
+To exit the virtual environment:
+
+```bash
+deactivate
+```
+
 ## 🏁 Getting Started
 
 ### Quick Start with Dummy Hardware

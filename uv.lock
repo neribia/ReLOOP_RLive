@@ -1523,7 +1523,7 @@ dependencies = [
 requires-dist = [
     { name = "d3rlpy", specifier = ">=2.8.0" },
     { name = "rlive-common", editable = "packages/rlive-common" },
-    { name = "rlive-env", extras = ["all"], editable = "packages/rlive-env" },
+    { name = "rlive-env", editable = "packages/rlive-env" },
     { name = "rlive-sim", extras = ["all"], editable = "packages/rlive-sim" },
     { name = "torch", specifier = ">=2.0", index = "https://download.pytorch.org/whl/cu126" },
 ]
