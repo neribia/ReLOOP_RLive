@@ -10,6 +10,7 @@ from rlive_env.world_client import WorldInterface
 from rlive_env.localisation import BallLocalisator, BallLocation
 from rlive_env.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, DetachHardwareResponse, AttachHardwareResponse
+from rlive_common.core import WorldConfig
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -21,7 +22,8 @@ class RemoteWorldEnv(gym.Env):
 
     metadata = {"render_modes": ["opencv"]}
 
-    def __init__(self, max_episode_steps: int | None = 100, render_mode: str | None = None, auto_attach: bool = True, options: dict[str, Any] | None = None,
+    def __init__(self, max_episode_steps: int | None = 100, render_mode: str | None = None, auto_attach: bool = True,
+                 world_config: WorldConfig | None = None,
                  reward_mode: Literal["dense", "sparse"] | None = None,
                  action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
                  **kwargs) -> None:
@@ -31,8 +33,10 @@ class RemoteWorldEnv(gym.Env):
             - max_episodes (int | None): Max epochs (default: 100)
             - render_mode (Optional[str]): Rendering mode ('opencv' or None)
             - auto_attach (bool): Automatically attach hardware on init (default: True)
+            - world_config (WorldConfig | None): World configuration with camera and bolt settings.
+              None values use rlive-world defaults.
             - reward_mode (str): Reward calculation mode ('dense' or 'sparse'). Defaults to config value.
-            - action_space_type (ActionSpaceType): Action space transformer type. Default: ActionSpaceType.POLAR
+            - action_space_type (ActionSpaceType): Action space transformer type. Default: ActionSpaceType.CARTESIAN
             - base_url (Optional[str]): Base URL for remote environment.
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
         """
@@ -45,7 +49,7 @@ class RemoteWorldEnv(gym.Env):
         self.iface: WorldInterface | None = None
         self.obs = None
         self._hardware_attached = False
-        self.options = options or {}
+        self.world_config = world_config or WorldConfig()
 
         # Action space transformer
         logger.info(f"Setting up action space transformer: {action_space_type}")
@@ -102,7 +106,7 @@ class RemoteWorldEnv(gym.Env):
             return None
 
         logger.info("Attaching hardware in RemoteWorld.")
-        resp = self.iface.attach_hardware(**self.options)
+        resp = self.iface.attach_hardware(world_config=self.world_config)
         if not resp.success:
             raise RuntimeError(f"Failed to attach hardware: {resp.info}")
 

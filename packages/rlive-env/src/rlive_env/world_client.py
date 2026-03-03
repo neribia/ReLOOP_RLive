@@ -16,6 +16,7 @@ from rlive_common.core.response import (
     DetachHardwareResponse,
 )
 from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
+from rlive_common.core import WorldConfig
 from rlive_env.config import config as cfg
 from rlive_common.utils import get_logger
 
@@ -82,10 +83,17 @@ class WorldInterface:
         """Get detailed status of the world server including hardware state."""
         return self._request("GET", "/status", expect_json=True)
 
-    # -------------------------------------------------------------
-    def attach_hardware(self, **kwargs) -> AttachHardwareResponse:
-        """Call POST /attach_hardware on the world server with retries."""
-        payload = AttachHardwareRequest(**kwargs).model_dump()
+    def attach_hardware(self, world_config: WorldConfig) -> AttachHardwareResponse:
+        """Call POST /attach_hardware on the world server.
+
+        Args:
+            world_config: WorldConfig object with camera and bolt settings
+
+        Returns:
+            AttachHardwareResponse with success status and info
+        """
+        request = AttachHardwareRequest(world_config=world_config)
+        payload = request.model_dump()
         data = self._request("POST", "/attach_hardware", json=payload)
         return AttachHardwareResponse(**data)
 
