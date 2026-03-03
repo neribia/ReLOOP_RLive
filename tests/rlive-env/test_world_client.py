@@ -175,7 +175,9 @@ class TestWorldInterface(unittest.TestCase):
             self.assertEqual(req.method, "POST")
             self.assertEqual(req.url.path, "/attach_hardware")
 
-            self.assert_json_body(req, AttachHardwareRequest())
+            # The request should contain the full nested config structure
+            expected_request = AttachHardwareRequest()
+            self.assert_json_body(req, expected_request)
 
             return Response(200, json=expected.model_dump())
 
