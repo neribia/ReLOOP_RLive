@@ -38,7 +38,7 @@ class WorldConfig(BaseModel):
         default=None, description="Camera type: DUMMY, WEBCAM, or PICAM"
     )
     camera_id: int | None = Field(default=None, ge=0, description="Camera device ID")
-    camera_resolution: tuple[int, int] | None = Field(
+    camera_resolution: CameraResolution | tuple[int, int] | None = Field(
         default=None, description="Camera resolution as (width, height) tuple. Accepts CameraResolution enum or custom tuple/list on input."
     )
     camera_exposure_time_ms: float | None = Field(
