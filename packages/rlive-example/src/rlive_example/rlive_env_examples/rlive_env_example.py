@@ -41,9 +41,9 @@ def main() -> None:
     world_config = WorldConfig(
         camera_type=CameraType.WEBCAM,
         camera_id=1,
-        camera_resolution=(640, 480),  # Can use custom tuple or CameraResolution.VGA
+        camera_resolution=(640, 480),  # Can use custom tuple or CameraResolution.RES_640x480
         bolt_name="BP-D217",
-        bolt_use_dummy=False
+        bolt_use_dummy=True
     )
 
     env = RemoteWorldEnv(

@@ -16,7 +16,8 @@ class WorldConfig(BaseModel):
         # Camera settings
         camera_type: Camera type (DUMMY, WEBCAM, PICAM). None uses env default.
         camera_id: Camera device ID. None uses env default.
-        camera_resolution: Frame resolution as (width, height) tuple. Can be CameraResolution enum or custom tuple. None uses env default.
+        camera_resolution: Frame resolution as (width, height) tuple. Accepts CameraResolution enum
+                          or custom tuple/list, but always stored and sent as tuple. None uses env default.
         camera_exposure_time_ms: Camera exposure time in milliseconds. None uses env default.
         
         # Bolt robot settings
@@ -37,8 +38,8 @@ class WorldConfig(BaseModel):
         default=None, description="Camera type: DUMMY, WEBCAM, or PICAM"
     )
     camera_id: int | None = Field(default=None, ge=0, description="Camera device ID")
-    camera_resolution: CameraResolution | tuple[int, int] | None = Field(
-        default=None, description="Camera resolution as (width, height) tuple or CameraResolution enum"
+    camera_resolution: tuple[int, int] | None = Field(
+        default=None, description="Camera resolution as (width, height) tuple. Accepts CameraResolution enum or custom tuple/list on input."
     )
     camera_exposure_time_ms: float | None = Field(
         default=None, gt=0, description="Exposure time in milliseconds"
@@ -84,23 +85,33 @@ class WorldConfig(BaseModel):
 
     @field_validator("camera_resolution", mode="before")
     @classmethod
-    def validate_camera_resolution(cls, v: Any) -> CameraResolution | tuple[int, int] | None:
-        """Validate camera resolution - accept enum or custom tuple."""
+    def validate_camera_resolution(cls, v: Any) -> tuple[int, int] | None:
+        """Validate and normalize camera resolution to always be a tuple.
+
+        Input can be:
+        - None (uses server defaults)
+        - CameraResolution enum (e.g., CameraResolution.RES_640x480) → converts to (640, 480)
+        - Tuple (e.g., (640, 480)) → stays as tuple
+        - List (e.g., [640, 480] from JSON) → JsonTuple wrapper converts to tuple
+
+        Always returns: None or tuple[int, int]
+        This ensures the field always contains a tuple for consistent serialization.
+        """
         if v is None:
             return None
 
-        # Already a CameraResolution enum
+        # CameraResolution enum - convert to tuple
         if isinstance(v, CameraResolution):
-            return v
+            return tuple(v)  # CameraResolution inherits from tuple, so tuple(enum) works
 
-        # Custom tuple
-        if isinstance(v, tuple) and len(v) == 2:
-            width, height = v
+        # Tuple or List - validate and return as tuple
+        if isinstance(v, (tuple, list)) and len(v) == 2:
+            width, height = v[0], v[1]
             if not isinstance(width, int) or not isinstance(height, int):
-                raise ValueError("Camera resolution must be tuple of (int, int)")
+                raise ValueError("Camera resolution must contain two integers (width, height)")
             if width <= 0 or height <= 0:
                 raise ValueError("Camera resolution must have positive values")
-            return v
+            return width, height
 
         raise ValueError(
             f"Camera resolution must be CameraResolution enum or (width, height) tuple, got {type(v).__name__}"

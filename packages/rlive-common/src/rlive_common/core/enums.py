@@ -21,40 +21,37 @@ class CameraResolution(tuple, Enum):
     Custom resolutions can also be passed as tuples directly.
 
     Examples:
-        CameraResolution.HD  # (1280, 720)
-        CameraResolution.FULL_HD  # (1920, 1080)
+        CameraResolution.RES_1280x720  # (1280, 720)
+        CameraResolution.RES_1920x1080  # (1920, 1080)
         (640, 480)  # Custom resolution as tuple
     """
 
     # Common resolutions
-    QVGA = (320, 240)
-    VGA = (640, 480)
-    SVGA = (800, 600)
-    XGA = (1024, 768)
-    HD = (1280, 720)
-    FULL_HD = (1920, 1080)
-
-    def __new__(cls, width: int, height: int) -> "CameraResolution":
-        """Create a new CameraResolution tuple."""
-        obj = tuple.__new__(cls, (width, height))
-        obj._value_ = (width, height)
-        return obj
+    RES_320x240 = (320, 240)
+    RES_640x480 = (640, 480)
+    RES_800x600 = (800, 600)
+    RES_1024x768 = (1024, 768)
+    RES_1280x720 = (1280, 720)
+    RES_1920x1080 = (1920, 1080)
 
     @property
     def width(self) -> int:
-        """Get width component."""
+        """Get width component (first element of tuple)."""
         return self[0]
 
     @property
     def height(self) -> int:
-        """Get height component."""
+        """Get height component (second element of tuple)."""
         return self[1]
+
+    def __tuple__(self) -> tuple:
+        return int(self[0]), int(self[1])
 
     def __str__(self) -> str:
         """Return string representation as WIDTHxHEIGHT."""
         return f"{self.width}x{self.height}"
 
     def __repr__(self) -> str:
-        """Return repr as tuple."""
-        return f"({self.width}, {self.height})"
+        """Return representation showing both enum name and tuple value."""
+        return f"{self.__class__.__name__}.{self.name}({self.width}, {self.height})"
 
