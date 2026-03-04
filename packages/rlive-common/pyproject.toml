@@ -10,6 +10,12 @@ dependencies = [
     "pydantic>=2.12.3",
 ]
 
+[project.optional-dependencies]
+all = [
+    "gymnasium>=1.2.1",
+]
+gym = ["gymnasium>=1.2.1"]
+
 [build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]
 build-backend = "uv_build"

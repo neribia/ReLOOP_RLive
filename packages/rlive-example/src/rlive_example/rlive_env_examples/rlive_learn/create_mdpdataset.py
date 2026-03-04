@@ -26,7 +26,7 @@ from d3rlpy.dataset import MDPDataset
 
 from rlive_common.core.hardware_config import WorldConfig
 from rlive_common.core.enums import CameraType
-from rlive_env.remote_env import RemoteWorldEnv, ActionSpaceType
+from rlive_env import RemoteWorldEnv, ActionSpaceType
 from rlive_example.config import RESOURCES_DIR
 from rlive_common.utils import get_logger
 

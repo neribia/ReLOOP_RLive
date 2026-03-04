@@ -9,7 +9,7 @@ agent training.
 from rlive_env.remote_env import RemoteWorldEnv
 
 # Action space transformers
-from rlive_env.action_space import ActionSpaceType
+from rlive_common.core.action_space import ActionSpaceType
 
 __all__ = [
     # Main environment

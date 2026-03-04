@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 import gymnasium as gym
 
-from rlive_env.action_space import (
+from rlive_common.core.action_space import (
     ActionSpaceType,
     BaseActionTransformer,
     PolarActionTransformer,
@@ -20,7 +20,7 @@ class TestPolarActionTransformer(unittest.TestCase):
 
     def setUp(self):
         """Create transformer instance for testing."""
-        self.transformer = PolarActionTransformer()
+        self.transformer = PolarActionTransformer(speed=50, duration=1.0)
 
     def test_get_action_space(self):
         """Test that action space is Discrete(360) with start=-179."""
@@ -91,7 +91,7 @@ class TestCartesianActionTransformer(unittest.TestCase):
 
     def setUp(self):
         """Create transformer instance for testing."""
-        self.transformer = CartesianActionTransformer()
+        self.transformer = CartesianActionTransformer(speed=50, duration=1.0)
 
     def test_get_action_space(self):
         """Test that action space is Box with shape (2,)."""
@@ -140,7 +140,7 @@ class TestContinuousPolarActionTransformer(unittest.TestCase):
 
     def setUp(self):
         """Create transformer instance for testing."""
-        self.transformer = ContinuousPolarActionTransformer()
+        self.transformer = ContinuousPolarActionTransformer(speed=50, duration=1.0)
 
     def test_get_action_space(self):
         """Test that action space is Box with shape (2,)."""
@@ -190,23 +190,23 @@ class TestActionTransformerFactory(unittest.TestCase):
 
     def test_get_polar_transformer(self):
         """Test getting PolarActionTransformer via factory."""
-        transformer = get_action_transformer('polar')
+        transformer = get_action_transformer('polar', speed=50, duration=1.0)
         self.assertIsInstance(transformer, PolarActionTransformer)
 
     def test_get_cartesian_transformer(self):
         """Test getting CartesianActionTransformer via factory."""
-        transformer = get_action_transformer('cartesian')
+        transformer = get_action_transformer('cartesian', speed=50, duration=1.0)
         self.assertIsInstance(transformer, CartesianActionTransformer)
 
     def test_get_continuous_polar_transformer(self):
         """Test getting ContinuousPolarActionTransformer via factory."""
-        transformer = get_action_transformer('continuous_polar')
+        transformer = get_action_transformer('continuous_polar', speed=50, duration=1.0)
         self.assertIsInstance(transformer, ContinuousPolarActionTransformer)
 
     def test_unknown_transformer(self):
         """Test that unknown transformer type raises ValueError."""
         with self.assertRaises(ValueError) as context:
-            get_action_transformer('unknown_type')
+            get_action_transformer('unknown_type', speed=50, duration=1.0)
 
         self.assertIn("Unknown", str(context.exception))
         self.assertIn("Available", str(context.exception))
@@ -230,9 +230,9 @@ class TestActionSpaceConsistency(unittest.TestCase):
     def test_all_transformers_return_three_element_array(self):
         """Test that all transformers return [heading, speed, duration]."""
         transformers = [
-            PolarActionTransformer(),
-            CartesianActionTransformer(),
-            ContinuousPolarActionTransformer(),
+            PolarActionTransformer(speed=50, duration=1.0),
+            CartesianActionTransformer(speed=50, duration=1.0),
+            ContinuousPolarActionTransformer(speed=50, duration=1.0),
         ]
 
         test_actions = [
@@ -257,14 +257,14 @@ class TestActionSpaceConsistency(unittest.TestCase):
         # Test each transformer separately with appropriate inputs
 
         # Polar transformer - single heading values
-        polar = PolarActionTransformer()
+        polar = PolarActionTransformer(speed=50, duration=1.0)
         for heading in [-179, -90, 0, 45, 90, 180]:
             result = polar.transform(heading)
             self.assertTrue(-179 <= result[0] <= 180,
                           f"Polar heading {result[0]} out of range [-179, 180]")
 
         # Cartesian transformer - 2D velocity vectors (outputs in [0, 360) then normalized)
-        cartesian = CartesianActionTransformer()
+        cartesian = CartesianActionTransformer(speed=50, duration=1.0)
         for x in [1, 0.5, 0, -0.5, -1]:
             result = cartesian.transform([x, 0.0])
             # Cartesian outputs in [0, 360), convert to [-179, 180] if needed
@@ -275,7 +275,7 @@ class TestActionSpaceConsistency(unittest.TestCase):
                           f"Cartesian heading {result[0]} out of range")
 
         # Continuous polar transformer - 2D position vectors
-        continuous = ContinuousPolarActionTransformer()
+        continuous = ContinuousPolarActionTransformer(speed=50, duration=1.0)
         for x in [1, 0.5, 0, -0.5, -1]:
             result = continuous.transform([x, 0.0])
             heading = result[0]
@@ -287,9 +287,9 @@ class TestActionSpaceConsistency(unittest.TestCase):
     def test_speed_in_valid_range(self):
         """Test that all transformers produce speeds in [0, 255]."""
         transformers = [
-            PolarActionTransformer(),
-            CartesianActionTransformer(),
-            ContinuousPolarActionTransformer(),
+            PolarActionTransformer(speed=50, duration=1.0),
+            CartesianActionTransformer(speed=50, duration=1.0),
+            ContinuousPolarActionTransformer(speed=50, duration=1.0),
         ]
 
         test_actions = [
@@ -307,9 +307,9 @@ class TestActionSpaceConsistency(unittest.TestCase):
     def test_duration_is_positive(self):
         """Test that all transformers produce positive durations."""
         transformers = [
-            PolarActionTransformer(),
-            CartesianActionTransformer(),
-            ContinuousPolarActionTransformer(),
+            PolarActionTransformer(speed=50, duration=1.0),
+            CartesianActionTransformer(speed=50, duration=1.0),
+            ContinuousPolarActionTransformer(speed=50, duration=1.0),
         ]
 
         test_actions = [
