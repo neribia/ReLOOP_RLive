@@ -53,8 +53,8 @@ class WorldConfig(BaseModel):
     bolt_color_r: int | None = Field(default=None, ge=0, le=255, description="Red (0-255)")
     bolt_color_g: int | None = Field(default=None, ge=0, le=255, description="Green (0-255)")
     bolt_color_b: int | None = Field(default=None, ge=0, le=255, description="Blue (0-255)")
-    bolt_use_dummy: bool = Field(
-        default=False, description="Use dummy robot instead of real hardware"
+    bolt_use_dummy: bool | None = Field(
+        default=None, description="Use dummy robot instead of real hardware"
     )
 
     # Additional options

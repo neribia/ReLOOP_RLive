@@ -7,7 +7,6 @@ import httpx
 import numpy as np
 from httpx import Response
 
-from rlive_world.config import config as cfg
 from rlive_common.core.response import (
     ResetResponse,
     StepResponseJSON,
@@ -83,15 +82,18 @@ class WorldInterface:
         """Get detailed status of the world server including hardware state."""
         return self._request("GET", "/status", expect_json=True)
 
-    def attach_hardware(self, world_config: WorldConfig) -> AttachHardwareResponse:
+    def attach_hardware(self, world_config: WorldConfig | None = None) -> AttachHardwareResponse:
         """Call POST /attach_hardware on the world server.
 
         Args:
-            world_config: WorldConfig object with camera and bolt settings
+            world_config: WorldConfig object with camera and bolt settings.
+                         If None, uses default WorldConfig() with server defaults.
 
         Returns:
             AttachHardwareResponse with success status and info
         """
+        if world_config is None:
+            world_config = WorldConfig()
         request = AttachHardwareRequest(world_config=world_config)
         payload = request.model_dump()
         data = self._request("POST", "/attach_hardware", json=payload)

@@ -5,5 +5,6 @@ from rlive_common.core.hardware_config import WorldConfig
 
 __all__ = [
     "CameraType",
+    "CameraResolution",
     "WorldConfig",
 ]

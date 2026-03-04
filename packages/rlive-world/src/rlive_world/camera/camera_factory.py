@@ -20,8 +20,8 @@ class CameraConfig:
     """
     type: str = cfg.CAMERA_TYPE
     id: int = cfg.CAMERA_ID
-    width: int = cfg.CAMERA_RESOLUTION[1]
-    height: int = cfg.CAMERA_RESOLUTION[0]
+    width: int = cfg.CAMERA_RESOLUTION[0]
+    height: int = cfg.CAMERA_RESOLUTION[1]
     exposure_time_ms: float = cfg.CAMERA_EXPOSURE_TIME_MS
 
 

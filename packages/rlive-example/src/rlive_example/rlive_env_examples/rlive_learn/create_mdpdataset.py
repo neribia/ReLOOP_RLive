@@ -24,6 +24,8 @@ import os
 import numpy as np
 from d3rlpy.dataset import MDPDataset
 
+from rlive_common.core.hardware_config import WorldConfig
+from rlive_common.core.enums import CameraType
 from rlive_env.remote_env import RemoteWorldEnv, ActionSpaceType
 from rlive_example.config import RESOURCES_DIR
 from rlive_common.utils import get_logger
@@ -37,17 +39,19 @@ NUM_EPISODES = 5
 def main() -> None:
     """Record episodes and save as MDPDataset."""
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
-    options = {
-        "camera_type": "webcam",
-        "robot_name": "BP-D217",
-        "use_dummy": False,
-    }
+
+    world_config = WorldConfig(
+        camera_type=CameraType.WEBCAM,
+        bolt_name="BP-D217",
+        bolt_use_dummy=False,
+    )
+
     env = RemoteWorldEnv(
         max_episode_steps=10,
         base_url=base_url,
         render_mode="opencv",
         action_space_type=ActionSpaceType.CARTESIAN,
-        options=options,
+        world_config=world_config,
     )
 
     # Collect transitions

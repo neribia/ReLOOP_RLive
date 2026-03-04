@@ -26,7 +26,9 @@ class RemoteWorldEnv(gym.Env):
                  world_config: WorldConfig | None = None,
                  reward_mode: Literal["dense", "sparse"] | None = None,
                  action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
-                 **kwargs) -> None:
+                 options: dict | None = None,
+                 **kwargs,
+                 ) -> None:
         """Initialize the environment.
 
         Attributes:

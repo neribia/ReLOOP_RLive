@@ -1,6 +1,6 @@
 import base64
 import numpy as np
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, Any
 from pydantic import BeforeValidator, PlainSerializer
 
 
