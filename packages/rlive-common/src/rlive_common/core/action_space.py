@@ -11,9 +11,12 @@ from typing import Any, Type
 
 import math
 import numpy as np
-import gymnasium as gym
 
-from rlive_env.config import config as cfg
+try:
+    import gymnasium as gym
+except ImportError:
+    gym = None
+
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -50,6 +53,16 @@ class BaseActionTransformer(ABC):
     [heading, speed, duration].
     """
 
+    def __init__(self, speed: int, duration: float) -> None:
+        """Initialize the action transformer with speed and duration parameters.
+
+        Args:
+            speed: Robot movement speed (-255 to 255)
+            duration: Robot movement duration in seconds
+        """
+        self.speed = speed
+        self.duration = duration
+
     @abstractmethod
     def get_action_space(self) -> gym.Space:
         """Return the gymnasium action space for this transformer.
@@ -57,6 +70,9 @@ class BaseActionTransformer(ABC):
         Returns:
             gymnasium.Space: The action space (e.g., Discrete, Box, etc.)
         """
+        if gym is None:
+            raise ImportError("gymnasium is required to use get_action_space(). "
+                            "Install it with: pip install gymnasium")
         pass
 
     @abstractmethod
@@ -113,11 +129,13 @@ class PolarActionTransformer(BaseActionTransformer):
     """Transform discrete heading actions to robot commands.
 
     The agent provides a heading in range [-179, 180] degrees, and speed/duration
-    are configured defaults.
+    are provided via initialization parameters.
     """
 
     def get_action_space(self) -> gym.Space:
         """Return a discrete action space for heading angles in range [-179, 180]."""
+        if gym is None:
+            raise ImportError("gymnasium is required for action spaces")
         return gym.spaces.Discrete(360, start=-179)
 
     def transform(self, action: Any) -> np.ndarray:
@@ -146,11 +164,8 @@ class PolarActionTransformer(BaseActionTransformer):
             if not (-179 <= heading <= 180):
                 raise ValueError(f"Heading must be in range [-179, 180], got {heading}")
 
-            speed = int(cfg.SPHEROBOLTPLUS_SPEED)
-            duration = float(cfg.SPHEROBOLTPLUS_DURATION)
-
-            logger.debug(f"Transformed action {action} -> [{heading}, {speed}, {duration}]")
-            return np.array([heading, speed, duration], dtype=np.float32)
+            logger.debug(f"Transformed action {action} -> [{heading}, {self.speed}, {self.duration}]")
+            return np.array([heading, self.speed, self.duration], dtype=np.float32)
 
         except (TypeError, ValueError) as e:
             logger.error(f"Failed to transform action {action}: {e}")
@@ -164,13 +179,15 @@ class CartesianActionTransformer(BaseActionTransformer):
     The agent provides 2D velocity [vx, vy], which is converted to:
     - heading: angle from atan2(vy, vx)
     - speed: magnitude of velocity vector scaled to [0, 255]
-    - duration: configured default
+    - duration: provided via initialization parameter
     """
 
     SPEED_SCALING_FACTOR: float = 100.0  # Scale velocity magnitude to speed (0-255)
 
     def get_action_space(self) -> gym.Space:
         """Return a continuous 2D velocity action space."""
+        if gym is None:
+            raise ImportError("gymnasium is required for action spaces")
         # Velocity components in range [-1, 1]
         return gym.spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
 
@@ -201,10 +218,8 @@ class CartesianActionTransformer(BaseActionTransformer):
             magnitude = math.sqrt(vx ** 2 + vy ** 2)
             speed = int(round(min(magnitude * self.SPEED_SCALING_FACTOR, 255)))
 
-            duration = float(cfg.SPHEROBOLTPLUS_DURATION)
-
-            logger.debug(f"Transformed velocity [{vx}, {vy}] -> [{heading}, {speed}, {duration}]")
-            return np.array([heading, speed, duration], dtype=np.float32)
+            logger.debug(f"Transformed velocity [{vx}, {vy}] -> [{heading}, {speed}, {self.duration}]")
+            return np.array([heading, speed, self.duration], dtype=np.float32)
 
         except (TypeError, ValueError) as e:
             logger.error(f"Failed to transform action {action}: {e}")
@@ -216,7 +231,7 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
     """Transform continuous (x, y) position to robot heading only.
 
     The agent provides 2D position [x, y], which is converted to a heading angle.
-    Speed and duration are configured defaults.
+    Speed and duration are provided via initialization parameters.
 
     This transformer is useful when the agent learns to point towards targets.
     The heading is calculated from atan2(y, x).
@@ -228,6 +243,8 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
         Returns:
             gymnasium.Space: Box space with 2D coordinates in range [-1, 1]
         """
+        if gym is None:
+            raise ImportError("gymnasium is required for action spaces")
         # Position components in range [-1, 1] (normalized coordinates)
         return gym.spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
 
@@ -235,7 +252,7 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
         """Transform [x, y] position to [heading, speed, duration].
 
         Calculates heading as the angle from origin to the (x, y) position.
-        Speed and duration are configured defaults.
+        Speed and duration are provided via initialization parameters.
 
         Args:
             action: 2D position vector [x, y] in range [-1, 1]
@@ -257,24 +274,23 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
             # atan2 returns angle in radians from -pi to pi, normalize to [-179, 180]
             heading = self._calculate_heading_from_vector(x, y)
 
-            # Use configured defaults for speed and duration
-            speed = int(cfg.SPHEROBOLTPLUS_SPEED)
-            duration = float(cfg.SPHEROBOLTPLUS_DURATION)
-
-            logger.debug(f"Transformed position [{x}, {y}] -> heading {heading}° -> [{heading}, {speed}, {duration}]")
-            return np.array([heading, speed, duration], dtype=np.float32)
+            # Use instance variables for speed and duration
+            logger.debug(f"Transformed position [{x}, {y}] -> heading {heading}° -> [{heading}, {self.speed}, {self.duration}]")
+            return np.array([heading, self.speed, self.duration], dtype=np.float32)
 
         except (TypeError, ValueError) as e:
             logger.error(f"Failed to transform action {action}: {e}")
             raise ValueError(f"Invalid action format: {e}") from e
 
 
-def get_action_transformer(action_space_type: ActionSpaceType | str) -> BaseActionTransformer:
+def get_action_transformer(action_space_type: ActionSpaceType | str, speed: int, duration: float) -> BaseActionTransformer:
     """Factory function to get an action transformer instance.
 
     Args:
         action_space_type: ActionSpaceType enum or string name of transformer
                           (e.g., ActionSpaceType.POLAR or 'polar')
+        speed: Robot movement speed (-255 to 255)
+        duration: Robot movement duration in seconds
 
     Returns:
         BaseActionTransformer: Instance of the requested transformer
@@ -296,4 +312,4 @@ def get_action_transformer(action_space_type: ActionSpaceType | str) -> BaseActi
         raise ValueError(f"Unknown action space type '{action_space_type}'. "
                         f"Available: {available}")
 
-    return _ACTION_SPACE_REGISTRY[action_space_type]()
+    return _ACTION_SPACE_REGISTRY[action_space_type](speed=speed, duration=duration)

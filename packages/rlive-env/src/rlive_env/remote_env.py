@@ -8,7 +8,7 @@ import gymnasium as gym
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
 from rlive_env.localisation import BallLocalisator, BallLocation
-from rlive_env.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
+from rlive_common.core.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, DetachHardwareResponse, AttachHardwareResponse
 from rlive_common.core import WorldConfig
 from rlive_common.utils import get_logger
@@ -56,7 +56,11 @@ class RemoteWorldEnv(gym.Env):
         # Action space transformer
         logger.info(f"Setting up action space transformer: {action_space_type}")
         try:
-            self.action_transformer = get_action_transformer(action_space_type)
+            self.action_transformer = get_action_transformer(
+                action_space_type,
+                speed=int(cfg.SPHEROBOLTPLUS_SPEED),
+                duration=float(cfg.SPHEROBOLTPLUS_DURATION)
+            )
 
             # Explicitly validate the returned object
             if not isinstance(self.action_transformer, BaseActionTransformer):
