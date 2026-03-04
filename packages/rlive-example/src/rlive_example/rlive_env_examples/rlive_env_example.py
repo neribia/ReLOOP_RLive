@@ -2,7 +2,7 @@
 
 This example shows how to:
 1. Initialize a RemoteWorldEnv connected to a world server
-2. Configure robot and camera settings
+2. Configure robot and camera settings using WorldConfig
 3. Run an environment loop with random actions
 4. Handle episode resets and termination conditions
 
@@ -18,7 +18,7 @@ Environment Variables:
 Example Configuration:
     - Robot: Sphero Bolt Plus (BP-D217)
     - Camera: Webcam
-    - Action Space: Polar coordinates (speed, direction)
+    - Action Space: Cartesian coordinates
     - Max Steps: 10 per episode
     - Render Mode: OpenCV display
 """
@@ -26,6 +26,7 @@ Example Configuration:
 import os
 
 from rlive_env import RemoteWorldEnv, ActionSpaceType
+from rlive_common.core.hardware_config import WorldConfig, CameraType, CameraResolution
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -35,20 +36,23 @@ NUM_EPISODES = 2
 
 def main() -> None:
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
-    options = {"camera_type": "webcam",
-               "robot_name": "BP-D217",
-               "use_dummy": False,
-               }
+
+    # Configure world settings
+    world_config = WorldConfig(
+        camera_type=CameraType.WEBCAM,
+        camera_id=1,
+        camera_resolution=(640, 480),  # Can use custom tuple or CameraResolution.RES_640x480
+        bolt_name="BP-D217",
+        bolt_use_dummy=True
+    )
 
     env = RemoteWorldEnv(
         max_episode_steps=10,
         base_url=base_url,
         render_mode="opencv",
         action_space_type=ActionSpaceType.CARTESIAN,
-        options=options,
+        world_config=world_config,
     )
-
-
 
     for episode in range(NUM_EPISODES):
         obs, info = env.reset()

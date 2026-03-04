@@ -1,12 +1,17 @@
 from pydantic import BaseModel, Field, ConfigDict
 
 from rlive_common.core.types import NumpyArray
+from rlive_common.core.hardware_config import WorldConfig
 
 class AttachHardwareRequest(BaseModel):
-    """Request body for POST /connect."""
-    camera_type: str | None = None
-    robot_name: str | None = None
-    use_dummy: bool = False
+    """Request body for POST /attach_hardware.
+
+    Attributes:
+        world_config: World configuration with camera and bolt settings.
+    """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    world_config: WorldConfig = Field(default_factory=WorldConfig, description="World configuration")
 
 
 class DetachHardwareRequest(BaseModel):
@@ -22,7 +27,7 @@ class BaseRequest(BaseModel):
 class ResetRequest(BaseRequest):
     """Request body for POST /reset."""
 
-    actions: list[NumpyArray] = Field(..., description="List of actions to execute during reset in the environment, where each action is represented as a NumPy array. The specific shape and meaning of each array depend on the environment's action space.")
+    actions: list[NumpyArray] = Field(default_factory=list, description="List of actions to execute during reset in the environment, where each action is represented as a NumPy array.")
 
 
 class StepRequest(BaseRequest):

@@ -60,11 +60,11 @@ Default: 0
 CAMERA_WIDTH: int = int(os.getenv("CAMERA_WIDTH", 640))
 CAMERA_HEIGHT: int = int(os.getenv("CAMERA_HEIGHT", 480))
 
-CAMERA_RESOLUTION: tuple[int, int] = (CAMERA_HEIGHT, CAMERA_WIDTH)
+CAMERA_RESOLUTION: tuple[int, int] = (CAMERA_WIDTH, CAMERA_HEIGHT)
 """
-Camera resolution as (height, width).
+Camera resolution as (width, height).
 
-Default: (480, 640)
+Default: (640, 480)
 """
 
 CAMERA_EXPOSURE_TIME_MS: float = float(os.getenv("CAMERA_EXPOSURE_TIME_MS", 20))

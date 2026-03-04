@@ -14,6 +14,8 @@ from rlive_common.core.request import (
     AttachHardwareRequest,
     DetachHardwareRequest,
 )
+from rlive_common.core.hardware_config import WorldConfig
+from rlive_common.core.enums import CameraType
 from rlive_common.core.response import (
     StepResponseMultipart,
     StepResponseJSON,
@@ -171,16 +173,30 @@ class TestWorldInterface(unittest.TestCase):
         """Test that attach_hardware returns a valid AttachHardwareResponse."""
         expected = AttachHardwareResponse(success=True, info={"status": "ok"})
 
+        # Create a WorldConfig with specific values
+        world_config = WorldConfig(
+            camera_type=CameraType.WEBCAM,
+            camera_id=0,
+            camera_resolution=(640, 480),
+            bolt_name="BP-D217",
+            bolt_use_dummy=True,
+        )
+
         def handler(req: httpx.Request) -> Response:
             self.assertEqual(req.method, "POST")
             self.assertEqual(req.url.path, "/attach_hardware")
 
-            self.assert_json_body(req, AttachHardwareRequest())
+            # The request should contain the full nested world_config structure
+            # Note: JSON converts tuples to lists, so we compare the JSON-encoded payload
+            expected_request = AttachHardwareRequest(world_config=world_config)
+            actual_json = json.loads(req.content)
+            expected_json = json.loads(expected_request.model_dump_json())
+            self.assertEqual(actual_json, expected_json)
 
             return Response(200, json=expected.model_dump())
 
         iface = self.make_iface(handler)
-        result = iface.attach_hardware()
+        result = iface.attach_hardware(world_config=world_config)
 
         self.assertIsInstance(result, AttachHardwareResponse)
         self.assertTrue(result.success)

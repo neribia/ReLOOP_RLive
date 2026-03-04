@@ -1,6 +1,8 @@
 import os
 
 from rlive_env import RemoteWorldEnv, ActionSpaceType
+from rlive_common.core.hardware_config import WorldConfig
+from rlive_common.core.enums import CameraType
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -8,16 +10,21 @@ logger = get_logger(__name__)
 
 def main() -> None:
     base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
-    options = {"camera_type": "webcam",
-               "robot_name": "BP-D217",
-               "use_dummy": True,
-               }
+
+    # Configure world settings using WorldConfig
+    world_config = WorldConfig(
+        camera_type=CameraType.WEBCAM,
+        bolt_name="BP-D217",
+        bolt_use_dummy=True,
+    )
+
     env = RemoteWorldEnv(
         max_episode_steps=10,
         base_url=base_url,
         render_mode="opencv",
-        action_space_type = ActionSpaceType.POLAR,
-        options=options)
+        action_space_type=ActionSpaceType.POLAR,
+        world_config=world_config,
+    )
 
     obs, info = env.reset()
     env.render()
