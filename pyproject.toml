@@ -3,11 +3,11 @@ name = "reloop_rlive_dev"
 version = "0.1.0"
 description = "Demonstrator for the ReLoop project — a reinforcement learning environment for controlling physical robots"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10, <3.13"
 dependencies = []
 
 [tool.uv]
-# sphero-unsw declares <3.11 but works fine on 3.11 (pure Python BLE wrapper)
+# sphero-unsw declares <3.11 but works fine with <=3.12 (pure Python BLE wrapper)
 override-dependencies = ["sphero-unsw>=0.1.8"]
 
 [tool.uv.workspace]

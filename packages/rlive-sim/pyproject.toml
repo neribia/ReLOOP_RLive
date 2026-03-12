@@ -3,7 +3,7 @@ name = "rlive-sim"
 version = "0.1.0"
 description = "Flexible simulation package for reinforcement learning with pluggable physics and rendering backends"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "rlive-common",
     "numpy>=2.2.6",
