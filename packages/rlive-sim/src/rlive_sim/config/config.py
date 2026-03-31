@@ -10,206 +10,26 @@ Configuration values can be set via:
 - Direct constructor injection
 - Environment variables (prefix: RLIVE_SIM_)
 - Config files (YAML/JSON via Pydantic)
+
+Resources are located at:
+- RESOURCES_DIR: Root resources directory
+- RESOURCES_DIR / "mujoco": MuJoCo model files
 """
-
-from enum import Enum
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict, Field
+from pathlib import Path
 
 
-class PhysicsBackend(str, Enum):
-    """Available physics engine backends."""
-
-    SIMPLE = "simple"
-    # PYMUNK = "pymunk"
-    # MUJOCO = "mujoco"
-    # PYBULLET = "pybullet"
-    # BOX2D = "box2d"
+__all__ = [
+    "RESOURCES_DIR",
+]
 
 
-class RenderBackend(str, Enum):
-    """Available render engine backends."""
+# Resources directory reference
+RESOURCES_DIR = Path(__file__).parents[3] / "resources"
+"""Root resources directory for rlive-sim package.
 
-    OPENCV = "opencv"
-    # MITSUBA = "mitsuba"
-    # BLENDER = "blender"
-    # OPENGL = "opengl"
-    # PANDA3D = "panda3d"
-    # PYRENDER = "pyrender"
+Location: packages/rlive-sim/resources/
 
-
-class IntegratedBackend(str, Enum):
-    """Available integrated engine backends.
-
-    Integrated engines combine physics and rendering in a single monolithic system.
-    """
-
-    GODOT = "godot"
-    # UNITY = "unity"
-    # MUJOCO = "mujoco"  # MuJoCo with built-in rendering
-    # ISAAC_SIM = "isaac_sim"
-    # PYBULLET = "pybullet"  # PyBullet with OpenGL rendering
-
-
-class PhysicsConfig(BaseModel):
-    """Configuration for physics engines.
-
-    Attributes:
-        backend: The physics backend to use.
-        dt: Simulation timestep in seconds.
-        gravity: Gravity vector [gx, gy, gz].
-        substeps: Number of physics substeps per step.
-        extra: Additional backend-specific configuration.
-
-    Example:
-        config = PhysicsConfig(backend=PhysicsBackend.SIMPLE, dt=0.01)
-        config.gravity
-        [0.0, 0.0, -9.81]
-    """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    backend: PhysicsBackend = PhysicsBackend.SIMPLE
-    dt: float = Field(default=0.01, gt=0, description="Timestep in seconds")
-    gravity: list[float] = Field(default=[0.0, 0.0, -9.81], min_length=3, max_length=3)
-    substeps: int = Field(default=1, ge=1, description="Physics substeps per step")
-    extra: dict[str, Any] = Field(default_factory=dict)
-
-
-class RenderConfig(BaseModel):
-    """Configuration for render engines.
-
-    Attributes:
-        backend: The render backend to use.
-        width: Image width in pixels.
-        height: Image height in pixels.
-        channels: Number of color channels (RGB=3, RGBA=4).
-        spp: Samples per pixel (for ray tracing renderers).
-        extra: Additional backend-specific configuration.
-
-    Example:
-        config = RenderConfig(backend=RenderBackend.OPENCV, width=640, height=480)
-        config.get_resolution()
-        (480, 640, 3)
-    """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    backend: RenderBackend = RenderBackend.OPENCV
-    width: int = Field(default=640, gt=0)
-    height: int = Field(default=480, gt=0)
-    channels: int = Field(default=3, ge=1, le=4)
-    spp: int = Field(default=64, ge=1, description="Samples per pixel")
-    extra: dict[str, Any] = Field(default_factory=dict)
-
-    def get_resolution(self) -> tuple[int, int, int]:
-        """Get resolution as (height, width, channels) tuple."""
-        return (self.height, self.width, self.channels)
-
-
-class IntegratedConfig(BaseModel):
-    """Configuration for integrated engines.
-
-    Integrated engines combine physics and rendering in a single monolithic system
-    that can efficiently share resources and execute together.
-
-    Attributes:
-        backend: The integrated backend to use.
-        dt: Simulation timestep in seconds.
-        gravity: Gravity vector [gx, gy, gz].
-        width: Image width in pixels.
-        height: Image height in pixels.
-        channels: Number of color channels (RGB=3, RGBA=4).
-        scene_path: Path to the default scene file.
-        extra: Additional backend-specific configuration.
-
-    Example:
-        config = IntegratedConfig(backend=IntegratedBackend.MUJOCO)
-        config.backend
-        <IntegratedBackend.MUJOCO: 'mujoco'>
-    """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    backend: IntegratedBackend | None = None
-    dt: float = Field(default=0.01, gt=0)
-    gravity: list[float] = Field(default=[0.0, 0.0, -9.81], min_length=3, max_length=3)
-    width: int = Field(default=640, gt=0)
-    height: int = Field(default=480, gt=0)
-    channels: int = Field(default=3, ge=1, le=4)
-    scene_path: str | None = None
-    extra: dict[str, Any] = Field(default_factory=dict)
-
-
-class SimulationConfig(BaseModel):
-    """Main simulation configuration.
-
-    This is the top-level configuration that determines whether to use
-    an integrated engine or separate physics/render engines.
-
-    The configuration can be loaded from:
-    - Environment variables with prefix `RLIVE_SIM_`
-    - Config files (YAML/JSON)
-    - Direct Python instantiation
-
-    Attributes:
-        use_integrated: Whether to use an integrated engine (monolithic).
-            If False, uses separate physics and render engines.
-        physics: Physics engine configuration (if not using integrated).
-        render: Render engine configuration (if not using integrated).
-        integrated: Integrated engine configuration (if using integrated).
-        max_episode_steps: Maximum steps per episode.
-        seed: Random seed for reproducibility.
-
-    Example:
-        Using environment variables:
-        # Set RLIVE_SIM_USE_INTEGRATED=true
-        config = SimulationConfig()
-        config.use_integrated
-        True
-
-        Using separate engines:
-        config = SimulationConfig(
-            use_integrated=False,
-            physics=PhysicsConfig(backend=PhysicsBackend.SIMPLE),
-            render=RenderConfig(backend=RenderBackend.OPENCV),
-        )
-
-        Using integrated engine:
-        config = SimulationConfig(
-            use_integrated=True,
-            integrated=IntegratedConfig(backend=IntegratedBackend.MUJOCO),
-        )
-    """
-
-    model_config = ConfigDict(
-        env_prefix="RLIVE_SIM_",
-        json_schema_extra={"env_nested_delimiter": "__"},
-        extra="ignore",
-    )
-
-    use_integrated: bool = Field(
-        default=False,
-        description="Use integrated engine instead of separate physics/render",
-    )
-    physics: PhysicsConfig = Field(default_factory=PhysicsConfig)
-    render: RenderConfig = Field(default_factory=RenderConfig)
-    integrated: IntegratedConfig = Field(default_factory=IntegratedConfig)
-    max_episode_steps: int = Field(default=100, ge=1)
-    seed: int | None = Field(default=None, description="Random seed")
-
-    def get_observation_shape(self) -> tuple[int, int, int]:
-        """Get the observation shape based on render configuration.
-
-        Returns:
-            tuple[int, int, int]: (height, width, channels).
-        """
-        if self.use_integrated:
-            return (self.integrated.height, self.integrated.width, self.integrated.channels)
-        else:
-            return self.render.get_resolution()
-
-
-# Global default configuration instance
-config = SimulationConfig()
+Contains subdirectories:
+- mujoco/: MuJoCo model files (.xml, .urdf)
+- [other engine-specific resources]
+"""
