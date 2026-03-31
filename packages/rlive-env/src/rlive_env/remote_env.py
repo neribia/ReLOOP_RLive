@@ -7,7 +7,8 @@ import gymnasium as gym
 
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
-from rlive_env.localisation import BallLocalisator, BallLocation
+from rlive_env.localisation import BallLocalisator
+from rlive_common.core.ball_location import BallLocation
 from rlive_common.core.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, DetachHardwareResponse, AttachHardwareResponse
 from rlive_common.core import WorldConfig

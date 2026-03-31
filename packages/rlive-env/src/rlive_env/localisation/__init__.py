@@ -37,7 +37,7 @@ Quick Start:
         location = localiser.get_position(image)
 """
 
-from rlive_env.localisation.ball_location import BallLocation
+from rlive_common.core.ball_location import BallLocation
 from rlive_env.localisation.localisator import BallLocalisator, DetectionResult
 from rlive_env.localisation.processors.pipeline import ImagePipeline
 
