@@ -10,8 +10,8 @@ from typing import Any
 
 import numpy as np
 
-from rlive_sim.engine.base_physics_engine import BasePhysicsEngine, PhysicsState
-from rlive_sim.engine.registry import register_physics_backend
+from rlive_sim.engine.core.base_physics_engine import BasePhysicsEngine, PhysicsState
+from rlive_sim.engine.core.registry import register_physics_backend
 from rlive_sim.config import PhysicsBackend
 
 

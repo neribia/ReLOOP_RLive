@@ -120,7 +120,6 @@ __all__ = [
     "PyMunkPhysicsEngine",
     # Render implementations
     "OpenCVRenderEngine",
-    "MitsubaRenderEngine",
     # Integrated implementations
     "CombinedEngine",
     "GodotIntegratedEngine",

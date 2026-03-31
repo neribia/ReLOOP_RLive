@@ -16,7 +16,7 @@ import gymnasium as gym
 from rlive_common.utils import get_logger
 from rlive_sim.config import SimulationConfig, config as default_config
 from rlive_sim.engine import SimulationEngine
-from rlive_sim.engine.factories import SimulationEngineFactory
+from rlive_sim.engine.core.factories import SimulationEngineFactory
 
 logger = get_logger(__name__)
 

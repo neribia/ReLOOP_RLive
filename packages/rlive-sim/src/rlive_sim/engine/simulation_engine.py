@@ -14,10 +14,10 @@ from typing import Any
 
 import numpy as np
 
-from rlive_sim.engine.base_physics_engine import BasePhysicsEngine, PhysicsState
-from rlive_sim.engine.base_render_engine import BaseRenderEngine
-from rlive_sim.engine.base_integrated_engine import BaseIntegratedEngine
-from rlive_sim.engine.integrated.combined_engine import CombinedEngine
+from rlive_sim.engine.core.base_physics_engine import BasePhysicsEngine, PhysicsState
+from rlive_sim.engine.core.base_render_engine import BaseRenderEngine
+from rlive_sim.engine.core.base_integrated_engine import BaseIntegratedEngine
+from rlive_sim.engine.core.combined_engine import CombinedEngine
 
 
 # TODO: Create a class, that gathers all information created during a step??
