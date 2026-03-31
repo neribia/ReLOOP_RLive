@@ -5,6 +5,8 @@ import numpy as np
 import cv2 as cv
 import gymnasium as gym
 
+from rlive_common.config import config as common_cfg
+from rlive_common.utils.visualisation_utils import annotate_image, draw_goal
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
 from rlive_env.localisation import BallLocalisator
@@ -180,7 +182,7 @@ class RemoteWorldEnv(gym.Env):
             data: ResetResponse = self.iface.reset(actions)
             logger.info(f"reset data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
-            self.obs = self._draw_goal(data.observation)
+            self.obs = draw_goal(data.observation, self.goal_position)
             info = data.info
             return self.obs, info
         except Exception as e:
@@ -220,7 +222,7 @@ class RemoteWorldEnv(gym.Env):
             terminated, reward = self.calculate_reward(observation=data.observation)
 
             # Draw goal after ball localisation
-            self.obs = self._draw_goal(data.observation)
+            self.obs = draw_goal(data.observation, self.goal_position)
 
             self._episode += 1
             truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps)
@@ -240,7 +242,7 @@ class RemoteWorldEnv(gym.Env):
             if self.obs is not None:
                 show_image = self.obs.copy()
                 if visualize:
-                    show_image = self.localiser.annotate_image(show_image,self.ball_location, self.goal_position, cfg.GOAL_RADIUS)
+                    show_image = annotate_image(show_image, self.ball_location, self.goal_position, common_cfg.GOAL_RADIUS)
                 show_image = cv.cvtColor(show_image, cv.COLOR_RGB2BGR)
                 res_show_image = cv.resize(show_image, dsize=None, fx=scale, fy=scale)
                 cv.imshow("Environment", res_show_image)
@@ -280,7 +282,7 @@ class RemoteWorldEnv(gym.Env):
             raise RuntimeError("Ball not detected in observation")
 
         # Check if goal is reached
-        goal_reached = self.ball_location.is_within_radius(self.goal_position, cfg.GOAL_RADIUS) # TODO: radius as Env option.
+        goal_reached = self.ball_location.is_within_radius(self.goal_position, common_cfg.GOAL_RADIUS) # TODO: radius as Env option.
         logger.debug(f"Ball location: {self.ball_location.as_tuple()}, Goal position: {self.goal_position}, Goal reached: {goal_reached}")
 
         if self.reward_mode == "sparse":
@@ -309,10 +311,10 @@ class RemoteWorldEnv(gym.Env):
         height, width, _ = self.observation_space.shape
 
         # Ensure goal is fully visible by constraining it away from borders
-        min_x = cfg.GOAL_RADIUS
-        max_x = width - cfg.GOAL_RADIUS
-        min_y = cfg.GOAL_RADIUS
-        max_y = height - cfg.GOAL_RADIUS
+        min_x = common_cfg.GOAL_RADIUS
+        max_x = width - common_cfg.GOAL_RADIUS
+        min_y = common_cfg.GOAL_RADIUS
+        max_y = height - common_cfg.GOAL_RADIUS
 
         x = int(self.np_random.integers(min_x, max_x))
         y = int(self.np_random.integers(min_y, max_y))
@@ -320,25 +322,3 @@ class RemoteWorldEnv(gym.Env):
         self.goal_position = (x, y)
         logger.debug(f"Random goal set at {self.goal_position} (constrained to {min_x}-{max_x}, {min_y}-{max_y})")
 
-    def _draw_goal(self, image: np.ndarray) -> np.ndarray:
-        """Draw transparent goal indicator."""
-
-        annotated_image = image.copy()
-
-        # Create overlay (same size as image)
-        overlay = annotated_image.copy()
-
-        thickness = -1  # Filled circle to allow transparency
-
-        cv.circle(overlay, self.goal_position, cfg.GOAL_RADIUS, cfg.GOAL_COLOUR, thickness)
-
-        # Transparency factor (0.0 = invisible, 1.0 = fully visible)
-        alpha = cfg.GOAL_ALPHA
-
-        # Blend overlay onto original
-        cv.addWeighted(overlay, alpha, annotated_image, 1 - alpha, 0, annotated_image)
-
-        # Draw outline for better visibility (optional)
-        cv.circle(annotated_image, self.goal_position, cfg.GOAL_RADIUS, (0, 180, 0), 2)
-
-        return annotated_image

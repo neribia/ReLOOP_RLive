@@ -17,6 +17,28 @@ BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_ROOT))
 
 APP_HOME = os.getenv("APP_HOME", str(BUNDLE_DIR))
 
+# --- Goal settings ------------------------------------------------------------
+GOAL_RADIUS: int = int(os.getenv("GOAL_RADIUS", "50"))
+"""
+Radius around the center point to consider as goal reached (in pixels).
+
+default: 50
+"""
+
+GOAL_COLOUR: tuple[int, int, int] = (255, 0, 0)
+"""
+Colour of the goal circle in RGB format.
+
+default: (255, 0, 0)  # Red (Wait, OpenCV uses BGR natively, but config implies RGB).
+"""
+
+GOAL_ALPHA: float = float(os.getenv("GOAL_ALPHA", "0.5"))
+""" 
+Alpha value of the goal circle overlay (0.0 = invisible, 1.0 = fully visible).
+
+default: 0.5
+"""
+
 # --- debug config ------------------------------------------------------------
 
 DEBUG = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]
