@@ -12,7 +12,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-all = []
+all = [
+    "sapien>=3.0.3",
+]
+
+sapien = ["sapien>=3.0.3"]
 
 [tool.uv.sources]
 rlive-common = { workspace = true }

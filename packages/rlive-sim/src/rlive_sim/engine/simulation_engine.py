@@ -198,6 +198,12 @@ class SimulationEngine:
         """
         self._engine.setup_scene(scene_config)
 
+    def get_ball_2d_position(self) -> tuple[int, int] | None:
+        """Get the 2D pixel coordinates of the ball in the current rendered image."""
+        if hasattr(self._engine, "get_ball_2d_position"):
+            return self._engine.get_ball_2d_position()
+        return None
+
     def close(self) -> None:
         """Clean up all engine resources."""
         self._engine.close()

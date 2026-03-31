@@ -26,19 +26,18 @@ from rlive_sim.engine import (
     OpenCVRenderEngine,
     # Stub implementations
     PyMunkPhysicsEngine,
-    MitsubaRenderEngine,
-    GodotIntegratedEngine,
 )
 from rlive_sim.config import (
-    PhysicsBackend,
-    PhysicsConfig,
-    RenderBackend,
-    RenderConfig,
     SimulationConfig,
-    IntegratedBackend,
+    PhysicsConfig,
+    RenderConfig,
     IntegratedConfig,
-    config,
+    PhysicsBackend,
+    RenderBackend,
+    IntegratedBackend,
+    SAPIEN_DEFAULTS,
 )
+from rlive_sim.utils.math_utils import euler_to_quat
 
 __all__ = [
     # Environment
@@ -54,8 +53,6 @@ __all__ = [
     "OpenCVRenderEngine",
     # Stub implementations
     "PyMunkPhysicsEngine",
-    "MitsubaRenderEngine",
-    "GodotIntegratedEngine",
     # Config
     "PhysicsBackend",
     "PhysicsConfig",
@@ -64,5 +61,6 @@ __all__ = [
     "SimulationConfig",
     "IntegratedBackend",
     "IntegratedConfig",
-    "config",
+    "SAPIEN_DEFAULTS",
+    "euler_to_quat",
 ]

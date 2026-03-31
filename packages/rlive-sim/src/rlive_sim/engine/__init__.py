@@ -23,21 +23,24 @@ Architecture:
 
 Directory Structure:
     engine/
-    ├── base_physics_engine.py        # Abstract physics interface
-    ├── base_render_engine.py         # Abstract render interface
-    ├── base_integrated_engine.py     # Abstract monolithic interface
-    ├── registry.py                   # @register_* decorators & registries
-    ├── factories.py                  # PhysicsEngine, RenderEngine, IntegratedEngine factories
-    ├── simulation_engine.py          # Orchestrator
-    ├── physics/                      # Physics implementations
-    │   ├── simple_physics_engine.py  # 2D ball-in-box physics
-    │   └── ...
-    ├── render/                       # Render implementations
-    │   ├── opencv_render_engine.py   # OpenCV rendering
-    │   └── ...
-    └── integrated/                   # Integrated implementations
-        ├── combined_engine.py        # Adapter for separate engines
-        └── ...
+    ├── __init__.py                     # Module exports and engine registration
+    ├── simulation_engine.py            # Main Orchestrator
+    ├── core/                           # Base abstractions and factories
+    │   ├── base_physics_engine.py
+    │   ├── base_render_engine.py
+    │   ├── base_integrated_engine.py
+    │   ├── combined_engine.py
+    │   ├── factories.py
+    │   └── registry.py
+    ├── sapien/                         # SAPIEN integrated physics/render engine
+    │   ├── sapien_integrated_engine.py
+    │   ├── sphero_controller.py
+    │   └── world_loading.py
+    ├── pymunk/                         # PyMunk 2D physics engine
+    │   └── pymunk_physics_engine.py
+    └── basic/                          # Basic/Fallback 2D components
+        ├── simple_physics_engine.py
+        └── opencv_render_engine.py
 
 Examples:
 
@@ -60,14 +63,14 @@ Examples:
 """
 
 # Registries & Decorators
-from rlive_sim.engine.registry import (
+from rlive_sim.engine.core.registry import (
     register_physics_backend,
     register_render_backend,
     register_integrated_backend,
 )
 
 # Factories
-from rlive_sim.engine.factories import (
+from rlive_sim.engine.core.factories import (
     PhysicsEngine,
     RenderEngine,
     IntegratedEngine,
@@ -75,26 +78,25 @@ from rlive_sim.engine.factories import (
 )
 
 # Base classes
-from rlive_sim.engine.base_physics_engine import BasePhysicsEngine, PhysicsState
-from rlive_sim.engine.base_render_engine import BaseRenderEngine, SceneState
-from rlive_sim.engine.base_integrated_engine import BaseIntegratedEngine
+from rlive_sim.engine.core.base_physics_engine import BasePhysicsEngine, PhysicsState
+from rlive_sim.engine.core.base_render_engine import BaseRenderEngine, SceneState
+from rlive_sim.engine.core.base_integrated_engine import BaseIntegratedEngine
 
 # Main orchestrator
 from rlive_sim.engine.simulation_engine import SimulationEngine
 
 # Physics implementations
 # Import to trigger @register_physics_backend decorators
-from rlive_sim.engine.physics.simple_physics_engine import SimplePhysicsEngine
-from rlive_sim.engine.physics.pymunk_physics_engine import PyMunkPhysicsEngine
+from rlive_sim.engine.basic.simple_physics_engine import SimplePhysicsEngine
+from rlive_sim.engine.pymunk.pymunk_physics_engine import PyMunkPhysicsEngine
 
 # Render implementations
 # Import to trigger @register_render_backend decorators
-from rlive_sim.engine.render.opencv_render_engine import OpenCVRenderEngine
-from rlive_sim.engine.render.mitsuba_render_engine import MitsubaRenderEngine
+from rlive_sim.engine.basic.opencv_render_engine import OpenCVRenderEngine
 
 # Integrated implementations
-from rlive_sim.engine.integrated.combined_engine import CombinedEngine
-from rlive_sim.engine.integrated.godot_integrated_engine import GodotIntegratedEngine
+from rlive_sim.engine.core.combined_engine import CombinedEngine
+from rlive_sim.engine.sapien.sapien_integrated_engine import SapienIntegratedEngine
 
 __all__ = [
     # Registries & Decorators
@@ -122,5 +124,5 @@ __all__ = [
     "OpenCVRenderEngine",
     # Integrated implementations
     "CombinedEngine",
-    "GodotIntegratedEngine",
+    "SapienIntegratedEngine"
 ]
