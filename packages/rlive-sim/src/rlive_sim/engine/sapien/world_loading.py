@@ -284,7 +284,7 @@ class GLBWorldStrategy(WorldLoadingStrategy):
     def _load_robot(self, scene: "sapien.Scene", config: Dict[str, Any]) -> SapianRobot:
         """Load robot with Kinematic Visuals."""
         shell_path = str(SAPIAN_DIR / "spheroboltplus_shell.glb")
-        robot_path = str(SAPIAN_DIR / "spheroboltplus_robot.glb")
+        robot_path = str(SAPIAN_DIR / "spheroboltplus_robot_simple.glb")
 
         robot_instance = KinematicSpheroRobot(scene, config, shell_path, robot_path)
         robot_instance.load()
