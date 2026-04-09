@@ -25,7 +25,9 @@ class RemoteWorldEnv(gym.Env):
 
     metadata = {"render_modes": ["opencv"]}
 
-    def __init__(self, max_episode_steps: int | None = 100, render_mode: str | None = None, auto_attach: bool = True,
+    def __init__(self, max_episode_steps: int | None = cfg.MAX_STEPS_PER_EPISODE,
+                 render_mode: str | None = None,
+                 auto_attach: bool = True,
                  world_config: WorldConfig | None = None,
                  reward_mode: Literal["dense", "sparse"] | None = None,
                  action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,

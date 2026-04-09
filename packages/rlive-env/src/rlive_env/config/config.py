@@ -61,6 +61,14 @@ Number of steps to decouple the episodes in the reset phase.
 default: 5
 """
 
+# --- Environment config ------------------------------------------------------
+MAX_STEPS_PER_EPISODE: int = int(os.getenv("MAX_STEPS_PER_EPISODE", "100"))
+"""
+Number of max steps per episode. After this number of steps, the episode will be terminated.
+
+default: 100
+"""
+
 
 # --- Reward config -----------------------------------------------------------
 

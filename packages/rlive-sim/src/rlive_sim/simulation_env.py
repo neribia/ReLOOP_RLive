@@ -18,7 +18,8 @@ from rlive_common.core.action_space import get_action_transformer, ActionSpaceTy
 from rlive_common.core.ball_location import BallLocation
 from rlive_common.config import config as common_cfg
 from rlive_common.utils.visualisation_utils import draw_goal, annotate_image
-from rlive_sim.config import SimulationConfig, config as default_config
+from rlive_sim.config import SimulationConfig
+from rlive_sim.config import config as cfg
 from rlive_sim.engine import SimulationEngine
 from rlive_sim.engine.core.factories import SimulationEngineFactory
 
@@ -94,7 +95,7 @@ class SimulationEnv(gym.Env):
         self,
         engine: SimulationEngine | None = None,
         config: SimulationConfig | None = None,
-        max_episode_steps: int | None = None,
+        max_episode_steps: int | None = cfg.MAX_STEPS_PER_EPISODE,
         render_mode: str | None = None,
         action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
         options: dict[str, Any] | None = None,
@@ -116,7 +117,7 @@ class SimulationEnv(gym.Env):
         super().__init__()
 
         # Use provided config or default
-        self._config = config or default_config
+        self._config = config or SimulationConfig
 
         # Set up the simulation engine
         if engine is not None:
@@ -147,7 +148,7 @@ class SimulationEnv(gym.Env):
             raise ValueError(f"Invalid action_space_type '{action_space_type}': {e}") from e
 
         # Environment settings
-        self._max_episode_steps = max_episode_steps or 100 # TODO: Default value in config
+        self._max_episode_steps = max_episode_steps
         self._current_step = 0
         self._episode = 0
         self.render_mode = render_mode
