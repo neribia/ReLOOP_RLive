@@ -259,6 +259,23 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         self.scene.add_directional_light([0, 1, -1], [0.5, 0.5, 0.5])
 
     def reset(self, initial_state: PhysicsState | None = None) -> tuple[PhysicsState, np.ndarray]:
+        if initial_state is None:
+            # Generate random position within reset area
+            min_x, max_x, min_y, max_y = SAPIEN_DEFAULTS.reset_area
+            x = np.random.uniform(min_x, max_x)
+            y = np.random.uniform(min_y, max_y)
+            z = self._robot_radius + 0.005 # Ensure robot rests gently on the ground
+            
+            # Initial yaw or rotation
+            quat = euler_to_quat(0, 0, np.random.uniform(-180, 180), degrees=True)
+            
+            initial_state = PhysicsState(
+                position=[float(x), float(y), float(z)],
+                velocity=[0.0, 0.0, 0.0],
+                rotation=quat.tolist(),
+                angular_velocity=[0.0, 0.0, 0.0]
+            )
+
         self.robot.reset(initial_state)
 
         self.controller.reset()

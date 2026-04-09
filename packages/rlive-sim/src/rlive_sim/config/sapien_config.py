@@ -5,7 +5,7 @@ These defaults can be overridden via __init__ parameters.
 """
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # ============================================================================
 # CONTROLLER CONFIGURATION
@@ -100,6 +100,15 @@ If None, uses default paths from RESOURCES_DIR.
 default: None
 """
 
+RESET_AREA: list[float] = [
+    float(x) for x in os.getenv("RLIVE_SIM_SAPIEN_RESET_AREA", "-0.35,0.35,-0.15,0.15").split(",")
+]
+"""
+Bounding box for random reset area [min_x, max_x, min_y, max_y].
+
+default: [-0.35, 0.35, -0.15, 0.15]
+"""
+
 # ============================================================================
 # SIMULATION CONFIGURATION
 # ============================================================================
@@ -129,7 +138,8 @@ class SapienDefaults:
     # Robot loading configuration
     robot_type: str = ROBOT_TYPE
     robot_path: str | None = ROBOT_PATH
-    
+    reset_area: list[float] = field(default_factory=lambda: RESET_AREA)
+
     # Robot configuration
     robot_radius: float = ROBOT_RADIUS
     robot_mass: float = ROBOT_MASS
