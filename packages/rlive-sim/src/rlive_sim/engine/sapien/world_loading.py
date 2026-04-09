@@ -13,6 +13,10 @@ from enum import Enum
 from typing import Dict, Any
 import numpy as np
 
+from rlive_common.utils import get_logger
+
+logger = get_logger(__name__)
+
 try:
     import sapien
 except ImportError:
@@ -24,7 +28,7 @@ if sapien is not None:
     try:
         from sapien.wrapper import pinocchio_model
         if pinocchio_model.PinocchioModel is None:
-            print("⚠️ Pinocchio not found. Patching SAPIEN PinocchioModel to prevent Viewer crashes.")
+            logger.warning("⚠️ Pinocchio not found. Patching SAPIEN PinocchioModel to prevent Viewer crashes.")
             
             class DummyPinocchioModel:
                 def __init__(self, xml_string, gravity_vec):
@@ -49,7 +53,7 @@ if sapien is not None:
     except ImportError:
         pass
     except Exception as e:
-        print(f"Warning: Failed to patch SAPIEN PinocchioModel: {e}")
+        logger.warning(f"Warning: Failed to patch SAPIEN PinocchioModel: {e}")
 # --- SAPIEN WINDOWS PATCH END ---
 
 from rlive_sim.config import RESOURCES_DIR
@@ -248,8 +252,6 @@ class GLBWorldStrategy(WorldLoadingStrategy):
         if sapien is None:
             raise ImportError("SAPIEN is not installed")
 
-        print("GLB")
-
         # Load ground plane (as a safety floor)
         scene.add_ground(altitude=0)
         
@@ -264,7 +266,7 @@ class GLBWorldStrategy(WorldLoadingStrategy):
         glb_path = SAPIAN_DIR / "euro_box.glb"
         
         if not glb_path.exists():
-            print(f"⚠ Warning: Euro box GLB not found at {glb_path}")
+            logger.warning(f"⚠ Warning: Euro box GLB not found at {glb_path}")
             return
 
         builder = scene.create_actor_builder()
@@ -276,7 +278,7 @@ class GLBWorldStrategy(WorldLoadingStrategy):
             # Try SAPIEN 3 naming first
             builder.add_nonconvex_collision_from_file(str(glb_path))
         except AttributeError:
-            print(f"⚠ Warning: Could not create mesh collision for euro box")
+            logger.warning(f"⚠ Warning: Could not create mesh collision for euro box")
         
         box = builder.build_static(name="euro_box")
         box.set_pose(sapien.Pose([0, 0, 0]) )
@@ -305,7 +307,7 @@ class WorldLoaderFactory:
         
         Args:
             world_type: Either WorldLoaderType enum or string value
-                       ('sapien', 'urdf', 'glb', or custom registered type)
+                       ('sapien', 'glb', or custom registered type)
             
         Returns:
             WorldLoadingStrategy instance
@@ -384,22 +386,6 @@ class WorldLoaderFactory:
         return world_type in _WORLD_LOADER_REGISTRY
 
 
-__all__ = [
-    # Enum and Registry
-    "WorldLoaderType",
-    "register_world_loader",
-    
-    # Base class and strategies
-    "WorldLoadingStrategy",
-    "SapienWorldStrategy",
-    "URDFWorldStrategy",
-    "GLBWorldStrategy",
-    
-    # Factory
-    "WorldLoaderFactory",
-]
-
-
 if __name__ == "__main__":
     from rlive_sim.utils import deg_to_rad
     import argparse
@@ -413,17 +399,17 @@ if __name__ == "__main__":
     }
 
     parser = argparse.ArgumentParser(description="Test World Loaders")
-    parser.add_argument("--loader", default="glb", choices=["sapien", "urdf", "glb"], help="Loader type")
+    parser.add_argument("--loader", default="glb", choices=["sapien", "glb"], help="Loader type")
     parser.add_argument("--mechanics", default="pendulum", choices=["pendulum", "idealized"], help="Robot mechanics type (only for GLB)")
     args = parser.parse_args()
 
     # Update config
     DEFAULT_CONFIG['robot_mechanics'] = args.mechanics
 
-    # ['sapien', 'urdf', 'glb']
+    # ['sapien', 'glb']
     loader_type = WorldLoaderType.from_string(args.loader)
 
-    print(f"Testing WorldLoader: {loader_type}")
+    logger.info(f"Testing WorldLoader: {loader_type}")
 
     # Create scene
     scene = sapien.Scene()
@@ -433,7 +419,7 @@ if __name__ == "__main__":
     loader = WorldLoaderFactory.create(loader_type)
     robot = loader.load(scene, DEFAULT_CONFIG)
 
-    print(f"✓ Loaded world with robot: {robot}")
+    logger.info(f"✓ Loaded world with robot: {robot}")
 
     # For testing, find shell link
     shell_link = None
@@ -447,7 +433,7 @@ if __name__ == "__main__":
         if shell_link is None and len(robot.get_links()) > 0:
             shell_link = robot.get_links()[0]
 
-    print(f"✓ Shell link (Control Link): {shell_link}")
+    logger.info(f"✓ Shell link (Control Link): {shell_link}")
 
 
     # Create viewer
@@ -462,11 +448,11 @@ if __name__ == "__main__":
 
     # Simulation loop
     steps = 0
-    print("\nSimulation running... (press 'q' to quit)")
-    print("Controls: I (Forward), K (Backward), J (Left), L (Right)")
+    logger.info("\nSimulation running... (press 'q' to quit)")
+    logger.info("Controls: I (Forward), K (Backward), J (Left), L (Right)")
 
     robot_pose = shell_link.pose if shell_link else None
-    print(f"Robot pose: {robot_pose}")
+    logger.info(f"Robot pose: {robot_pose}")
 
     
     while not viewer.closed:
@@ -496,7 +482,7 @@ if __name__ == "__main__":
 
         if steps % 500 == 0:
             robot_pose = shell_link.pose if shell_link else None
-            print(f"Step {steps}: Robot pose = {robot_pose}")
+            logger.info(f"Step {steps}: Robot pose = {robot_pose}")
 
 
         steps += 1
