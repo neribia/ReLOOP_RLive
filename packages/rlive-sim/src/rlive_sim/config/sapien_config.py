@@ -84,13 +84,12 @@ default: 0.1
 
 ROBOT_TYPE: str = str(os.getenv("RLIVE_SIM_SAPIEN_ROBOT_TYPE", "glb"))
 """
-Robot loading type: 'sapien', 'urdf', or 'glb'.
+Robot loading type: 'sapien' or 'glb'.
 
 - sapien: Programmatically built sphere with ground plane (fastest, default)
-- urdf: Load from URDF file with ground plane (resources/sapian/sphere_robot.urdf)
-- glb: Load from GLB/GLTF file (supports euro_box without ground plane)
+- glb: Load from GLB/GLTF file
 
-default: 'sapien'
+default: 'glb'
 """
 
 ROBOT_PATH: str | None = os.getenv("RLIVE_SIM_SAPIEN_ROBOT_PATH", None)

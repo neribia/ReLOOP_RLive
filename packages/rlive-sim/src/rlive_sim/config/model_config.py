@@ -24,7 +24,7 @@ class PhysicsBackend(str, Enum):
 
     SIMPLE = "simple"
     # PYMUNK = "pymunk"
-    MUJOCO = "mujoco"
+    # MUJOCO = "mujoco"
     # PYBULLET = "pybullet"
     # BOX2D = "box2d"
 
@@ -33,7 +33,7 @@ class RenderBackend(str, Enum):
     """Available render engine backends."""
 
     OPENCV = "opencv"
-    MUJOCO = "mujoco"
+    # MUJOCO = "mujoco"
     # MITSUBA = "mitsuba"
     # BLENDER = "blender"
     # OPENGL = "opengl"
@@ -47,9 +47,9 @@ class IntegratedBackend(str, Enum):
     Integrated engines combine physics and rendering in a single monolithic system.
     """
 
-    GODOT = "godot"
+    # GODOT = "godot"
     # UNITY = "unity"
-    MUJOCO = "mujoco"  # MuJoCo with built-in rendering
+    # MUJOCO = "mujoco"  # MuJoCo with built-in rendering
     SAPIEN = "sapien"
     # ISAAC_SIM = "isaac_sim"
     # PYBULLET = "pybullet"  # PyBullet with OpenGL rendering

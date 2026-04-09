@@ -20,7 +20,7 @@ def draw_goal(
         image: Original image.
         goal_position: Goal coordinates (x, y).
         goal_radius: Radius of the goal circle.
-        goal_colour: Colour of the goal circle in (B, G, R).
+        goal_colour: Colour of the goal circle in (R, G, B).
         goal_alpha: Transparency factor (0.0 = invisible, 1.0 = fully visible).
 
     Returns:
