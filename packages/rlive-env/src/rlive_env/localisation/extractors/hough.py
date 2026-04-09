@@ -3,7 +3,7 @@
 import cv2 as cv
 import numpy as np
 
-from rlive_env.localisation.ball_location import BallLocation
+from rlive_common.core.ball_location import BallLocation
 from rlive_env.localisation.extractors.base import AbstractBallExtractor
 from rlive_env.config import extractor_config
 from rlive_common.utils import get_logger

@@ -5,7 +5,7 @@ from typing import Optional
 import cv2 as cv
 import numpy as np
 
-from rlive_env.localisation.ball_location import BallLocation
+from rlive_common.core.ball_location import BallLocation
 from rlive_env.localisation.extractors.base import AbstractBallExtractor
 from rlive_env.localisation.extractors import *
 from rlive_env.localisation.processors.pipeline import ImagePipeline
@@ -235,59 +235,3 @@ class BallLocalisator:
             self.pipeline.intermediate_results.append(self.last_result.extractor_debug_image)
 
         return self.last_result
-
-    def annotate_image(
-        self,
-        image: np.ndarray,
-        ball_location: Optional[BallLocation] = None,
-        goal_position: Optional[tuple[int, int]] = None,
-        goal_radius: int = 50,
-    ) -> np.ndarray:
-        """Draw detection results on image for visualization. Position of the ball and the distance.
-
-        Args:
-            image: Input image to annotate.
-            ball_location: Detected ball position (if any).
-            goal_position: Goal position to draw (if any).
-            goal_radius: Radius of goal circle.
-
-        Returns:
-            Annotated image copy.
-
-        Examples:
-            Annotate image with results:
-                location = localiser.get_position(image)
-                annotated = localiser.annotate_image(
-                    image,
-                    ball_location=location,
-                    goal_position=(320, 240),
-                    goal_radius=50
-                )
-                cv2.imshow("Annotated", annotated)
-        """
-        annotated = image.copy()
-
-        # Draw ball if detected
-        if ball_location is not None:
-            pos = ball_location.as_tuple()
-            cv.circle(annotated, pos, 15, (255, 0, 0), 2)
-            cv.circle(annotated, pos, 5, (255, 0, 0), -1)
-
-            # Draw distance line to goal if both available
-            if goal_position is not None:
-                cv.line(annotated, pos, goal_position, (255, 255, 0), 1)
-                distance = ball_location.distance_to(goal_position)
-                mid_x = (pos[0] + goal_position[0]) // 2
-                mid_y = (pos[1] + goal_position[1]) // 2
-                cv.putText(
-                    annotated,
-                    f"{distance:.1f}px",
-                    (mid_x, mid_y - 10),
-                    cv.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (255, 255, 0),
-                    1,
-                )
-
-        return annotated
-

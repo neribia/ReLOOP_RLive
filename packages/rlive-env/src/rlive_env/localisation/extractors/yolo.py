@@ -26,7 +26,7 @@ from typing import Optional
 
 import numpy as np
 
-from rlive_env.localisation.ball_location import BallLocation
+from rlive_common.core.ball_location import BallLocation
 from rlive_env.localisation.extractors.base import AbstractBallExtractor
 
 

@@ -53,34 +53,20 @@ Backoff factor for retries from the interface.
 default: 0.3
 """
 
-# --- Goal settings ------------------------------------------------------------
-GOAL_RADIUS: int = int(os.getenv("GOAL_RADIUS", "50"))
-"""
-Radius around the center point to consider as goal reached (in pixels).
-
-default: 50
-"""
-
-GOAL_COLOUR: tuple[int, int, int] = (255, 0, 0)
-"""
-Colour of the goal circle in RGB format.
-
-default: (0, 255, 0)  # Green
-"""
-
-GOAL_ALPHA: float = float(os.getenv("GOAL_ALPHA", "0.5"))
-""" 
-Alpha value of the goal circle overlay (0.0 = invisible, 1.0 = fully visible).
-
-default: 0.5
-"""
-
 # --- Reset settings -----------------------------------------------------------
 NUMBER_RESET_ACTIONS: int = int(os.getenv("DECAY_STEPS", "5"))
 """
 Number of steps to decouple the episodes in the reset phase.
 
 default: 5
+"""
+
+# --- Environment config ------------------------------------------------------
+MAX_STEPS_PER_EPISODE: int = int(os.getenv("MAX_STEPS_PER_EPISODE", "100"))
+"""
+Number of max steps per episode. After this number of steps, the episode will be terminated.
+
+default: 100
 """
 
 

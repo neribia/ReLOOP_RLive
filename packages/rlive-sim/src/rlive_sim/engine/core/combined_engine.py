@@ -15,9 +15,9 @@ from typing import Any
 
 import numpy as np
 
-from rlive_sim.engine.base_physics_engine import BasePhysicsEngine, PhysicsState
-from rlive_sim.engine.base_render_engine import BaseRenderEngine
-from rlive_sim.engine.base_integrated_engine import BaseIntegratedEngine
+from rlive_sim.engine.core.base_physics_engine import BasePhysicsEngine, PhysicsState
+from rlive_sim.engine.core.base_render_engine import BaseRenderEngine
+from rlive_sim.engine.core.base_integrated_engine import BaseIntegratedEngine
 
 
 class CombinedEngine(BaseIntegratedEngine):
@@ -89,7 +89,6 @@ class CombinedEngine(BaseIntegratedEngine):
         # TODO: Does this wrapper need these parameters? Maybe not, since it delegates to the wrapped engines.
         # Extract parameters from wrapped engines
         super().__init__(
-            dt=physics_engine.dt,
             gravity=physics_engine.gravity,
             width=render_engine.width,
             height=render_engine.height,
@@ -173,6 +172,18 @@ class CombinedEngine(BaseIntegratedEngine):
                 engine.setup_scene(scene_config)
         """
         raise NotImplementedError()
+
+    def get_ball_2d_position(self) -> tuple[int, int] | None:
+        """Get the 2D pixel coordinates of the ball in the current rendered image."""
+        # For combined engine, get 3D state and project it via render engine
+        state = self.physics_engine.get_state()
+        pos_3d = state.position  # e.g. [x, y] or [x, y, z]
+
+        if hasattr(self.render_engine, "project_to_2d"):
+            return self.render_engine.project_to_2d(pos_3d)
+
+        # Fallback if render engine does not support projection
+        return None
 
     # Utility method
     def _build_scene_state(self, state: PhysicsState) -> dict[str, Any]:

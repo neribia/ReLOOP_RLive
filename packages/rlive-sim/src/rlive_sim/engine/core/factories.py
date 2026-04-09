@@ -6,7 +6,7 @@ Factories use registries populated by @register_*_backend decorators on concrete
 from typing import Any
 
 from rlive_sim.config import PhysicsConfig, RenderConfig, IntegratedConfig, SimulationConfig
-from rlive_sim.engine.registry import _PHYSICS_REGISTRY, _RENDER_REGISTRY, _INTEGRATED_REGISTRY
+from rlive_sim.engine.core.registry import _PHYSICS_REGISTRY, _RENDER_REGISTRY, _INTEGRATED_REGISTRY
 
 
 
@@ -130,7 +130,6 @@ class IntegratedEngine:
 
         # Create engine instance with config parameters
         return engine_cls(
-            dt=config.dt,
             gravity=config.gravity,
             width=config.width,
             height=config.height,

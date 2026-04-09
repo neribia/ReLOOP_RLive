@@ -14,9 +14,14 @@ import cv2 as cv
 import gymnasium as gym
 
 from rlive_common.utils import get_logger
-from rlive_sim.config import SimulationConfig, config as default_config
+from rlive_common.core.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
+from rlive_common.core.ball_location import BallLocation
+from rlive_common.config import config as common_cfg
+from rlive_common.utils.visualisation_utils import draw_goal, annotate_image
+from rlive_sim.config import SimulationConfig
+from rlive_sim.config import config as cfg
 from rlive_sim.engine import SimulationEngine
-from rlive_sim.engine.factories import SimulationEngineFactory
+from rlive_sim.engine.core.factories import SimulationEngineFactory
 
 logger = get_logger(__name__)
 
@@ -90,8 +95,9 @@ class SimulationEnv(gym.Env):
         self,
         engine: SimulationEngine | None = None,
         config: SimulationConfig | None = None,
-        max_episode_steps: int | None = None,
+        max_episode_steps: int | None = cfg.MAX_STEPS_PER_EPISODE,
         render_mode: str | None = None,
+        action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
         options: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> None:
@@ -104,13 +110,14 @@ class SimulationEnv(gym.Env):
             max_episode_steps: Maximum steps per episode. Overrides config
                 value if provided.
             render_mode: Rendering mode ('opencv' or None).
+            action_space_type: Action space transformer type. Default: ActionSpaceType.CARTESIAN
             options: Additional environment options.
             **kwargs: Additional arguments passed to engine creation.
         """
         super().__init__()
 
         # Use provided config or default
-        self._config = config or default_config
+        self._config = config or SimulationConfig
 
         # Set up the simulation engine
         if engine is not None:
@@ -118,8 +125,30 @@ class SimulationEnv(gym.Env):
         else:
             self.engine = SimulationEngineFactory(self._config, **kwargs)
 
+        # Action space transformer
+        logger.info(f"Setting up action space transformer: {action_space_type}")
+        try:
+            # Use default speed and duration from physics config or reasonable defaults
+            speed = 100  # Default speed
+            duration = float(1.0)
+
+            self.action_transformer = get_action_transformer(
+                action_space_type,
+                speed=speed,
+                duration=duration
+            )
+
+            # Explicitly validate the returned object
+            if not isinstance(self.action_transformer, BaseActionTransformer):
+                raise TypeError(f"Expected BaseActionTransformer, got {type(self.action_transformer).__name__}")
+
+            logger.debug(f"Action transformer initialized: {self.action_transformer.__class__.__name__}")
+        except (ValueError, TypeError) as e:
+            logger.error(f"Failed to initialize action transformer: {e}")
+            raise ValueError(f"Invalid action_space_type '{action_space_type}': {e}") from e
+
         # Environment settings
-        self._max_episode_steps = max_episode_steps or self._config.max_episode_steps
+        self._max_episode_steps = max_episode_steps
         self._current_step = 0
         self._episode = 0
         self.render_mode = render_mode
@@ -131,10 +160,12 @@ class SimulationEnv(gym.Env):
         self.observation_space = gym.spaces.Box(
             low=0, high=255, shape=obs_shape, dtype=np.uint8
         )
-        self.action_space = gym.spaces.Discrete(360, start=-179)  # Placeholder
+        self.action_space = self.action_transformer.get_action_space()
 
         # Goal variables
         self.goal_position: tuple[int, int] | None = None
+        self.ball_location: BallLocation | None = None
+        self._max_distance = (obs_shape[0] ** 2 + obs_shape[1] ** 2) ** 0.5
 
 
     def reset(
@@ -160,6 +191,8 @@ class SimulationEnv(gym.Env):
 
         # Set random goal
         self.set_random_goal()
+
+        self.obs = draw_goal(self.obs, self.goal_position)
 
         info: dict[str, Any] = {
             "status": "ok",
@@ -187,8 +220,17 @@ class SimulationEnv(gym.Env):
         """
         logger.info(f"Making a step with action: {action}")
 
-        # Apply action and step physics and rendering
-        physics_state, self.obs = self.engine.update_and_render(action)
+        # Transform action using the configured action space transformer
+        try:
+            transformed_action = self.action_transformer.transform(action)
+            logger.debug(f"Action transformed from {action} to {transformed_action}")
+        except ValueError as e:
+            logger.error(f"Failed to transform action: {e}")
+            return self.obs, 0.0, False, True, {"error": f"Invalid action: {e}"}
+
+        # Apply transformed action and step physics and rendering
+        physics_state, self.obs = self.engine.update_and_render(transformed_action)
+        self.obs = draw_goal(self.obs, self.goal_position)
         self._current_step += 1
 
         # Calculate reward and check termination
@@ -203,8 +245,7 @@ class SimulationEnv(gym.Env):
 
         return self.obs, reward, terminated, truncated, info
 
-
-    def render(self) -> np.ndarray | None:
+    def render(self, visualize: bool = False) -> np.ndarray | None:
         """Render the current environment state.
 
         Returns:
@@ -215,7 +256,13 @@ class SimulationEnv(gym.Env):
         if self.render_mode == "opencv":
             if self.obs is not None:
                 show_image = cv.cvtColor(self.obs, cv.COLOR_RGB2BGR)
-                cv.imshow("SimulationEnv", show_image)
+                show_image = show_image.copy()
+
+                # First draw transparent goal overlay
+                if visualize and self.goal_position is not None :
+                    show_image = annotate_image(show_image, self.ball_location, self.goal_position)
+
+                cv.imshow("Simulation Environment", show_image)
                 cv.waitKey(1)
             return self.obs
 
@@ -237,44 +284,58 @@ class SimulationEnv(gym.Env):
             observation: Current observation image.
 
         Returns:
-            tuple[bool, float]: (terminated, reward).
+            tuple[bool, float]: (goal_reached, reward).
         """
-        # Placeholder implementation
-        # TODO: Implement actual reward calculation based on goal_position
-        return False, 0.0
+        if self.goal_position is None:
+            logger.warning("Goal position not set, returning zero reward")
+            return False, 0.0
+
+        ball_pos_tuple = self.engine.get_ball_2d_position()
+
+        if ball_pos_tuple is None:
+            logger.debug("Ball not detected/visible in observation")
+            # Penalize for losing the ball
+            return False, -0.1
+
+        self.ball_location = BallLocation(x=ball_pos_tuple[0], y=ball_pos_tuple[1])
+
+        # Check if goal is reached
+        goal_radius = self.options.get("goal_radius", common_cfg.GOAL_RADIUS)
+        goal_reached = self.ball_location.is_within_radius(self.goal_position, goal_radius)
+
+        reward_mode = self.options.get("reward_mode", "dense")
+
+        if reward_mode == "sparse":
+            # Sparse reward: +1.0 only when goal is reached
+            reward = 1.0 if goal_reached else 0.0
+        else:
+            # Dense reward: based on distance
+            distance = self.ball_location.distance_to(self.goal_position)
+            reward = 1.0 - (distance / self._max_distance)
+
+            # Bonus reward for reaching the goal
+            if goal_reached:
+                reward += 1.0
+
+        logger.debug(f"Ball at {self.ball_location.as_tuple()}, goal at {self.goal_position}, "
+                     f"reward={reward:.3f}, goal_reached={goal_reached}")
+
+        return goal_reached, float(reward)
 
     def set_random_goal(self) -> None:
         """Set a random goal position within the observation space."""
         height, width, _ = self.observation_space.shape
-        x = self.np_random.integers(0, width)
-        y = self.np_random.integers(0, height)
+
+        goal_radius = self.options.get("goal_radius", common_cfg.GOAL_RADIUS)
+
+        # Ensure goal is fully visible by constraining it away from borders
+        min_x = goal_radius
+        max_x = width - goal_radius
+        min_y = goal_radius
+        max_y = height - goal_radius
+
+        x = int(self.np_random.integers(min_x, max_x))
+        y = int(self.np_random.integers(min_y, max_y))
+
         self.goal_position = (x, y)
         logger.debug(f"Set random goal at: {self.goal_position}")
-
-    def _draw_goal(self, image: np.ndarray) -> np.ndarray:
-        """Draw goal indicator on the image.
-
-        Args:
-            image: Input image to draw on.
-
-        Returns:
-            np.ndarray: Image with goal indicator drawn.
-        """
-        if self.goal_position is None or image is None:
-            return image
-
-        # Draw a circle at the goal position
-        result = image.copy()
-        cv.circle(
-            result,
-            self.goal_position,
-            radius=10,
-            color=(0, 255, 0),  # Green
-            thickness=2,
-        )
-        return result
-
-    @property
-    def config(self) -> SimulationConfig:
-        """Get the current simulation configuration."""
-        return self._config

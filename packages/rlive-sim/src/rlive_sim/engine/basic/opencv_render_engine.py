@@ -10,8 +10,8 @@ from typing import Any
 import cv2
 import numpy as np
 
-from rlive_sim.engine.base_render_engine import BaseRenderEngine
-from rlive_sim.engine.registry import register_render_backend
+from rlive_sim.engine.core.base_render_engine import BaseRenderEngine
+from rlive_sim.engine.core.registry import register_render_backend
 from rlive_sim.config import RenderBackend
 
 

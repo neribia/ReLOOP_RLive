@@ -10,12 +10,12 @@ Registries are populated when engine modules are imported (via decorators).
 This allows engines to be added without modifying the registry code.
 """
 
-from typing import Any, Dict, Type
+from typing import Any, Type
 
 from rlive_sim.config import PhysicsBackend, RenderBackend, IntegratedBackend
-from rlive_sim.engine.base_physics_engine import BasePhysicsEngine
-from rlive_sim.engine.base_render_engine import BaseRenderEngine
-from rlive_sim.engine.base_integrated_engine import BaseIntegratedEngine
+from rlive_sim.engine.core.base_physics_engine import BasePhysicsEngine
+from rlive_sim.engine.core.base_render_engine import BaseRenderEngine
+from rlive_sim.engine.core.base_integrated_engine import BaseIntegratedEngine
 
 
 # ==========================================================

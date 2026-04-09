@@ -24,10 +24,10 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from rlive_sim.engine.base_physics_engine import PhysicsState
+from rlive_sim.engine.core.base_physics_engine import PhysicsState
 
 if TYPE_CHECKING:
-    from rlive_sim.config import IntegratedConfig
+    pass
 
 
 class BaseIntegratedEngine(ABC):
@@ -87,7 +87,6 @@ class BaseIntegratedEngine(ABC):
 
     def __init__(
         self,
-        dt: float = 0.01,
         gravity: list[float] | None = None,
         width: int = 640,
         height: int = 480,
@@ -96,13 +95,11 @@ class BaseIntegratedEngine(ABC):
         """Initialize the integrated engine.
 
         Args:
-            dt: Simulation timestep in seconds. Defaults to 0.01 (100 Hz).
             gravity: Gravity vector [gx, gy, gz]. Defaults to [0, 0, -9.81].
             width: Image width in pixels. Defaults to 640.
             height: Image height in pixels. Defaults to 480.
             channels: Number of color channels. Defaults to 3 (RGB).
         """
-        self.dt = dt
         self.gravity = gravity
         self.width = width
         self.height = height
@@ -199,6 +196,15 @@ class BaseIntegratedEngine(ABC):
 
                 # Can spawn additional objects on top of scene
                 agent = engine.spawn_object("sphere", position=[0, 1, 0])
+        """
+        pass
+
+    @abstractmethod
+    def get_ball_2d_position(self) -> tuple[int, int] | None:
+        """Get the 2D pixel coordinates of the ball in the current rendered image.
+
+        Returns:
+            tuple[int, int] | None: The (x, y) pixel coordinates of the ball, or None if not visible/supported.
         """
         pass
 
