@@ -111,10 +111,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         if initial_state is not None:
             # Validate and clamp position to box
             x, y, z = initial_state.position
-            min_x = -float(self.box_width / 2) + float(self.ball_radius)
-            max_x = float(self.box_width / 2) - float(self.ball_radius)
-            min_y = -float(self.box_height / 2) + float(self.ball_radius)
-            max_y = float(self.box_height / 2) - float(self.ball_radius)
+            min_x, min_y, max_x, max_y = self.get_bounds()
 
             x = max(min_x, min(max_x, x))
             y = max(min_y, min(max_y, y))
@@ -174,10 +171,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         new_y = y + dy
 
         # Clamp to box boundaries (considering ball radius)
-        min_x = -float(self.box_width / 2) + float(self.ball_radius)
-        max_x = float(self.box_width / 2) - float(self.ball_radius)
-        min_y = -float(self.box_height / 2) + float(self.ball_radius)
-        max_y = float(self.box_height / 2) - float(self.ball_radius)
+        min_x, min_y, max_x, max_y = self.get_bounds()
 
         # Check if hit wall
         hit_wall = (
@@ -226,24 +220,32 @@ class SimplePhysicsEngine(BasePhysicsEngine):
             )
         ]
 
+    def get_static_scene_objects(self) -> list[SceneObject]:
+        """Get the static background objects generated during setup."""
+        return self._static_objects
+
     def _apply_action(self, action: np.ndarray | list[float]) -> None:
         """Apply a movement action to the ball.
 
         Args:
             action: Movement command as vector:
-                - `[heading, speed, duration]`
+                - `[heading, speed_0_255, duration]`
 
         Example:
-            ... engine.apply_action([45, 0.1, 1.0])  # Move 45°, 0.1 m/s, 1.0 seconds
+            ... engine.apply_action([45, 128, 1.0])  # Move 45°, ~half speed, 1.0 seconds
         """
         if isinstance(action, np.ndarray):
             action = action.tolist()
 
         heading = action[0]
-        speed = action[1]
+        raw_speed = action[1]
         duration = action[2] if len(action) > 2 else 1.0
 
-        self._pending_action = [float(heading), float(speed) * float(duration)]
+        # Map speed from [0, 255] to [0, max_speed]
+        clamped_speed = max(0.0, min(255.0, float(raw_speed)))
+        real_speed = (clamped_speed / 255.0) * self.max_speed
+
+        self._pending_action = [float(heading), real_speed * float(duration)]
 
     def set_state(self, state: PhysicsState) -> None:
         """Set the physics state directly.
@@ -252,10 +254,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
             state: The state to set. Position will be clamped to box bounds.
         """
         x, y, z = state.position
-        min_x = -float(self.box_width / 2) + float(self.ball_radius)
-        max_x = float(self.box_width / 2) - float(self.ball_radius)
-        min_y = -float(self.box_height / 2) + float(self.ball_radius)
-        max_y = float(self.box_height / 2) - float(self.ball_radius)
+        min_x, min_y, max_x, max_y = self.get_bounds()
 
         self._state = PhysicsState(
             position=[max(min_x, min(max_x, x)), max(min_y, min(max_y, y)), z],

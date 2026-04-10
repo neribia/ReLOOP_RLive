@@ -29,11 +29,11 @@ def main() -> None:
     # Configure physics backend
     physics_config = PhysicsConfig(
         backend=PhysicsBackend.SIMPLE,
-        extra={
-            "box_width": 0.8,
-            "box_height": 0.4,
-            "ball_radius": 0.07,
-        }
+        # extra={
+        #     "box_width": 0.8,
+        #     "box_height": 0.4,
+        #     "ball_radius": 0.07,
+        # }
     )
 
     # Configure render backend
@@ -75,7 +75,7 @@ def main() -> None:
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
             env.render(visualize=True)
-            cv2.waitKey(500)  # Wait 50ms between frames
+            cv2.waitKey(50)  # Wait 50ms between frames
             done = terminated or truncated
             step_count += 1
 

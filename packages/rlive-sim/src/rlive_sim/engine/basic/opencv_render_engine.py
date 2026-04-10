@@ -35,7 +35,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
         channels: Number of color channels (from BaseRenderEngine).
 
     Methods:
-        render(scene_state): Render the scene with objects supplied by physics.
+        render(objects): Render the scene with objects supplied by physics.
         setup_scene(scene_config): Configure scene colors and camera settings.
         set_camera_pose(position, target, up): Sets the camera position and recalculates rotation to face a target.
         get_image(): Get the last rendered image without re-rendering.
@@ -45,13 +45,13 @@ class OpenCVRenderEngine(BaseRenderEngine):
     Example:
         Creating and using the OpenCV render engine:
 
+            from rlive_sim.engine.core.base_physics_engine import SceneObject
+
             engine = OpenCVRenderEngine(width=640, height=480)
-            scene_state = {
-                "objects": [
-                    {"type": "ball", "position": [0.5, 0.5, 0], "radius": 0.05, "color": (255, 0, 0)}
-                ]
-            }
-            image = engine.render(scene_state)
+            objects = [
+                SceneObject(id="robot", position=[0.5, 0.5, 0.0], dimensions=[0.05], rotation=[0,0,0])
+            ]
+            image = engine.render(objects)
             print(image.shape)  # (480, 640, 3)
     """
 
@@ -98,7 +98,10 @@ class OpenCVRenderEngine(BaseRenderEngine):
         self._background_image: np.ndarray | None = None
 
     def _get_intrinsic_matrix(self) -> np.ndarray:
-        """Calculate the camera intrinsic matrix K."""
+        """Calculate the camera intrinsic matrix K.
+
+        Assumes a symmetric pinhole camera model with square pixels (fx = fy).
+        """
         fov_rad = math.radians(self.fov_degrees)
         f = (self.width / 2.0) / math.tan(fov_rad / 2.0)
         cx = self.width / 2.0
@@ -134,7 +137,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
         t_ext = -R_ext @ np.array(self.camera_position, dtype=np.float32)
 
         rvec, _ = cv.Rodrigues(R_ext)
-        return rvec, t_ext
+        return rvec.reshape((3, 1)), t_ext.reshape((3, 1))
 
     def get_resolution(self) -> tuple[int, int, int]:
         """Get the render resolution as (height, width, channels)."""
@@ -185,7 +188,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
             if pt is not None:
                 pts_2d.append(pt)
 
-        if len(pts_2d) >= 2:
+        if len(pts_2d) >= 3:
             pts_2d = np.array(pts_2d, dtype=np.int32).reshape((-1, 1, 2))
             color = (128, 128, 128)  # Default visual color
             cv.fillPoly(image, [pts_2d], color)
@@ -194,7 +197,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
         """Draw the robot object on the image."""
         position = obj.position
         radius = obj.dimensions[0] if len(obj.dimensions) > 0 else 0.05
-        color = (255, 0, 0)  # Default visual color for "robot" / ball
+        color = (0, 0, 255)  # Default visual color for "robot" / ball
 
         pt = self.project_to_2d(position)
         if pt is not None:
@@ -252,7 +255,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
             position: Position [x, y, z] in world meters.
 
         Returns:
-            tuple[int, int] | None: (x, y) pixel coordinates, or None if invalid.
+            tuple[int, int] | None: (x, y) pixel coordinates, or None if invalid or out of bounds.
         """
         if not position or len(position) < 2:
             return None
@@ -264,11 +267,18 @@ class OpenCVRenderEngine(BaseRenderEngine):
         K = self._get_intrinsic_matrix()
         rvec, tvec = self._get_extrinsic()
 
+        # Convert rvec to rotation matrix to check depth (Z > 0 in camera space)
+        R_ext, _ = cv.Rodrigues(rvec)
+        pos_cam = R_ext @ pos_3d + tvec.reshape(3)
+        if pos_cam[2] <= 0:
+            return None
+
         pts_2d, _ = cv.projectPoints(pos_3d.reshape((1, 1, 3)), rvec, tvec, K, None)
 
         if pts_2d is not None:
             u, v = pts_2d[0, 0]
-            return int(u), int(v)
+            if 0 <= u < self.width and 0 <= v < self.height:
+                return int(u), int(v)
         return None
 
     def close(self) -> None:
