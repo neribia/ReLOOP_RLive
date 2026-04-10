@@ -368,31 +368,48 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         if self.shell_link is None or self.camera is None:
             return None
 
-        # Get ball 3D position
+        # Get 3D position of the ball
         ball_pos = self.shell_link.get_pose().p
+        return self.project_position_to_2d(tuple(ball_pos))
+
+    def get_reachable_bounds(self) -> tuple[float, float, float, float]:
+        """Get the logical physical bounds where the ball can reach."""
+        # Use the configured reset area as the reachable bounds for the goal
+        min_x, max_x, min_y, max_y = SAPIEN_DEFAULTS.reset_area
+        return float(min_x), float(min_y), float(max_x), float(max_y)
+
+    def project_position_to_2d(self, position_3d: tuple[float, float, float]) -> tuple[int, int] | None:
+        """Project a 3D physical position to 2D image coordinates."""
+        if self.camera is None:
+            return None
 
         # Project to 2D using camera
         cam_model = self.camera.get_intrinsic_matrix()
 
         # In Sapien, `get_extrinsic_matrix()` transforms world to camera: T_world_to_cam
-        # But commonly we can just do:
-        T_world_to_cam = self.camera.get_extrinsic_matrix()
-        point_homo = np.array([ball_pos[0], ball_pos[1], ball_pos[2], 1.0])
-        point_cam = T_world_to_cam @ point_homo
+        # This provides the transformation matrix from world-to-camera directly
+        t_world_to_cam = self.camera.get_extrinsic_matrix()
+        
+        # Transform point to camera coordinates
+        p_world = np.array(position_3d)
+        p_world_h = np.append(p_world, 1.0)
+        p_cam_h = t_world_to_cam @ p_world_h
+        
+        p_cam = p_cam_h[:3]
 
-        # Sapien camera looks ALONG the +Z or -Z depending on version. Usually -Z. Let's see `get_extrinsic_matrix` transforms to OpenCV convention (often +Z depth) or OpenGL (-Z).
-        # We will assume Z is depth for intrinsic projection.
-        # Check depth (w)
-        if point_cam[2] <= 0:
-            # If point is behind camera, it shouldn't be rendered.
+        # Ensure point is in front of camera
+        if p_cam[2] <= 0:
             return None
 
-        # Project via intrinsic matrix
-        # u = fx * X / Z + cx
-        u = (cam_model[0, 0] * point_cam[0]) / point_cam[2] + cam_model[0, 2]
-        v = (cam_model[1, 1] * point_cam[1]) / point_cam[2] + cam_model[1, 2]
+        # Project to 2D
+        p_img = cam_model @ p_cam
+        x = int(p_img[0] / p_img[2])
+        y = int(p_img[1] / p_img[2])
 
-        return int(u), int(v)
+        # Check bounds
+        if 0 <= x < self.width and 0 <= y < self.height:
+            return x, y
+        return None
 
     def setup_scene(self, scene_config: dict[str, Any]) -> None:
         """Set up the scene with given configuration.

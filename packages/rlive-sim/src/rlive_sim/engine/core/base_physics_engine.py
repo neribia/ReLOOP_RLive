@@ -273,31 +273,20 @@ class BasePhysicsEngine(ABC):
     def set_state(self, state: PhysicsState) -> None:
         """Set the physics state directly.
 
-        Allows arbitrary state injection for techniques like state cloning,
-        rollback, or deterministic replay. All state components (position,
-        velocity, rotation, etc.) are updated.
-
         Args:
-            state: The state to set.
-
-        Examples:
-            State backup and restore:
-
-                original_state = engine.get_state()
-                # ... run simulation ...
-                engine.set_state(original_state)  # Restore previous state
-
-            Initializing with specific state:
-
-                target_state = PhysicsState(
-                    position=[1.0, 0.0, 0.0],
-                    velocity=[0.0, 0.0, 0.0]
-                )
-                engine.set_state(target_state)
+            state: The new state to apply.
         """
         pass
 
     @abstractmethod
+    def get_bounds(self) -> tuple[float, float, float, float]:
+        """Get the valid bounds for ball position.
+
+        Returns:
+            tuple[float, float, float, float]: (min_x, min_y, max_x, max_y).
+        """
+        pass
+
     def get_scene_objects(self) -> list[SceneObject]:
         pass
 
