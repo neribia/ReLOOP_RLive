@@ -206,8 +206,7 @@ class CombinedEngine(BaseIntegratedEngine):
     def get_reachable_bounds(self) -> tuple[float, float, float, float]:
         """Get the logical physical bounds where the ball can reach.
 
-        Delegates to the physics engine if it provides get_bounds(), otherwise
-        returns a default large area.
+        Delegates directly to the physics engine.
         """
         return self.physics_engine.get_bounds()
 

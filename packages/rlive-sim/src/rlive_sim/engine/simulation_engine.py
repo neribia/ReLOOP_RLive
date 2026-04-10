@@ -200,9 +200,8 @@ class SimulationEngine:
 
     def get_ball_2d_position(self) -> tuple[int, int] | None:
         """Get the 2D pixel coordinates of the ball in the current rendered image."""
-        if hasattr(self._engine, "get_ball_2d_position"):
-            return self._engine.get_ball_2d_position()
-        return None
+        return self._engine.get_ball_2d_position()
+
 
     def get_reachable_bounds(self) -> tuple[float, float, float, float]:
         """Get the logical physical bounds where the ball can reach.

@@ -18,7 +18,7 @@ from rlive_common.core.action_space import get_action_transformer, ActionSpaceTy
 from rlive_common.core.ball_location import BallLocation
 from rlive_common.config import config as common_cfg
 from rlive_common.utils.visualisation_utils import draw_goal, annotate_image
-from rlive_sim.config import SimulationConfig
+from rlive_sim.config import SimulationConfig, BOLT_DEFAULTS
 from rlive_sim.config import config as cfg
 from rlive_sim.engine import SimulationEngine
 from rlive_sim.engine.core.factories import SimulationEngineFactory
@@ -334,12 +334,12 @@ class SimulationEnv(gym.Env):
         min_x, min_y, max_x, max_y = self.engine.get_reachable_bounds()
         
         # Try to find a valid goal point projecting to the camera view
-        max_tries = 50
+        max_tries = self._config.max_goal_tries
         for _ in range(max_tries):
             # Sample physical position
             x3d = self.np_random.uniform(min_x, max_x)
             y3d = self.np_random.uniform(min_y, max_y)
-            z3d = 0.04 # Standard radius / ground plane assumption
+            z3d = BOLT_DEFAULTS.radius_m # Standard radius / ground plane assumption
 
             proj = self.engine.project_position_to_2d((x3d, y3d, z3d))
             if proj is not None:

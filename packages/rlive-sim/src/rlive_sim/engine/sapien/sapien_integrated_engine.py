@@ -387,13 +387,13 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         cam_model = self.camera.get_intrinsic_matrix()
 
         # In Sapien, `get_extrinsic_matrix()` transforms world to camera: T_world_to_cam
-        # However, for simply projecting points, we use the camera pose
-        cam_pose_inv = self.camera.get_extrinsic_matrix()
+        # This provides the transformation matrix from world-to-camera directly
+        t_world_to_cam = self.camera.get_extrinsic_matrix()
         
         # Transform point to camera coordinates
         p_world = np.array(position_3d)
         p_world_h = np.append(p_world, 1.0)
-        p_cam_h = cam_pose_inv @ p_world_h
+        p_cam_h = t_world_to_cam @ p_world_h
         
         p_cam = p_cam_h[:3]
 

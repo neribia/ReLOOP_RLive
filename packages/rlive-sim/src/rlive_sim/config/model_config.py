@@ -226,6 +226,7 @@ class SimulationConfig(BaseModel):
     render: RenderConfig = Field(default_factory=RenderConfig)
     integrated: IntegratedConfig = Field(default_factory=IntegratedConfig)
     max_episode_steps: int = Field(default=100, ge=1, description="Maximum steps per episode")
+    max_goal_tries: int = Field(default=50, ge=1, description="Max attempts to generate a valid random goal")
     seed: int | None = Field(default=None, description="Random seed")
 
     def get_observation_shape(self) -> tuple[int, int, int]:
