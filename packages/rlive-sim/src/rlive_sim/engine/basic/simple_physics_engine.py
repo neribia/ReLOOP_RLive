@@ -58,6 +58,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         box_height: float = basic_cfg.BOX_HEIGHT,
         ball_radius: float = bolt_cfg.RADIUS_M,
         dt: float = 0.01,
+        max_speed: float = 1.0,
         **kwargs: Any,
     ) -> None:
         """Initialize the simple physics engine.
@@ -75,17 +76,28 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         self.box_height = box_height
         self.ball_radius = ball_radius
         self.distance = 0.05
+        self.max_speed = max_speed
 
-        # Pending action: [angle_degrees, distance]
-        self._pending_action: list[float] | None = None
+        self._static_objects: list[SceneObject] = []
 
-        # Initialize ball at center
-        self._state = PhysicsState(
-            position=[0.0, 0.0, 0.0],
-            velocity=[0.0, 0.0, 0.0],
-            rotation=[1.0, 0.0, 0.0, 0.0],
-            angular_velocity=[0.0, 0.0, 0.0],
-        )
+    def setup_scene(self, scene_config: dict[str, Any]) -> None:
+        if "box_width" in scene_config:
+            self.box_width = float(scene_config["box_width"])
+        if "box_height" in scene_config:
+            self.box_height = float(scene_config["box_height"])
+        if "ball_radius" in scene_config:
+            self.ball_radius = float(scene_config["ball_radius"])
+
+        w = float(self.box_width)
+        h = float(self.box_height)
+        self._static_objects = [
+            SceneObject(
+                id="eurobox",
+                position=[0.0, 0.0, 0.0],
+                rotation=[0.0, 0.0, 0.0],
+                dimensions=[w, h, 0.0],
+            )
+        ]
 
     def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
         """Reset the ball to initial position.
@@ -203,18 +215,9 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         """Get the objects to render in the scene.
 
         Returns:
-            list[SceneObject]: List of scene objects with geometry decoupling styling.
+            list[SceneObject]: List of dynamic scene objects (the robot).
         """
-        w = float(self.box_width)
-        h = float(self.box_height)
-
         return [
-            SceneObject(
-                id="eurobox",
-                position=[0.0, 0.0, 0.0],
-                rotation=[0.0, 0.0, 0.0],
-                dimensions=[w, h, 0.0],
-            ),
             SceneObject(
                 id="robot",
                 position=self._state.position,

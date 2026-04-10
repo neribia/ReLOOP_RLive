@@ -95,6 +95,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
         ]
 
         self._last_image: np.ndarray | None = None
+        self._background_image: np.ndarray | None = None
 
     def _get_intrinsic_matrix(self) -> np.ndarray:
         """Calculate the camera intrinsic matrix K."""
@@ -139,26 +140,30 @@ class OpenCVRenderEngine(BaseRenderEngine):
         """Get the render resolution as (height, width, channels)."""
         return (self.height, self.width, self.channels)
 
-    def render(self, scene_state: dict[str, Any]) -> np.ndarray:
-        """Render the scene with objects supplied by physics.
+    def render(self, objects: list[SceneObject]) -> np.ndarray:
+        """Render the scene with dynamic objects.
 
         Args:
-            scene_state: Dictionary containing objects from the physics engine.
+            objects: List of dynamic scene objects (e.g. robot).
 
         Returns:
             np.ndarray: Rendered image (height, width, channels).
         """
-        image = np.full(
-            (self.height, self.width, self.channels),
-            self.bg_color,
-            dtype=np.uint8,
-        )
-        objects: list[SceneObject] = scene_state.get("objects", [])
+        if self._background_image is not None:
+            image = self._background_image.copy()
+        else:
+            image = np.full(
+                (self.height, self.width, self.channels),
+                self.bg_color,
+                dtype=np.uint8,
+            )
+
         for obj in objects:
-            if obj.id == "eurobox":
-                self._draw_eurobox(image, obj)
-            elif obj.id == "robot":
+            if obj.id == "robot":
                 self._draw_robot(image, obj)
+            elif obj.id == "eurobox":
+                # Static objects should typically be drawn in setup_scene, but we support dynamic fallback
+                self._draw_eurobox(image, obj)
 
         self._last_image = image
         return image
@@ -206,7 +211,7 @@ class OpenCVRenderEngine(BaseRenderEngine):
             cv.circle(image, pt, pixel_radius, color, -1)
 
     def setup_scene(self, scene_config: dict[str, Any]) -> None:
-        """Set up the scene configuration."""
+        """Set up the scene configuration and pre-render the static background."""
         if "bg_color" in scene_config:
             self.bg_color = tuple(scene_config["bg_color"])
         if "fov_degrees" in scene_config:
@@ -215,6 +220,20 @@ class OpenCVRenderEngine(BaseRenderEngine):
             self.camera_position = list(scene_config["camera_position"])
         if "camera_rotation" in scene_config:
             self.camera_rotation = list(scene_config["camera_rotation"])
+
+        self._background_image = np.full(
+            (self.height, self.width, self.channels),
+            self.bg_color,
+            dtype=np.uint8,
+        )
+
+        static_objects = scene_config.get("static_objects", [])
+        for obj in static_objects:
+            if obj.id == "eurobox":
+                self._draw_eurobox(self._background_image, obj)
+
+
+        self._last_image = self._background_image.copy()
 
     def get_image(self) -> np.ndarray:
         """Get the last rendered image."""

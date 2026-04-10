@@ -11,7 +11,7 @@ Supported physics backends (via subclasses):
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Type
+from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -299,6 +299,15 @@ class BasePhysicsEngine(ABC):
 
     @abstractmethod
     def get_scene_objects(self) -> list[SceneObject]:
+        pass
+
+    @abstractmethod
+    def setup_scene(self, scene_config: dict[str, Any]) -> None:
+        """Set up the scene configuration.
+
+        Args:
+            scene_config: Configuration dictionary for the scene.
+        """
         pass
 
     def close(self) -> None:

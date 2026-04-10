@@ -141,9 +141,12 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             self.scene.gravity = [0, 0, -9.81]
         self.scene.timestep = self.sim_dt
 
-        # Setup World (Ground + Robot) using Factory
-        # Moved before viewer creation to match working example
-        self.robot, self.shell_link, self.sled_link = self._setup_world()
+        # Robot
+        self.robot = None
+        self.shell_link = None
+        self.sled_link = None
+
+
 
         # Setup Viewer
         self._setup_viewer()
@@ -152,12 +155,6 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         self.scene.update_render()
         if self.viewer:
             self.viewer.render()
-
-        # Setup Camera
-        self._setup_camera()
-
-        # Setup Lights
-        self._setup_light()
 
         # Setup Controller
         self.controller = SpheroController(
@@ -191,6 +188,12 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             'friction': self._friction,
             'restitution': self._restitution,
         }
+
+        # Setup Camera
+        self._setup_camera()
+
+        # Setup Lights
+        self._setup_light()
         
         # Create and execute loader using factory
         loader = WorldLoaderFactory.create(self._robot_type)
@@ -249,7 +252,7 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             near=0.1,
             far=100)
 
-        camera_quat = euler_to_quat(roll=0, pitch=90, yaw=90, degrees=True)
+        camera_quat = euler_to_quat(roll=0, pitch=90, yaw=90, degrees=True).tolist()
         self.camera.set_pose(sapien.Pose([0, 0, 1], camera_quat))
         # self.camera.entity.set_pose(sapien.Pose(mat44))
 
@@ -267,8 +270,8 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             z = self._robot_radius + 0.005 # Ensure robot rests gently on the ground
             
             # Initial yaw or rotation
-            quat = euler_to_quat(0, 0, np.random.uniform(-180, 180), degrees=True)
-            
+            quat = euler_to_quat(0.0, 0.0, float(np.random.uniform(-180, 180)), degrees=True)
+
             initial_state = PhysicsState(
                 position=[float(x), float(y), float(z)],
                 velocity=[0.0, 0.0, 0.0],
@@ -397,6 +400,10 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         Args:
             scene_config: Backend-specific scene configuration dictionary.
         """
+        # Setup World (Ground + Robot) using Factory
+        # Moved before viewer creation to match working example
+        self.robot, self.shell_link, self.sled_link = self._setup_world()
+
         if "lighting" in scene_config:
             lighting = scene_config["lighting"]
             if "ambient_light" in lighting:
