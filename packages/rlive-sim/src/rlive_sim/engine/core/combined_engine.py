@@ -193,12 +193,30 @@ class CombinedEngine(BaseIntegratedEngine):
         self.render_engine.setup_scene(derived_config)
 
     def get_ball_2d_position(self) -> tuple[int, int] | None:
-        """Get the 2D pixel coordinates of the ball in the current rendered image."""
+        """Get ball 2D position by asking the render engine.
+
+        Returns:
+            tuple[int, int] | None: The 2D pixel coordinates or None.
+        """
         # For combined engine, get 3D state and project it via render engine
         state = self.physics_engine.get_state()
         pos_3d = state.position  # e.g. [x, y] or [x, y, z]
+        return self.project_position_to_2d(tuple(pos_3d))
 
-        return self.render_engine.project_to_2d(pos_3d)
+    def get_reachable_bounds(self) -> tuple[float, float, float, float]:
+        """Get the logical physical bounds where the ball can reach.
+
+        Delegates to the physics engine if it provides get_bounds(), otherwise
+        returns a default large area.
+        """
+        return self.physics_engine.get_bounds()
+
+    def project_position_to_2d(self, position_3d: tuple[float, float, float]) -> tuple[int, int] | None:
+        """Project a 3D physical position to 2D image coordinates.
+
+        Delegates to the render engine.
+        """
+        return self.render_engine.project_to_2d(list(position_3d))
 
 
     def close(self) -> None:

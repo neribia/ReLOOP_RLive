@@ -204,6 +204,26 @@ class SimulationEngine:
             return self._engine.get_ball_2d_position()
         return None
 
+    def get_reachable_bounds(self) -> tuple[float, float, float, float]:
+        """Get the logical physical bounds where the ball can reach.
+
+        Returns:
+            tuple[float, float, float, float]: (min_x, min_y, max_x, max_y).
+        """
+        return self._engine.get_reachable_bounds()
+
+
+    def project_position_to_2d(self, position_3d: tuple[float, float, float]) -> tuple[int, int] | None:
+        """Project a 3D physical position to 2D image coordinates.
+
+        Args:
+            position_3d: A tuple consisting of (x, y, z) in the physics world.
+
+        Returns:
+            tuple[int, int] | None: The (x, y) pixel coordinates, or None if outside view.
+        """
+        return self._engine.project_position_to_2d(position_3d)
+
     def close(self) -> None:
         """Clean up all engine resources."""
         self._engine.close()

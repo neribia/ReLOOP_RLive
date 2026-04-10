@@ -329,17 +329,27 @@ class SimulationEnv(gym.Env):
     def set_random_goal(self) -> None:
         """Set a random goal position within the observation space."""
         height, width, _ = self.observation_space.shape
-
         goal_radius = self.options.get("goal_radius", common_cfg.GOAL_RADIUS)
 
-        # Ensure goal is fully visible by constraining it away from borders
-        min_x = goal_radius
-        max_x = width - goal_radius
-        min_y = goal_radius
-        max_y = height - goal_radius
+        min_x, min_y, max_x, max_y = self.engine.get_reachable_bounds()
+        
+        # Try to find a valid goal point projecting to the camera view
+        max_tries = 50
+        for _ in range(max_tries):
+            # Sample physical position
+            x3d = self.np_random.uniform(min_x, max_x)
+            y3d = self.np_random.uniform(min_y, max_y)
+            z3d = 0.04 # Standard radius / ground plane assumption
 
-        x = int(self.np_random.integers(min_x, max_x))
-        y = int(self.np_random.integers(min_y, max_y))
+            proj = self.engine.project_position_to_2d((x3d, y3d, z3d))
+            if proj is not None:
+                px, py = proj
+                # Check if it fits well within image bounds
+                if goal_radius <= px <= width - goal_radius and goal_radius <= py <= height - goal_radius:
+                    self.goal_position = (px, py)
+                    logger.debug(f"Set random goal at: {self.goal_position} from 3d {x3d:.2f},{y3d:.2f}")
+                    return
 
-        self.goal_position = (x, y)
-        logger.debug(f"Set random goal at: {self.goal_position}")
+        # Fallback if valid projection wasn't found
+        logger.warning("Could not find a valid projected goal position. Using fallback center position.")
+        self.goal_position = (width // 2, height // 2)

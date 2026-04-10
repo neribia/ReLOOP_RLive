@@ -204,10 +204,33 @@ class BaseIntegratedEngine(ABC):
         """Get the 2D pixel coordinates of the ball in the current rendered image.
 
         Returns:
-            tuple[int, int] | None: The (x, y) pixel coordinates of the ball, or None if not visible/supported.
+            tuple[int, int] | None: The (x, y) coordinates if the ball is found and
+                visible, otherwise None.
         """
         pass
 
+    @abstractmethod
+    def get_reachable_bounds(self) -> tuple[float, float, float, float]:
+        """Get the logical physical bounds where the ball can reach.
+
+        Returns:
+            tuple[float, float, float, float]: (min_x, min_y, max_x, max_y).
+        """
+        pass
+
+    @abstractmethod
+    def project_position_to_2d(self, position_3d: tuple[float, float, float]) -> tuple[int, int] | None:
+        """Project a 3D physical position to 2D image coordinates.
+
+        Args:
+            position_3d: A tuple consisting of (x, y, z) in the physics world.
+
+        Returns:
+            tuple[int, int] | None: The (x, y) pixel coordinates, or None if outside view.
+        """
+        pass
+
+    @abstractmethod
     def close(self) -> None:
         """Clean up resources and shutdown the integrated engine.
 

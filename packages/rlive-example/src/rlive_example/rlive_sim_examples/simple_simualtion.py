@@ -75,7 +75,7 @@ def main() -> None:
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
             env.render(visualize=True)
-            cv2.waitKey(50)  # Wait 50ms between frames
+            cv2.waitKey(500)  # Wait 50ms between frames
             done = terminated or truncated
             step_count += 1
 
