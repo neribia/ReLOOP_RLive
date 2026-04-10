@@ -135,6 +135,23 @@ class PhysicsState(BaseModel):
         )
 
 
+class SceneObject(BaseModel):
+    """Represents a geometric object in the scene, decoupled from rendering specifics.
+
+    Attributes:
+        id: Unique identifier or type name of the object (e.g., "robot", "eurobox").
+        position: 3D position vector [x, y, z] in world coordinates.
+        rotation: 3D rotation Euler angles [roll, pitch, yaw] or Quaternion.
+        dimensions: Dimensions of the object (e.g., [width, height, depth] or [radius]).
+    """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    id: str
+    position: list[float]
+    rotation: list[float]
+    dimensions: list[float]
+
+
 class BasePhysicsEngine(ABC):
     """Abstract base class for physics engines.
 
@@ -273,11 +290,15 @@ class BasePhysicsEngine(ABC):
             Initializing with specific state:
 
                 target_state = PhysicsState(
-                    position=[1.0, 2.0, 0.0],
+                    position=[1.0, 0.0, 0.0],
                     velocity=[0.0, 0.0, 0.0]
                 )
                 engine.set_state(target_state)
         """
+        pass
+
+    @abstractmethod
+    def get_scene_objects(self) -> list[SceneObject]:
         pass
 
     def close(self) -> None:

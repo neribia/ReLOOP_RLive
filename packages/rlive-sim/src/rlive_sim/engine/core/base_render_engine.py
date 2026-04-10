@@ -165,39 +165,14 @@ class BaseRenderEngine(ABC):
         pass
 
     @abstractmethod
-    def set_camera_pose(
-        self,
-        position: list[float],
-        target: list[float],
-        up: list[float] | None = None,
-    ) -> None:
-        """Set the camera position and orientation.
-
-        Updates the camera's position in world space, the point it looks at,
-        and its up direction. This is typically called before render() to
-        control the viewpoint.
+    def project_to_2d(self, position: list[float]) -> tuple[int, int] | None:
+        """Project a 3D position in world coordinates to 2D pixel coordinates.
 
         Args:
-            position: Camera position [x, y, z] in world coordinates.
-            target: Point the camera looks at [x, y, z] in world coordinates.
-            up: Up vector [x, y, z] to define camera roll. Defaults to [0, 0, 1].
+            position: Position [x, y, z] in world coordinates.
 
-        Examples:
-            Setting camera to view a scene from different angles:
-
-                # Front view
-                engine.set_camera(
-                    position=[0, 2, 5],
-                    target=[0, 1, 0],
-                    up=[0, 1, 0]
-                )
-
-                # Top-down view
-                engine.set_camera(
-                    position=[0, 10, 0],
-                    target=[0, 0, 0],
-                    up=[0, 0, 1]
-                )
+        Returns:
+            tuple[int, int] | None: (x, y) pixel coordinates, or None if out of bounds/unsupported.
         """
         pass
 

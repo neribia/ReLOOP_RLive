@@ -179,11 +179,7 @@ class CombinedEngine(BaseIntegratedEngine):
         state = self.physics_engine.get_state()
         pos_3d = state.position  # e.g. [x, y] or [x, y, z]
 
-        if hasattr(self.render_engine, "project_to_2d"):
-            return self.render_engine.project_to_2d(pos_3d)
-
-        # Fallback if render engine does not support projection
-        return None
+        return self.render_engine.project_to_2d(pos_3d)
 
     # Utility method
     def _build_scene_state(self, state: PhysicsState) -> dict[str, Any]:
@@ -198,15 +194,11 @@ class CombinedEngine(BaseIntegratedEngine):
         Returns:
             dict[str, Any]: Scene state dictionary for rendering.
         """
+
+        objects = self.physics_engine.get_scene_objects()
+
         return {
-            "objects": [
-                {
-                    "id": "main",
-                    "position": state.position,
-                    "rotation": state.rotation,
-                    "velocity": state.velocity,
-                }
-            ],
+            "objects": objects,
             "physics_state": state.model_dump(),
         }
 
@@ -219,4 +211,3 @@ class CombinedEngine(BaseIntegratedEngine):
             self.physics_engine.close()
         if self.render_engine:
             self.render_engine.close()
-
