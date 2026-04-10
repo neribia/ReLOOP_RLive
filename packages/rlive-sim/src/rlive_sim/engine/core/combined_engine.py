@@ -182,11 +182,15 @@ class CombinedEngine(BaseIntegratedEngine):
         self.physics_engine.setup_scene(scene_config)
 
         # Share static geometry discovered by physics engine to renderer
-        # (Assuming SimplePhysicsEngine stores them in _static_objects; fallback gracefully)
-        if hasattr(self.physics_engine, '_static_objects'):
-            scene_config["static_objects"] = self.physics_engine._static_objects
+        # Pass a derived config to avoid mutating caller's dict
+        derived_config = scene_config.copy()
+        static_objects = self.physics_engine.get_static_scene_objects()
+        if static_objects:
+            # Append rather than overwrite if static objects are already provided
+            existing_static = derived_config.get("static_objects", [])
+            derived_config["static_objects"] = existing_static + static_objects
 
-        self.render_engine.setup_scene(scene_config)
+        self.render_engine.setup_scene(derived_config)
 
     def get_ball_2d_position(self) -> tuple[int, int] | None:
         """Get the 2D pixel coordinates of the ball in the current rendered image."""

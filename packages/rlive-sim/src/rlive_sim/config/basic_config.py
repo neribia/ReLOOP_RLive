@@ -5,6 +5,7 @@ This module provides default configurations for the basic simulation engines
 """
 
 import os
+import math
 
 # ============================================================================
 # PHYSICS CONFIGURATION
@@ -21,7 +22,7 @@ BOX_HEIGHT: float = float(os.getenv("RLIVE_SIM_BASIC_BOX_HEIGHT", "0.6"))
 """
 Height of the bounding box in meters.
 
-default: 0.4
+default: 0.6
 """
 
 # ============================================================================
@@ -55,10 +56,10 @@ CAMERA_POSITION_Z: float = float(os.getenv("RLIVE_SIM_BASIC_CAMERA_POSITION_Z", 
 """
 Default XYZ coordinates of the camera in meters.
 
-default: [0.0, 0.0, 0.8]
+default: [0.0, 0.0, 0.7]
 """
 
-CAMERA_ROTATION_ROLL: float = float(os.getenv("RLIVE_SIM_BASIC_CAMERA_ROTATION_ROLL", "0.0"))
+CAMERA_ROTATION_ROLL: float = float(os.getenv("RLIVE_SIM_BASIC_CAMERA_ROTATION_ROLL", str(math.pi)))
 CAMERA_ROTATION_PITCH: float = float(os.getenv("RLIVE_SIM_BASIC_CAMERA_ROTATION_PITCH", "0.0"))
 CAMERA_ROTATION_YAW: float = float(os.getenv("RLIVE_SIM_BASIC_CAMERA_ROTATION_YAW", "0.0"))
 """

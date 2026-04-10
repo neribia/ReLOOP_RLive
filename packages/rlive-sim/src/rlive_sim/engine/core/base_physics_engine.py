@@ -301,6 +301,17 @@ class BasePhysicsEngine(ABC):
     def get_scene_objects(self) -> list[SceneObject]:
         pass
 
+    def get_static_scene_objects(self) -> list[SceneObject]:
+        """Get the static objects to render in the scene (e.g. background, bounds).
+
+        This should primarily be overridden by engines that generate static objects
+        during setup_scene.
+
+        Returns:
+            list[SceneObject]: List of static scene objects.
+        """
+        return []
+
     @abstractmethod
     def setup_scene(self, scene_config: dict[str, Any]) -> None:
         """Set up the scene configuration.
