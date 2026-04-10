@@ -11,7 +11,7 @@ Supported physics backends (via subclasses):
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Type
+from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -133,6 +133,23 @@ class PhysicsState(BaseModel):
             rotation=arr[6:10].tolist(),
             angular_velocity=arr[10:13].tolist(),
         )
+
+
+class SceneObject(BaseModel):
+    """Represents a geometric object in the scene, decoupled from rendering specifics.
+
+    Attributes:
+        id: Unique identifier or type name of the object (e.g., "robot", "eurobox").
+        position: 3D position vector [x, y, z] in world coordinates.
+        rotation: 3D rotation Euler angles [roll, pitch, yaw] or Quaternion.
+        dimensions: Dimensions of the object (e.g., [width, height, depth] or [radius]).
+    """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    id: str
+    position: list[float]
+    rotation: list[float]
+    dimensions: list[float]
 
 
 class BasePhysicsEngine(ABC):
@@ -273,10 +290,34 @@ class BasePhysicsEngine(ABC):
             Initializing with specific state:
 
                 target_state = PhysicsState(
-                    position=[1.0, 2.0, 0.0],
+                    position=[1.0, 0.0, 0.0],
                     velocity=[0.0, 0.0, 0.0]
                 )
                 engine.set_state(target_state)
+        """
+        pass
+
+    @abstractmethod
+    def get_scene_objects(self) -> list[SceneObject]:
+        pass
+
+    def get_static_scene_objects(self) -> list[SceneObject]:
+        """Get the static objects to render in the scene (e.g. background, bounds).
+
+        This should primarily be overridden by engines that generate static objects
+        during setup_scene.
+
+        Returns:
+            list[SceneObject]: List of static scene objects.
+        """
+        return []
+
+    @abstractmethod
+    def setup_scene(self, scene_config: dict[str, Any]) -> None:
+        """Set up the scene configuration.
+
+        Args:
+            scene_config: Configuration dictionary for the scene.
         """
         pass
 

@@ -15,6 +15,8 @@ from typing import Any
 
 import numpy as np
 
+from rlive_sim.engine.core.base_physics_engine import SceneObject
+
 
 # TODO: Create Pydantic model for SceneState like PhysicsState
 # TODO: Consider if this is overkill - scene primarily changes via physics updates
@@ -85,23 +87,18 @@ class BaseRenderEngine(ABC):
         self._image = None
 
     @abstractmethod
-    def render(self, scene_state: dict[str, Any]) -> np.ndarray:
-        """Render the current scene and return an image.
+    def render(self, objects: list[SceneObject]) -> np.ndarray:
+        """Render the scene with a list of dynamic objects.
+
+        This method should process the list of dynamic objects appropriately
+        for the specific render backend (e.g., drawing shapes, updating
+        scenegraph nodes) and return the resulting image.
 
         Args:
-            scene_state: Dictionary containing scene information such as
-                object positions, camera pose, lighting, and animation frame.
-                Expected keys may include:
-                - "objects": List of object positions and properties
-                - "camera": Camera position and orientation
-                - "lights": Lighting configuration
-                - "time": Current simulation time
-                - "frame": Frame number
+            objects: List of dynamic objects to render.
 
         Returns:
-            np.ndarray: Rendered image as uint8 array with shape
-                (height, width, channels). For example, (480, 640, 3) for
-                RGB rendering at 640x480 resolution.
+            np.ndarray: Rendered image (height, width, channels).
 
         Examples:
             Rendering with object and camera data:
@@ -127,77 +124,22 @@ class BaseRenderEngine(ABC):
     # TODO: Consider creating a Pydantic model for scene_config validation
     @abstractmethod
     def setup_scene(self, scene_config: dict[str, Any]) -> None:
-        """Set up the scene with given configuration.
-
-        This method initializes or reconfigures the scene with objects,
-        lighting, camera, and other visual elements. Call this once before
-        starting the render loop.
+        """Set up the initial scene rendering context (e.g. background, static geometry).
 
         Args:
-            scene_config: Dictionary containing scene setup parameters.
-                Expected keys include:
-                - "objects": List of object definitions (type, position, size, etc.)
-                - "camera": Initial camera configuration (position, target, up)
-                - "lights": Lighting configuration (sun, point lights, etc.)
-                - "background": Background settings (color, skybox, etc.)
-                - "environment": Environmental parameters (fog, materials, etc.)
-
-        Examples:
-            Setting up a simple scene with objects and lighting:
-
-                config = {
-                    "objects": [
-                        {"id": 0, "type": "sphere", "position": [0, 1, 0], "radius": 0.5},
-                        {"id": 1, "type": "plane", "position": [0, 0, 0], "size": [10, 10]}
-                    ],
-                    "camera": {
-                        "position": [0, 2, 5],
-                        "target": [0, 1, 0],
-                        "up": [0, 1, 0]
-                    },
-                    "lights": [
-                        {"type": "sun", "direction": [1, 1, 1], "intensity": 1.0}
-                    ],
-                    "background": {"color": [0.1, 0.1, 0.1]}
-                }
-                engine.setup_scene(config)
+            scene_config: Configuration dict to set up the scene's appearance.
         """
         pass
 
     @abstractmethod
-    def set_camera_pose(
-        self,
-        position: list[float],
-        target: list[float],
-        up: list[float] | None = None,
-    ) -> None:
-        """Set the camera position and orientation.
-
-        Updates the camera's position in world space, the point it looks at,
-        and its up direction. This is typically called before render() to
-        control the viewpoint.
+    def project_to_2d(self, position: list[float]) -> tuple[int, int] | None:
+        """Project a 3D position in world coordinates to 2D pixel coordinates.
 
         Args:
-            position: Camera position [x, y, z] in world coordinates.
-            target: Point the camera looks at [x, y, z] in world coordinates.
-            up: Up vector [x, y, z] to define camera roll. Defaults to [0, 0, 1].
+            position: Position [x, y, z] in world coordinates.
 
-        Examples:
-            Setting camera to view a scene from different angles:
-
-                # Front view
-                engine.set_camera(
-                    position=[0, 2, 5],
-                    target=[0, 1, 0],
-                    up=[0, 1, 0]
-                )
-
-                # Top-down view
-                engine.set_camera(
-                    position=[0, 10, 0],
-                    target=[0, 0, 0],
-                    up=[0, 0, 1]
-                )
+        Returns:
+            tuple[int, int] | None: (x, y) pixel coordinates, or None if out of bounds/unsupported.
         """
         pass
 

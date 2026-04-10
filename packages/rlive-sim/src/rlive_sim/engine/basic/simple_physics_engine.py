@@ -10,24 +10,25 @@ from typing import Any
 
 import numpy as np
 
-from rlive_sim.engine.core.base_physics_engine import BasePhysicsEngine, PhysicsState
+from rlive_sim.engine.core.base_physics_engine import BasePhysicsEngine, PhysicsState, SceneObject
 from rlive_sim.engine.core.registry import register_physics_backend
 from rlive_sim.config import PhysicsBackend
-
+import rlive_sim.config.basic_config as basic_cfg
+import rlive_sim.config.bolt_config as bolt_cfg
 
 
 @register_physics_backend(PhysicsBackend.SIMPLE)
 class SimplePhysicsEngine(BasePhysicsEngine):
     """Simple 2D physics engine with a ball in a box.
 
-    The ball moves based on an angle and optional distance. When hitting walls,
+    The ball moves based on an angle, speed, and duration. When hitting walls,
     the ball slides along the wall (remaining movement is clamped to stay inside
-    the box). If only an angle is provided, uses a default distance of 20 pixels.
+    the box). Uses an action vector of `[heading, speed, duration]`.
 
     Attributes:
-        box_width: Width of the bounding box in pixels.
-        box_height: Height of the bounding box in pixels.
-        ball_radius: Radius of the ball in pixels.
+        box_width: Width of the bounding box in meters.
+        box_height: Height of the bounding box in meters.
+        ball_radius: Radius of the ball in meters.
         dt: Simulation timestep in seconds.
         gravity: Gravity vector (always [0, 0, 0] for 2D top-down).
 
@@ -43,31 +44,29 @@ class SimplePhysicsEngine(BasePhysicsEngine):
     Example:
         Creating and using the simple physics engine:
 
-            engine = SimplePhysicsEngine(box_width=640, box_height=480)
+            engine = SimplePhysicsEngine(box_width=1.0, box_height=1.0)
             state = engine.reset()
 
-            # Action as single angle (uses default 20px distance)
-            new_state = engine.update(45)  # Move 45°, distance=20px
-
-            # Or action as [angle, distance]
-            new_state = engine.update([45])  # Move 45° angle, 50 pixels
+            # Action as [heading, speed, duration]
+            new_state = engine.update([45, 0.1, 1.0])  # Move 45° angle, 0.1 m/s, for 1.0 seconds
             print(new_state.position[:2])  # [x, y] position
     """
 
     def __init__(
         self,
-        box_width: int = 640,
-        box_height: int = 480,
-        ball_radius: int = 20,
+        box_width: float = basic_cfg.BOX_WIDTH,
+        box_height: float = basic_cfg.BOX_HEIGHT,
+        ball_radius: float = bolt_cfg.RADIUS_M,
         dt: float = 0.01,
+        max_speed: float = 1.0,
         **kwargs: Any,
     ) -> None:
         """Initialize the simple physics engine.
 
         Args:
-            box_width: Width of the bounding box in pixels. Defaults to 640.
-            box_height: Height of the bounding box in pixels. Defaults to 480.
-            ball_radius: Radius of the ball in pixels. Defaults to 20.
+            box_width: Width of the bounding box in meters.
+            box_height: Height of the bounding box in meters.
+            ball_radius: Radius of the ball in meters.
             dt: Simulation timestep (for interface compatibility).
             **kwargs: Additional arguments.
         """
@@ -76,18 +75,29 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         self.box_width = box_width
         self.box_height = box_height
         self.ball_radius = ball_radius
-        self.distance = 20.0
+        self.distance = 0.05
+        self.max_speed = max_speed
 
-        # Pending action: [angle_degrees, distance]
-        self._pending_action: list[float] | None = None
+        self._static_objects: list[SceneObject] = []
 
-        # Initialize ball at center
-        self._state = PhysicsState(
-            position=[float(box_width / 2), float(box_height / 2), 0.0],
-            velocity=[0.0, 0.0, 0.0],
-            rotation=[1.0, 0.0, 0.0, 0.0],
-            angular_velocity=[0.0, 0.0, 0.0],
-        )
+    def setup_scene(self, scene_config: dict[str, Any]) -> None:
+        if "box_width" in scene_config:
+            self.box_width = float(scene_config["box_width"])
+        if "box_height" in scene_config:
+            self.box_height = float(scene_config["box_height"])
+        if "ball_radius" in scene_config:
+            self.ball_radius = float(scene_config["ball_radius"])
+
+        w = float(self.box_width)
+        h = float(self.box_height)
+        self._static_objects = [
+            SceneObject(
+                id="eurobox",
+                position=[0.0, 0.0, 0.0],
+                rotation=[0.0, 0.0, 0.0],
+                dimensions=[w, h, 0.0],
+            )
+        ]
 
     def reset(self, initial_state: PhysicsState | None = None) -> PhysicsState:
         """Reset the ball to initial position.
@@ -101,10 +111,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         if initial_state is not None:
             # Validate and clamp position to box
             x, y, z = initial_state.position
-            min_x = float(self.ball_radius)
-            max_x = float(self.box_width - self.ball_radius)
-            min_y = float(self.ball_radius)
-            max_y = float(self.box_height - self.ball_radius)
+            min_x, min_y, max_x, max_y = self.get_bounds()
 
             x = max(min_x, min(max_x, x))
             y = max(min_y, min(max_y, y))
@@ -118,7 +125,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         else:
             # Start at center
             self._state = PhysicsState(
-                position=[float(self.box_width / 2), float(self.box_height / 2), 0.0],
+                position=[0.0, 0.0, 0.0],
                 velocity=[0.0, 0.0, 0.0],
                 rotation=[1.0, 0.0, 0.0, 0.0],
                 angular_velocity=[0.0, 0.0, 0.0],
@@ -134,9 +141,8 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         the given distance. If hitting a wall, it slides along the wall.
 
         Args:
-            action: Movement command as either:
-                - Single angle (float/int): Direction of movement in degrees (0° = right, 90° = down)
-                  Uses default distance of 20 pixels.
+            action: Movement command as vector:
+                - `[heading, speed, duration]`
             dt: Not used in this simple implementation.
 
         Returns:
@@ -165,10 +171,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         new_y = y + dy
 
         # Clamp to box boundaries (considering ball radius)
-        min_x = float(self.ball_radius)
-        max_x = float(self.box_width - self.ball_radius)
-        min_y = float(self.ball_radius)
-        max_y = float(self.box_height - self.ball_radius)
+        min_x, min_y, max_x, max_y = self.get_bounds()
 
         # Check if hit wall
         hit_wall = (
@@ -202,21 +205,47 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         """
         return self._state
 
+    def get_scene_objects(self) -> list[SceneObject]:
+        """Get the objects to render in the scene.
+
+        Returns:
+            list[SceneObject]: List of dynamic scene objects (the robot).
+        """
+        return [
+            SceneObject(
+                id="robot",
+                position=self._state.position,
+                rotation=self._state.rotation[:3] if len(self._state.rotation) == 3 else self._state.rotation, # Handle euler vs quat loosely. Or just [0,0,0]
+                dimensions=[self.ball_radius],
+            )
+        ]
+
+    def get_static_scene_objects(self) -> list[SceneObject]:
+        """Get the static background objects generated during setup."""
+        return self._static_objects
+
     def _apply_action(self, action: np.ndarray | list[float]) -> None:
         """Apply a movement action to the ball.
 
         Args:
-            action: Movement command as either:
-                - Single angle (float/int): Direction of movement in degrees (0° = right, 90° = down)
-                  Uses default distance of 20 pixels.
+            action: Movement command as vector:
+                - `[heading, speed_0_255, duration]`
 
         Example:
-            ... engine.apply_action(45)              # Move 45°, distance=20px (default)
+            ... engine.apply_action([45, 128, 1.0])  # Move 45°, ~half speed, 1.0 seconds
         """
         if isinstance(action, np.ndarray):
             action = action.tolist()
 
-        self._pending_action = [float(action[0]), self.distance]
+        heading = action[0]
+        raw_speed = action[1]
+        duration = action[2] if len(action) > 2 else 1.0
+
+        # Map speed from [0, 255] to [0, max_speed]
+        clamped_speed = max(0.0, min(255.0, float(raw_speed)))
+        real_speed = (clamped_speed / 255.0) * self.max_speed
+
+        self._pending_action = [float(heading), real_speed * float(duration)]
 
     def set_state(self, state: PhysicsState) -> None:
         """Set the physics state directly.
@@ -225,10 +254,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
             state: The state to set. Position will be clamped to box bounds.
         """
         x, y, z = state.position
-        min_x = float(self.ball_radius)
-        max_x = float(self.box_width - self.ball_radius)
-        min_y = float(self.ball_radius)
-        max_y = float(self.box_height - self.ball_radius)
+        min_x, min_y, max_x, max_y = self.get_bounds()
 
         self._state = PhysicsState(
             position=[max(min_x, min(max_x, x)), max(min_y, min(max_y, y)), z],
@@ -245,10 +271,10 @@ class SimplePhysicsEngine(BasePhysicsEngine):
             tuple[float, float, float, float]: (min_x, min_y, max_x, max_y).
         """
         return (
-            float(self.ball_radius),
-            float(self.ball_radius),
-            float(self.box_width - self.ball_radius),
-            float(self.box_height - self.ball_radius),
+            -float(self.box_width / 2) + float(self.ball_radius),
+            -float(self.box_height / 2) + float(self.ball_radius),
+            float(self.box_width / 2) - float(self.ball_radius),
+            float(self.box_height / 2) - float(self.ball_radius),
         )
 
     def close(self) -> None:

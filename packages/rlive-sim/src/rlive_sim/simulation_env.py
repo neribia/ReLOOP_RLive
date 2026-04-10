@@ -117,13 +117,17 @@ class SimulationEnv(gym.Env):
         super().__init__()
 
         # Use provided config or default
-        self._config = config or SimulationConfig
+        self._config = config if config is not None else SimulationConfig()
 
         # Set up the simulation engine
         if engine is not None:
             self.engine = engine
         else:
             self.engine = SimulationEngineFactory(self._config, **kwargs)
+
+        # Apply default scene config here if none supplied explicitly
+        scene_config = kwargs.get("scene_config", {})
+        self.engine.setup_scene(scene_config)
 
         # Action space transformer
         logger.info(f"Setting up action space transformer: {action_space_type}")

@@ -110,8 +110,8 @@ class CombinedEngine(BaseIntegratedEngine):
             tuple[PhysicsState, np.ndarray]: Tuple of (initial_state, rendered_image).
         """
         state = self.physics_engine.reset(initial_state)
-        scene_state = self._build_scene_state(state)
-        image = self.render_engine.render(scene_state)
+        dynamic_objects = self.physics_engine.get_scene_objects()
+        image = self.render_engine.render(dynamic_objects)
         return state, image
 
     # Combined methods
@@ -127,12 +127,20 @@ class CombinedEngine(BaseIntegratedEngine):
 
         Returns:
             tuple[PhysicsState, np.ndarray]: Updated state and rendered image.
+
+        Examples:
+            Update loop:
+
+                engine = CombinedEngine(physics_engine, render_engine)
+
+                # Inside the simulation loop:
+                action = [1.0, 0.0]
+                state, image = engine.update_and_render(action)
         """
         state = self.physics_engine.update(action, dt)
-        scene_state = self._build_scene_state(state)
-        image = self.render_engine.render(scene_state)
+        dynamic_objects = self.physics_engine.get_scene_objects()
+        image = self.render_engine.render(dynamic_objects)
         return state, image
-
 
     def get_resolution(self) -> tuple[int, int, int]:
         """Get the render resolution.
@@ -166,12 +174,23 @@ class CombinedEngine(BaseIntegratedEngine):
 
                 engine = CombinedEngine(physics_engine, render_engine)
                 scene_config = {
-                    "objects": [...],
-                    "environment": {...},
+                    "box_width": 0.8,
+                    "box_height": 0.6,
                 }
                 engine.setup_scene(scene_config)
         """
-        raise NotImplementedError()
+        self.physics_engine.setup_scene(scene_config)
+
+        # Share static geometry discovered by physics engine to renderer
+        # Pass a derived config to avoid mutating caller's dict
+        derived_config = scene_config.copy()
+        static_objects = self.physics_engine.get_static_scene_objects()
+        if static_objects:
+            # Append rather than overwrite if static objects are already provided
+            existing_static = derived_config.get("static_objects", [])
+            derived_config["static_objects"] = existing_static + static_objects
+
+        self.render_engine.setup_scene(derived_config)
 
     def get_ball_2d_position(self) -> tuple[int, int] | None:
         """Get the 2D pixel coordinates of the ball in the current rendered image."""
@@ -179,36 +198,8 @@ class CombinedEngine(BaseIntegratedEngine):
         state = self.physics_engine.get_state()
         pos_3d = state.position  # e.g. [x, y] or [x, y, z]
 
-        if hasattr(self.render_engine, "project_to_2d"):
-            return self.render_engine.project_to_2d(pos_3d)
+        return self.render_engine.project_to_2d(pos_3d)
 
-        # Fallback if render engine does not support projection
-        return None
-
-    # Utility method
-    def _build_scene_state(self, state: PhysicsState) -> dict[str, Any]:
-        """Build scene state from physics state for rendering.
-
-        Internal helper to convert physics state to scene state format
-        for the render engine.
-
-        Args:
-            state: The physics state to convert.
-
-        Returns:
-            dict[str, Any]: Scene state dictionary for rendering.
-        """
-        return {
-            "objects": [
-                {
-                    "id": "main",
-                    "position": state.position,
-                    "rotation": state.rotation,
-                    "velocity": state.velocity,
-                }
-            ],
-            "physics_state": state.model_dump(),
-        }
 
     def close(self) -> None:
         """Clean up resources from both wrapped engines.
@@ -219,4 +210,3 @@ class CombinedEngine(BaseIntegratedEngine):
             self.physics_engine.close()
         if self.render_engine:
             self.render_engine.close()
-
