@@ -12,6 +12,8 @@
       <sourceFolder url="file://$MODULE_DIR$/packages/rlive-world" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/rlive-example" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/rlive-example/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/rlive-train" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/rlive-train/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/packages/rlive-env/.venv" />
       <excludeFolder url="file://$MODULE_DIR$/packages/rlive-sim/.venv" />
