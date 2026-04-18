@@ -315,11 +315,7 @@ class SimulationEnv(gym.Env):
         else:
             # Dense reward: based on distance
             distance = self.ball_location.distance_to(self.goal_position)
-            reward = 1.0 - (distance / self._max_distance)
-
-            # Bonus reward for reaching the goal
-            if goal_reached:
-                reward += 1.0
+            reward = - distance / self._max_distance
 
         logger.debug(f"Ball at {self.ball_location.as_tuple()}, goal at {self.goal_position}, "
                      f"reward={reward:.3f}, goal_reached={goal_reached}")

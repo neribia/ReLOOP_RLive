@@ -270,6 +270,7 @@ class RemoteWorldEnv(gym.Env):
             - goal_reached (bool): Whether the ball has reached the goal.
             - reward (float): The calculated reward.
         """
+        # TODO: Create a common reward caluclation for remote_env and simulation_env
         if self.goal_position is None:
             logger.warning("Goal position not set, returning zero reward")
             raise RuntimeError("Goal position not set, cannot calculate reward")
@@ -284,7 +285,7 @@ class RemoteWorldEnv(gym.Env):
             raise RuntimeError("Ball not detected in observation")
 
         # Check if goal is reached
-        goal_reached = self.ball_location.is_within_radius(self.goal_position, common_cfg.GOAL_RADIUS) # TODO: radius as Env option.
+        goal_reached = self.ball_location.is_within_radius(self.goal_position, common_cfg.GOAL_RADIUS)
         logger.debug(f"Ball location: {self.ball_location.as_tuple()}, Goal position: {self.goal_position}, Goal reached: {goal_reached}")
 
         if self.reward_mode == "sparse":
@@ -293,11 +294,7 @@ class RemoteWorldEnv(gym.Env):
         else:
             # Dense reward: higher reward when closer to goal
             distance = self.ball_location.distance_to(self.goal_position)
-            reward = 1.0 - (distance / self._max_distance) # FIXME: Normalized or in px?
-
-            # Bonus reward for reaching the goal
-            if goal_reached:
-                reward += 1.0 # FIXME: Does this make's sense?
+            reward =  - distance / self._max_distance
 
         logger.debug(f"Ball at {self.ball_location.as_tuple()}, goal at {self.goal_position}, "
                      f"reward={reward:.3f}, goal_reached={goal_reached}")
