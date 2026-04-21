@@ -230,6 +230,7 @@ class RemoteWorldEnv(gym.Env):
             truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps)
             info = data.info
             info["episode"] = f"{self._episode}/{self._max_episode_steps if self._max_episode_steps is not None else '∞'}"
+            info["is_success"] = terminated
             return self.obs, reward, terminated, truncated, info
         except Exception as e:
             logger.exception("Failed to step environment")

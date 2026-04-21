@@ -242,6 +242,7 @@ class SimulationEnv(gym.Env):
         truncated = self._current_step >= self._max_episode_steps
 
         info: dict[str, Any] = {
+            "is_success": terminated,
             "status": "ok",
             "step": self._current_step,
             "physics_state": physics_state.model_dump() if physics_state else None,
