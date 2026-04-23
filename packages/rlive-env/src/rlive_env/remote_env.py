@@ -64,7 +64,8 @@ class RemoteWorldEnv(gym.Env):
             self.action_transformer = get_action_transformer(
                 action_space_type,
                 speed=int(cfg.SPHEROBOLTPLUS_SPEED),
-                duration=float(cfg.SPHEROBOLTPLUS_DURATION)
+                duration=float(cfg.SPHEROBOLTPLUS_DURATION),
+                factor=float(cfg.SPHEROBOLTPLUS_SPEED_FACTOR)
             )
 
             # Explicitly validate the returned object
