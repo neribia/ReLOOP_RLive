@@ -53,7 +53,7 @@ class BaseActionTransformer(ABC):
     [heading, speed, duration].
     """
 
-    def __init__(self, speed: int, duration: float) -> None:
+    def __init__(self, speed: int, duration: float, speed_factor: float = 1.0) -> None:
         """Initialize the action transformer with speed and duration parameters.
 
         Args:
@@ -62,6 +62,7 @@ class BaseActionTransformer(ABC):
         """
         self.speed = speed
         self.duration = duration
+        self.speed_factor = speed_factor
 
     @abstractmethod
     def get_action_space(self) -> gym.Space:
@@ -182,7 +183,7 @@ class CartesianActionTransformer(BaseActionTransformer):
     - duration: provided via initialization parameter
     """
 
-    SPEED_SCALING_FACTOR: float = 100.0  # Scale velocity magnitude to speed (0-255)
+    MAX_SPEED: int = 255
 
     def get_action_space(self) -> gym.Space:
         """Return a continuous 2D velocity action space."""
@@ -216,7 +217,13 @@ class CartesianActionTransformer(BaseActionTransformer):
 
             # Calculate speed from magnitude, scaled to [0, 255]
             magnitude = math.sqrt(vx ** 2 + vy ** 2)
-            speed = int(round(min(magnitude * self.SPEED_SCALING_FACTOR, 255)))
+            magnitude_norm = magnitude / math.sqrt(1 ** 2 + 1 ** 2)
+
+            speed = int(round(np.clip(
+                0,
+                magnitude * self.speed_factor * self.MAX_SPEED,
+                self.MAX_SPEED))
+            )
 
             logger.debug(f"Transformed velocity [{vx}, {vy}] -> [{heading}, {speed}, {self.duration}]")
             return np.array([heading, speed, self.duration], dtype=np.float32)
@@ -283,7 +290,7 @@ class ContinuousPolarActionTransformer(BaseActionTransformer):
             raise ValueError(f"Invalid action format: {e}") from e
 
 
-def get_action_transformer(action_space_type: ActionSpaceType | str, speed: int, duration: float) -> BaseActionTransformer:
+def get_action_transformer(action_space_type: ActionSpaceType | str, **kwargs) -> BaseActionTransformer:
     """Factory function to get an action transformer instance.
 
     Args:
@@ -312,4 +319,4 @@ def get_action_transformer(action_space_type: ActionSpaceType | str, speed: int,
         raise ValueError(f"Unknown action space type '{action_space_type}'. "
                         f"Available: {available}")
 
-    return _ACTION_SPACE_REGISTRY[action_space_type](speed=speed, duration=duration)
+    return _ACTION_SPACE_REGISTRY[action_space_type](**kwargs)

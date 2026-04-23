@@ -132,14 +132,11 @@ class SimulationEnv(gym.Env):
         # Action space transformer
         logger.info(f"Setting up action space transformer: {action_space_type}")
         try:
-            # Use default speed and duration from physics config or reasonable defaults
-            speed = 100  # Default speed
-            duration = float(1.0)
-
             self.action_transformer = get_action_transformer(
                 action_space_type,
-                speed=speed,
-                duration=duration
+                speed=cfg.SPHEROBOLTPLUS_SPEED,
+                duration=cfg.SPHEROBOLTPLUS_DURATION,
+                speed_factor=cfg.SPHEROBOLTPLUS_SPEED_FACTOR,
             )
 
             # Explicitly validate the returned object

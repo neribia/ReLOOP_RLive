@@ -9,6 +9,8 @@ Reference: Sphero Bolt Plus Technical Specifications
 import os
 from dataclasses import dataclass
 
+
+
 # ============================================================================
 # PHYSICAL DIMENSIONS
 # ============================================================================
