@@ -29,12 +29,16 @@ class SpheroBoltPlus(BaseRobot):
             scanner_class: type[SpheroFinder] = SpheroFinder,
             api_class: type[SpheroEduAPI] = SpheroEduAPI,
             register_handlers=False,
+            bolt_name: str | None = None,
+            **connect_kwargs,
     ):
         self.scanner: SpheroFinder = scanner_class()
         self.api_class: SpheroEduAPI = api_class
         self.api: SpheroEduAPI | None = None
         self.toy: BOLTPLUS | None = None
         self.name: str | None = None
+        self._bolt_name = bolt_name
+        self._connect_kwargs = connect_kwargs
 
         self._animation_index = 0
 
@@ -91,8 +95,19 @@ class SpheroBoltPlus(BaseRobot):
         self._cleanup()
         raise SystemExit(0)
 
-    # -----------------------------------------------------
+    # Context manager support
+    def __enter__(self):
+        """Support 'with' statement context manager.
+
+        If bolt_name was provided during __init__, auto-connects.
+        Otherwise, must call connect() before using.
+        """
+        if self._bolt_name:
+            self.connect(self._bolt_name, **self._connect_kwargs)
+        return self
+
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Cleanup on context manager exit."""
         self._cleanup()
 
     def _require_connection(self):
@@ -117,6 +132,52 @@ class SpheroBoltPlus(BaseRobot):
         time.sleep(duration/2)
         self.api.roll(self.heading, speed, duration)
         time.sleep(duration/2)
+
+    def set_speed(self, speed):
+        """Set the current roll speed.
+
+        Args:
+            speed (int): Target speed in the API command scale (-255 to 255).
+
+        Returns:
+            None
+        """
+        self._require_connection()
+        self.api.set_speed(speed)
+        logger.info(f"Set speed: {speed}")
+
+    def stop_roll(self):
+        self._require_connection()
+        self.api.stop_roll()
+        logger.info(f"Stop rolling")
+
+    def set_relativ_heading(self, heading):
+        """Adjust heading relative to the current heading.
+
+        Args:
+            heading (int): Relative heading offset in degrees.
+
+        Returns:
+            None
+        """
+        self._require_connection()
+        self.heading = (self.heading + heading) % 360
+        self.api.set_heading(self.heading)
+        logger.info(f"Set relative heading: offset={heading}, current={self.heading}")
+
+    def set_absolute_heading(self, heading):
+        """Set heading to an absolute direction.
+
+        Args:
+            heading (int): Absolute heading in degrees. Wrapped to [0, 360).
+
+        Returns:
+            None
+        """
+        self._require_connection()
+        self.heading = heading % 360
+        self.api.set_heading(self.heading)
+        logger.info(f"Set absolute heading: {self.heading}")
 
     def get_sensor_data(self) -> dict[str, Any]:
         """Returns a snapshot of all sensor readings.
