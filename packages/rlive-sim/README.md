@@ -58,6 +58,19 @@ The package supports two complementary architectures:
 uv sync --all-packages
 ```
 
+
+On MacOS, VulkanSDK has to be installed before following
+[this](https://maniskill.readthedocs.io/en/latest/user_guide/getting_started/macos_install.html)
+guide and environment variables have to be set accordingly
+
+```bash
+export VULKAN_SDK=/Path/to/VulkanSDK/macOS
+export PATH=$VULKAN_SDK/bin:$PATH
+export VK_ICD_FILENAMES=$VULKAN_SDK/share/vulkan/icd.d/MoltenVK_icd.json
+export VK_LAYER_PATH=$VULKAN_SDK/share/vulkan/explicit_layer.d
+export DYLD_LIBRARY_PATH=$VULKAN_SDK/lib:$DYLD_LIBRARY_PATH
+```
+
 ### Standalone Installation
 
 The installation command depends on your current directory:
