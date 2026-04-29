@@ -28,18 +28,9 @@ logger = get_logger(__name__)
 # Number of episodes to run
 NUM_EPISODES = 1
 
-# Robot loading option: "rigid_body", "urdf", or "glb"
-ROBOT_TYPE = "glb"
-
-# Optional: Path to custom URDF or GLB file
-ROBOT_PATH = None  # e.g., "path/to/my_robot.urdf" or "path/to/my_robot.glb"
 
 def main() -> None:
     """Run SAPIEN simulation with configurable robot loading."""
-    
-    logger.info(f"Starting simulation with robot_type='{ROBOT_TYPE}'")
-    if ROBOT_PATH:
-        logger.info(f"Using custom robot path: {ROBOT_PATH}")
 
     # Configure integrated backend with robot loading option
     integrated_config = IntegratedConfig(
@@ -47,16 +38,12 @@ def main() -> None:
         width=640,
         height=480,
         extra={
-            # Robot loading configuration
-            "robot_type": ROBOT_TYPE,
-            "robot_path": ROBOT_PATH,
-
-            # Controller configuration
-            "max_speed_ms": 0.5,
-            "acceleration_time": 0.3,
-            "deceleration_time": 0.2,
-            "controller_kp": 0.1,
-            "controller_kd": 0.1,
+            # # Controller configuration
+            # "max_speed_ms": 0.5,
+            # "acceleration_time": 0.3,
+            # "deceleration_time": 0.2,
+            # "controller_kp": 0.1,
+            # "controller_kd": 0.1,
             
             # Viewer configuration
             "use_viewer": True,
@@ -76,8 +63,6 @@ def main() -> None:
         max_episode_steps=10,
         action_space_type=ActionSpaceType.CARTESIAN,
     )
-
-    logger.info(f"Simulation using SAPIEN with robot_type={ROBOT_TYPE}")
 
     for episode in range(NUM_EPISODES):
         obs, info = env.reset()

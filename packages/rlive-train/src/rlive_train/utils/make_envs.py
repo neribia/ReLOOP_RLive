@@ -1,4 +1,5 @@
-import cv2
+from collections.abc import Callable
+
 import gymnasium as gym
 
 from rlive_common import ActionSpaceType
@@ -12,33 +13,59 @@ from rlive_sim import (
     IntegratedBackend,
     SimulationEnv,
 )
-from rlive_sim.engine import SapienIntegratedEngine
+
+def make_env_factory(
+    env_fn: Callable,
+    **env_kwargs,
+) -> Callable[[], object]:
+    """Create a factory function that builds environments with fixed parameters.
+
+    Args:
+        env_fn: Environment constructor function (e.g., make_sapiens_env)
+        **env_kwargs: Keyword arguments to pass to env_fn
+    Returns:
+        Callable that creates environment instances with the given kwargs
+    Example:
+        factory = make_env_factory(make_sapiens_env, max_episode_steps=50)
+        env = SubprocVecEnv([factory for _ in range(4)])
+    """
+    def _make_env():
+        return env_fn(**env_kwargs)
+    return _make_env
 
 
+def make_sapiens_env(
+    max_episode_steps: int = 20,
+    action_space_type: ActionSpaceType = ActionSpaceType.CARTESIAN,
+) -> SimulationEnv:
+    """Create a SAPIEN simulation environment with configurable parameters.
 
-def make_sapiens_env():
+    Args:
+        max_episode_steps: Maximum steps per episode (default: 20)
+        action_space_type: Action space type (default: CARTESIAN)
 
+    Returns:
+        SimulationEnv: Configured environment instance
+    """
     # Create simulation config using integrated backend
     sim_config = SimulationConfig(
         use_integrated=True,
-        integrated = IntegratedConfig(
-            backend = IntegratedBackend.SAPIEN,
+        integrated=IntegratedConfig(
+            backend=IntegratedBackend.SAPIEN,
             # width=640,
             # height=480,
         ),
     )
 
     # Create environment
-
-
     env = SimulationEnv(
         config=sim_config,
-        # render_mode="opencv",
-        max_episode_steps=20,
-        action_space_type=ActionSpaceType.CARTESIAN,
+        max_episode_steps=max_episode_steps,
+        action_space_type=action_space_type,
     )
 
     return env
+
 
 def make_simple_env(num_envs):
     # Configure physics backend

@@ -69,13 +69,13 @@ Moving duration (in s) of the Sphero Bolt+ robot.
 default: 1
 """
 
-SPHEROBOLTPLUS_SPEED_FACTOR: float = float(os.getenv("SPHEROBOLTPLUS_SPEED_FACTOR", "1.0"))
+SPHEROBOLTPLUS_SPEED_FACTOR: float = float(os.getenv("SPHEROBOLTPLUS_SPEED_FACTOR", "0.5"))
 """
 Factor to reduce the max_speed for ActionSpaceType.CARTESIAN. 
 Default is set to 0.5 to reduce slip.
 Should be the same as from the rlive_env-package.
 
-default: 1.0
+default: 0.5
 """
 
 # --- Reset settings -----------------------------------------------------------
