@@ -269,6 +269,12 @@ class GLBWorldStrategy(WorldLoadingStrategy):
             logger.warning(f"⚠ Warning: Euro box GLB not found at {glb_path}")
             return
 
+        env_mat = scene.create_physical_material(
+            static_friction=1.0,
+            dynamic_friction=0.8,
+            restitution=0.1
+        )
+
         builder = scene.create_actor_builder()
         
         # Visual
@@ -276,7 +282,7 @@ class GLBWorldStrategy(WorldLoadingStrategy):
         
         try:
             # Try SAPIEN 3 naming first
-            builder.add_nonconvex_collision_from_file(str(glb_path))
+            builder.add_nonconvex_collision_from_file(str(glb_path), material=env_mat)
         except AttributeError:
             logger.warning(f"⚠ Warning: Could not create mesh collision for euro box")
         

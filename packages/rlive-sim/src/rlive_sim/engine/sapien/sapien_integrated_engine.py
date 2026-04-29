@@ -23,7 +23,7 @@ from rlive_sim.config import IntegratedBackend, SAPIEN_DEFAULTS
 from rlive_sim.utils.math_utils import euler_to_quat, deg_to_rad
 
 
-from rlive_sim.engine.sapien.sphero_controller import SpheroController
+from rlive_sim.engine.sapien.sphero_controller import SpheroController, Phase
 from rlive_sim.engine.sapien.world_loading import WorldLoaderFactory, WorldLoaderType
 
 @register_integrated_backend(IntegratedBackend.SAPIEN)
@@ -46,8 +46,8 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         robot_type: str = SAPIEN_DEFAULTS.robot_type, # Keeps name for config compatibility, but maps to world_type
         robot_path: str | None = SAPIEN_DEFAULTS.robot_path,
         max_speed_ms: float = SAPIEN_DEFAULTS.max_speed_ms,
-        acceleration_time: float = SAPIEN_DEFAULTS.acceleration_time,
-        deceleration_time: float = SAPIEN_DEFAULTS.deceleration_time,
+        # acceleration_time: float = SAPIEN_DEFAULTS.acceleration_time, # TODO: Remove
+        # deceleration_time: float = SAPIEN_DEFAULTS.deceleration_time, # TODO: Remove
         controller_kp: float = SAPIEN_DEFAULTS.controller_kp,
         controller_kd: float = SAPIEN_DEFAULTS.controller_kd,
         robot_radius: float = SAPIEN_DEFAULTS.robot_radius, # FIXME: Use Bolt_Default
@@ -116,8 +116,6 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         self._robot_type = robot_type
         self._robot_path = robot_path
         self._max_speed_ms = max_speed_ms
-        self._acceleration_time = acceleration_time
-        self._deceleration_time = deceleration_time
         self._controller_kp = controller_kp
         self._controller_kd = controller_kd
         self._robot_radius = robot_radius
@@ -146,8 +144,6 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         self.shell_link = None
         self.sled_link = None
 
-
-
         # Setup Viewer
         self._setup_viewer()
         
@@ -159,8 +155,7 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         # Setup Controller
         self.controller = SpheroController(
             max_speed_ms=self._max_speed_ms,
-            acceleration_time=self._acceleration_time,
-            deceleration_time=self._deceleration_time,
+            # max_accel_ms2=self._max_accel_ms2, # TODO: Setup
             kp=self._controller_kp,
             kd=self._controller_kd,
             mass=self._robot_mass
@@ -280,8 +275,6 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             )
 
         self.robot.reset(initial_state)
-
-        self.controller.reset()
         
         for _ in range(10):
             self.scene.step()
@@ -299,19 +292,14 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         """
         heading_deg, speed_255, duration_s = np.asarray(action, dtype=np.float32)
 
-        n_steps = int(duration_s / self.sim_dt)
-        if n_steps < 1: 
-            n_steps = 1
-        
-        # The commanded heading is relative to the current heading
-        target_heading = self.controller.heading_deg + heading_deg
-
-        self.controller.command(target_heading, speed_255, duration_s)
+        # Set new commands
+        self.controller.command(heading_deg, speed_255, duration_s)
         
         # Get physics component (for actors, this is PhysxRigidDynamicComponent)
         physics_comp = self.shell_link.find_component_by_type(sapien.physx.PhysxRigidDynamicComponent) if hasattr(self.shell_link, 'find_component_by_type') else None
 
-        for i in range(n_steps):
+        n_steps = 0
+        while self.controller.phase !=  Phase.IDLE:
             # Get linear velocity
             if physics_comp:
                 linear_vel = physics_comp.get_linear_velocity()
@@ -319,22 +307,25 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
                 linear_vel = self.shell_link.get_linear_velocity()
             v_linear = linear_vel[:2]
 
-            fx, fy = self.controller.get_forces(self.sim_dt, v_linear[0], v_linear[1])
-            
+            #fx, fy = self.controller.get_forces(self.sim_dt, v_linear[0], v_linear[1])
+            vx, vy = self.controller.get_velocity(self.sim_dt, v_linear[0], v_linear[1])
+
             # Apply force
-            self.robot.apply_force(fx, fy, self.sim_dt)
+            #self.robot.apply_force(fx, fy, self.sim_dt)
+            self.robot.set_root_linear_velocity(vx=vx, vy=vy, vz=0)
 
             self.scene.step()
             
             # Update internal robot representation using the current commanded heading
             heading_deg_current = self.controller.heading_deg
-            self.robot.update(self.sim_dt, linear_vel, heading_deg_current)
+            self.robot.update(heading_deg_current)
 
             # Update viewer if active
             # Only render every N steps to maintain performance
-            if self.viewer and not self.viewer.closed and (i % self.render_stride == 0):
+            if self.viewer and not self.viewer.closed and (n_steps % self.render_stride == 0):
                 self.scene.update_render()
                 self.viewer.render()
+            n_steps += 1
 
         return self._get_state(), self._render_frame()
 

@@ -57,11 +57,11 @@ Robot radius in meters.
 default: 0.0365
 """
 
-ROBOT_MASS: float = float(os.getenv("RLIVE_SIM_SAPIEN_ROBOT_MASS", "0.12"))
+ROBOT_MASS: float = float(os.getenv("RLIVE_SIM_SAPIEN_ROBOT_MASS", "0.28"))
 """
 Robot mass in kg.
 
-default: 0.12
+default: 0.28
 """
 
 FRICTION: float = float(os.getenv("RLIVE_SIM_SAPIEN_FRICTION", "0.8"))
