@@ -62,6 +62,9 @@ def main() -> None:
         done = False
         while not done:
             action = env.action_space.sample()
+
+            action = 0.2*action
+
             obs, reward, terminated, truncated, info = env.step(action)
             env.render()
             done = terminated or truncated

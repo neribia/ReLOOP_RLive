@@ -13,11 +13,7 @@ import cv2
 from rlive_common import ActionSpaceType
 from rlive_sim import (
     SimulationConfig,
-    PhysicsConfig,
-    RenderConfig,
     IntegratedConfig,
-    PhysicsBackend,
-    RenderBackend,
     IntegratedBackend,
     SimulationEnv,
 )
@@ -86,4 +82,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
