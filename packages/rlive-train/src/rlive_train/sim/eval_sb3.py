@@ -6,17 +6,14 @@ using the SimulationEnv with SAPIEN integrated backend.
 import sys
 import gymnasium as gym
 
-from rlive_train.utils.make_envs import make_sapiens_env
-
 # Spoof the gym module to suppress unmaintained gym warnings
 sys.modules["gym"] = gym
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.vec_env.vec_frame_stack import VecFrameStack
 
 from rlive_train.config.config import LOGS_DIR
 from rlive_common.utils import get_logger
+from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_eval_env
 
 logger = get_logger(__name__)
 
@@ -25,8 +22,7 @@ RUN_ID = "PPO_Sapien_YYYYMMDD_HHMMSS"
 
 
 def main() -> None:
-    env = DummyVecEnv([make_sapiens_env])
-    env = VecFrameStack(env, 4)
+    env = build_sim_eval_env(n_stack=4, backend=EvalVecBackend.DUMMY)
 
     # Load from the specific run's best_model directory
     model_path = LOGS_DIR / RUN_ID / "best_model" / "best_model.zip"
