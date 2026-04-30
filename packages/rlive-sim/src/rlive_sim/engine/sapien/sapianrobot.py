@@ -10,7 +10,7 @@ except ImportError:
     sapien = None
 
 from rlive_sim.engine.core.base_physics_engine import PhysicsState
-from rlive_sim.utils.math_utils import euler_to_quat
+from rlive_sim.utils.math_utils import euler_to_quat, quat_to_euler
 
 
 class SapianRobot(ABC):
@@ -63,7 +63,7 @@ class SapianRobot(ABC):
         return PhysicsState(
             position=pose.p.tolist(),
             velocity=linear_vel.tolist(),
-            rotation=pose.q.tolist(),
+            rotation=quat_to_euler(pose.q, degrees=True).tolist(),  # Convert SAPIEN quat → Euler deg
             angular_velocity=angular_vel.tolist()
         )
 
@@ -193,8 +193,10 @@ class KinematicSpheroRobot(SapianRobot):
         self.articulation.set_qvel(np.zeros(self.articulation.dof))
         
         if initial_state:
-            self.articulation.set_pose(sapien.Pose(initial_state.position, initial_state.rotation))
-            
+            # Convert Euler degrees → quaternion for SAPIEN Pose
+            q = euler_to_quat(*initial_state.rotation, degrees=True).reshape(4)
+            self.articulation.set_pose(sapien.Pose(initial_state.position, q))
+
         self._sync_internal_pose(0.0)
         
     def apply_force(self, fx: float, fy: float, dt: float) -> None:

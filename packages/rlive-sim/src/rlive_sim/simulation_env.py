@@ -22,6 +22,7 @@ from rlive_sim.config import SimulationConfig, BOLT_DEFAULTS
 from rlive_sim.config import config as sim_cfg
 import rlive_sim.config.config as cfg
 from rlive_sim.engine import SimulationEngine
+from rlive_sim.engine.core.base_physics_engine import PhysicsState
 from rlive_sim.engine.core.factories import SimulationEngineFactory
 
 logger = get_logger(__name__)
@@ -177,7 +178,9 @@ class SimulationEnv(gym.Env):
 
         Args:
             seed: Optional random seed for reproducibility.
-            options: Optional reset options.
+            options: Optional reset options. Supported keys:
+                - ``"initial_state"`` (PhysicsState | None): Place the robot at a
+                  specific position/orientation instead of the engine's default.
 
         Returns:
             tuple[np.ndarray, dict[str, Any]]: Initial observation and info dict.
@@ -185,8 +188,13 @@ class SimulationEnv(gym.Env):
         super().reset(seed=seed)
         logger.info("Resetting environment.")
 
+        # Extract initial_state from options if provided
+        initial_state: PhysicsState | None = None
+        if options is not None:
+            initial_state = options.get("initial_state", None)
+
         # Reset the simulation engine
-        state, self.obs = self.engine.reset()
+        state, self.obs = self.engine.reset(initial_state)
 
         self._current_step = 0
         self._episode += 1

@@ -127,7 +127,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
             self._state = PhysicsState(
                 position=[0.0, 0.0, 0.0],
                 velocity=[0.0, 0.0, 0.0],
-                rotation=[1.0, 0.0, 0.0, 0.0],
+                rotation=[0.0, 0.0, 0.0],
                 angular_velocity=[0.0, 0.0, 0.0],
             )
 
@@ -215,7 +215,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
             SceneObject(
                 id="robot",
                 position=self._state.position,
-                rotation=self._state.rotation[:3] if len(self._state.rotation) == 3 else self._state.rotation, # Handle euler vs quat loosely. Or just [0,0,0]
+                rotation=self._state.rotation,
                 dimensions=[self.ball_radius],
             )
         ]
