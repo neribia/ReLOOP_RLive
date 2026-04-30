@@ -31,6 +31,7 @@ class RemoteWorldEnv(gym.Env):
                  world_config: WorldConfig | None = None,
                  reward_mode: Literal["dense", "sparse"] | None = None,
                  action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
+                 decay: int = cfg.NUMBER_RESET_ACTIONS,
                  options: dict | None = None,
                  **kwargs,
                  ) -> None:
@@ -44,6 +45,8 @@ class RemoteWorldEnv(gym.Env):
               None values use rlive-world defaults.
             - reward_mode (str): Reward calculation mode ('dense' or 'sparse'). Defaults to config value.
             - action_space_type (ActionSpaceType): Action space transformer type. Default: ActionSpaceType.CARTESIAN
+            - decay (int | None): Number of random scatter actions sent during reset to decouple episodes.
+              Set to 0 to skip scatter moves entirely. Defaults to cfg.NUMBER_RESET_ACTIONS (env var DECAY_STEPS).
             - base_url (Optional[str]): Base URL for remote environment.
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
         """
@@ -87,7 +90,7 @@ class RemoteWorldEnv(gym.Env):
         self.goal_position = None
 
         # Decay for reset
-        self._decay = cfg.NUMBER_RESET_ACTIONS
+        self._decay = decay
 
         # Calculate max possible distance for reward normalization (diagonal of observation space)
         height, width, _ = self.observation_space.shape
