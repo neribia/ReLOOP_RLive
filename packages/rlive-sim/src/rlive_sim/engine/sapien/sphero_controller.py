@@ -28,6 +28,10 @@ from enum import Enum, auto
 
 import numpy as np
 
+from rlive_common.utils import get_logger
+
+logger = get_logger(__name__)
+
 
 class Phase(Enum):
     IDLE = auto()
@@ -108,7 +112,7 @@ class SpheroController:
             speed_255:   Speed on the 0-255 BOLT+ scale.
             duration_s:  Time of target_speed duration in seconds.
         """
-        print(f"Heading: {heading_deg}° | Speed: {speed_255} | Duration: {duration_s}s")
+        logger.debug(f"Heading: {heading_deg}° | Speed: {speed_255} | Duration: {duration_s}s")
         self._reset()
         self._heading_deg = _normalise_heading(heading_deg)
         self._goal_speed_ms = (speed_255 / 255.0) * self.max_speed_ms
@@ -163,9 +167,8 @@ class SpheroController:
         target_vel_y = math.sin(rad) * target_speed
 
         # 3. Optional logging (matching your previous style)
-        if self._steps % 5 == 0:
-            print(f"Time: {self._time_elapsed:.3f}/{self._time_duration} | "
-                  f"Phase: {self._phase} | Target Vel: ({target_vel_x:.4f}, {target_vel_y:.4f})")
+        # if self._steps % 5 == 0:
+            # print(f"Time: {self._time_elapsed:.3f}/{self._time_duration} | Phase: {self._phase} | Target Vel: ({target_vel_x:.4f}, {target_vel_y:.4f})")
 
         return float(target_vel_x), float(target_vel_y)
 
