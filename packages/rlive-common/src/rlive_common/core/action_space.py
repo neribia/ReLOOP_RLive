@@ -217,11 +217,11 @@ class CartesianActionTransformer(BaseActionTransformer):
 
             # Calculate speed from magnitude, scaled to [0, 255]
             magnitude = math.sqrt(vx ** 2 + vy ** 2)
-            magnitude_norm = magnitude / math.sqrt(1 ** 2 + 1 ** 2)
+            magnitude_clamped = min(magnitude, 1.0)
 
             speed = int(round(np.clip(
                 0,
-                magnitude * self.speed_factor * self.MAX_SPEED,
+                magnitude_clamped * self.speed_factor * self.MAX_SPEED,
                 self.MAX_SPEED))
             )
 

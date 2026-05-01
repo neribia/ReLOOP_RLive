@@ -3,7 +3,7 @@
 This example demonstrates how to use the SimulationEnv with the Simple physics
 backend and OpenCV render backend.
 """
-import cv2
+import cv2 as cv
 
 from rlive_common import ActionSpaceType
 from rlive_sim import (
@@ -13,13 +13,14 @@ from rlive_sim import (
     PhysicsBackend,
     RenderBackend,
     SimulationEnv,
+    PhysicsState,
 )
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-# Number of episodes to run
-NUM_EPISODES = 1
+# Number of episodes to run (episode 0 = random/default spawn, episode 1+ = fixed initial_state)
+NUM_EPISODES = 2
 
 def main() -> None:
     """Run simple simulation with separate physics and render backends."""
@@ -65,7 +66,20 @@ def main() -> None:
     )
 
     for episode in range(NUM_EPISODES):
-        obs, info = env.reset()
+        # Episode 0: default spawn (ball starts at centre of the box)
+        # Episode 1+: fixed initial state (ball placed at top-left quadrant, facing 45°)
+        reset_options = None
+        if episode > 0:
+            reset_options = {
+                "initial_state": PhysicsState(
+                    position=[-0.1, 0.1, 0.0],  # x, y, z in metres (2-D engine ignores z)
+                    velocity=[0.0, 0.0, 0.0],
+                    rotation=[0.0, 0.0, 45.0],  # roll, pitch, yaw in degrees
+                    angular_velocity=[0.0, 0.0, 0.0],
+                )
+            }
+
+        obs, info = env.reset(options=reset_options)
         env.render()
         logger.info(f"Episode {episode + 1}/{NUM_EPISODES} — reset -> obs={obs.shape if hasattr(obs, 'shape') else len(obs)}, info={info}")
 
@@ -75,7 +89,7 @@ def main() -> None:
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
             env.render(visualize=True)
-            cv2.waitKey(500)  # Wait 50ms between frames
+            cv.waitKey(500)  # Wait 50ms between frames
             done = terminated or truncated
             step_count += 1
 

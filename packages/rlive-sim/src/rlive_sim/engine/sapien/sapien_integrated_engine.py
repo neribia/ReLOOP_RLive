@@ -264,13 +264,13 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             y = np.random.uniform(min_y, max_y)
             z = self._robot_radius + 0.005 # Ensure robot rests gently on the ground
             
-            # Initial yaw or rotation
-            quat = euler_to_quat(0.0, 0.0, float(np.random.uniform(-180, 180)), degrees=True)
+            # Random initial yaw in degrees
+            yaw_deg = float(np.random.uniform(-180, 180))
 
             initial_state = PhysicsState(
                 position=[float(x), float(y), float(z)],
                 velocity=[0.0, 0.0, 0.0],
-                rotation=quat.tolist(),
+                rotation=[0.0, 0.0, yaw_deg],  # Euler degrees [roll, pitch, yaw]
                 angular_velocity=[0.0, 0.0, 0.0]
             )
 

@@ -31,6 +31,7 @@ class RemoteWorldEnv(gym.Env):
                  world_config: WorldConfig | None = None,
                  reward_mode: Literal["dense", "sparse"] | None = None,
                  action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
+                 decay: int = cfg.NUMBER_RESET_ACTIONS,
                  options: dict | None = None,
                  **kwargs,
                  ) -> None:
@@ -44,6 +45,8 @@ class RemoteWorldEnv(gym.Env):
               None values use rlive-world defaults.
             - reward_mode (str): Reward calculation mode ('dense' or 'sparse'). Defaults to config value.
             - action_space_type (ActionSpaceType): Action space transformer type. Default: ActionSpaceType.CARTESIAN
+            - decay (int | None): Number of random scatter actions sent during reset to decouple episodes.
+              Set to 0 to skip scatter moves entirely. Defaults to cfg.NUMBER_RESET_ACTIONS (env var DECAY_STEPS).
             - base_url (Optional[str]): Base URL for remote environment.
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
         """
@@ -87,7 +90,7 @@ class RemoteWorldEnv(gym.Env):
         self.goal_position = None
 
         # Decay for reset
-        self._decay = cfg.NUMBER_RESET_ACTIONS
+        self._decay = decay
 
         # Calculate max possible distance for reward normalization (diagonal of observation space)
         height, width, _ = self.observation_space.shape
@@ -161,6 +164,15 @@ class RemoteWorldEnv(gym.Env):
         self.iface = None
 
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
+        """Reset the environment to initial state.
+
+        Args:
+            seed: Optional random seed for reproducibility.
+            options: Optional reset options. Supported keys:
+                - ``"goal_position"`` (tuple[int, int] | None): Manually set the goal
+                  position as ``(x, y)`` pixel coordinates. If omitted or ``None``,
+                  a random goal is chosen.
+        """
         super().reset(seed=seed)
         logger.info("Resetting environment.")
         self._episode = 0
@@ -174,7 +186,13 @@ class RemoteWorldEnv(gym.Env):
             self._disconnect()
             raise RuntimeError(f"Server connection error: {e}")
 
-        self.set_random_goal()
+        # Set goal position – manual override or random
+        manual_goal: tuple[int, int] | None = options.get("goal_position", None) if options is not None else None
+        if manual_goal is not None:
+            self.goal_position = (int(manual_goal[0]), int(manual_goal[1]))
+            logger.debug(f"Goal position manually set to: {self.goal_position}")
+        else:
+            self.set_random_goal()
 
         try:
             actions = []

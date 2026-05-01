@@ -22,6 +22,7 @@ from rlive_sim.config import SimulationConfig, BOLT_DEFAULTS
 from rlive_sim.config import config as sim_cfg
 import rlive_sim.config.config as cfg
 from rlive_sim.engine import SimulationEngine
+from rlive_sim.engine.core.base_physics_engine import PhysicsState
 from rlive_sim.engine.core.factories import SimulationEngineFactory
 
 logger = get_logger(__name__)
@@ -177,7 +178,12 @@ class SimulationEnv(gym.Env):
 
         Args:
             seed: Optional random seed for reproducibility.
-            options: Optional reset options.
+            options: Optional reset options. Supported keys:
+                - ``"initial_state"`` (PhysicsState | None): Place the robot at a
+                  specific position/orientation instead of the engine's default.
+                - ``"goal_position"`` (tuple[int, int] | None): Manually set the goal
+                  position as ``(x, y)`` pixel coordinates. If omitted or ``None``,
+                  a random goal is chosen.
 
         Returns:
             tuple[np.ndarray, dict[str, Any]]: Initial observation and info dict.
@@ -185,14 +191,25 @@ class SimulationEnv(gym.Env):
         super().reset(seed=seed)
         logger.info("Resetting environment.")
 
+        # Extract options
+        initial_state: PhysicsState | None = None
+        manual_goal: tuple[int, int] | None = None
+        if options is not None:
+            initial_state = options.get("initial_state", None)
+            manual_goal = options.get("goal_position", None)
+
         # Reset the simulation engine
-        state, self.obs = self.engine.reset()
+        state, self.obs = self.engine.reset(initial_state)
 
         self._current_step = 0
         self._episode += 1
 
-        # Set random goal
-        self.set_random_goal()
+        # Set goal position – manual override or random
+        if manual_goal is not None:
+            self.goal_position = tuple(manual_goal)
+            logger.debug(f"Goal position manually set to: {self.goal_position}")
+        else:
+            self.set_random_goal()
 
         self.obs = draw_goal(self.obs, self.goal_position)
 

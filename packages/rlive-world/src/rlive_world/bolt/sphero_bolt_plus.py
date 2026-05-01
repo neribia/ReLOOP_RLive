@@ -129,9 +129,9 @@ class SpheroBoltPlus(BaseRobot):
         self.heading = (self.heading + heading) % 360
         logger.info(f"Moving: heading={heading}, speed={speed}, duration={duration}")
         self.api.roll(self.heading, 0, duration)
-        time.sleep(duration/2)
+        time.sleep(duration)
         self.api.roll(self.heading, speed, duration)
-        time.sleep(duration/2)
+        time.sleep(duration)
 
     def set_speed(self, speed):
         """Set the current roll speed.

@@ -8,7 +8,7 @@ It shows how to use 3 different robot loading options:
 
 Run with different ROBOT_TYPE values to test each option.
 """
-import cv2
+import cv2 as cv
 
 from rlive_common import ActionSpaceType
 from rlive_sim import (
@@ -16,13 +16,14 @@ from rlive_sim import (
     IntegratedConfig,
     IntegratedBackend,
     SimulationEnv,
+    PhysicsState,
 )
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-# Number of episodes to run
-NUM_EPISODES = 1
+# Number of episodes to run (episode 0 = random spawn, episode 1+ = fixed initial_state)
+NUM_EPISODES = 2
 
 
 def main() -> None:
@@ -42,7 +43,7 @@ def main() -> None:
             # "controller_kd": 0.1,
             
             # Viewer configuration
-            "use_viewer": True,
+            # "use_viewer": True,
         },
     )
     
@@ -61,7 +62,20 @@ def main() -> None:
     )
 
     for episode in range(NUM_EPISODES):
-        obs, info = env.reset()
+        # --- Episode 0: default random spawn ---
+        # --- Episode 1+: fixed initial state (robot at origin, facing 90°) ---
+        reset_options = None
+        if episode > 0:
+            reset_options = {
+                "initial_state": PhysicsState(
+                    position=[0.0, 0.0, 0.04],   # x, y, z in metres
+                    velocity=[0.0, 0.0, 0.0],
+                    rotation=[0.0, 0.0, 90.0],   # roll, pitch, yaw in degrees
+                    angular_velocity=[0.0, 0.0, 0.0],
+                )
+            }
+
+        obs, info = env.reset(options=reset_options)
         env.render()
         logger.info(f"Episode {episode + 1}/{NUM_EPISODES} — reset -> obs={obs.shape}, info={info}")
 
@@ -71,7 +85,7 @@ def main() -> None:
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
             env.render(visualize=True)
-            cv2.waitKey(500) # Wait 1000ms between frames
+            cv.waitKey(500) # Wait 1000ms between frames
             done = terminated or truncated
             step_count += 1
             logger.info(f"Step {step_count}: action={action} reward={reward:.3f} term={terminated} trunc={truncated}")

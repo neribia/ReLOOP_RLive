@@ -36,7 +36,20 @@ class Webcam(BaseCamera):
             self.cam = None
 
     def get_image(self) -> np.ndarray:
-        """Returns the image of the camera."""
+        """Returns the most recent frame from the camera.
+
+        OpenCV's VideoCapture maintains an internal buffer (typically 4-5 frames on
+        Windows/CAP_DSHOW). After the robot has moved we must flush that buffer so
+        we capture the *current* scene, not a stale frame queued before the action
+        completed. Calling grab() repeatedly drains the queue without decoding
+        the frames, which is cheap.
+        """
+        # Flush the internal frame buffer
+        buffer_size = int(self.cam.get(cv.CAP_PROP_BUFFERSIZE))
+        flush_count = max(buffer_size, 1)  # at least 1 grab even if property returns 0
+        for _ in range(flush_count):
+            self.cam.grab()
+
         ret, frame = self.cam.read()
         if not ret:
             raise RuntimeError("Could not get image from camera.")
