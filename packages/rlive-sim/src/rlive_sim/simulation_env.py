@@ -181,6 +181,9 @@ class SimulationEnv(gym.Env):
             options: Optional reset options. Supported keys:
                 - ``"initial_state"`` (PhysicsState | None): Place the robot at a
                   specific position/orientation instead of the engine's default.
+                - ``"goal_position"`` (tuple[int, int] | None): Manually set the goal
+                  position as ``(x, y)`` pixel coordinates. If omitted or ``None``,
+                  a random goal is chosen.
 
         Returns:
             tuple[np.ndarray, dict[str, Any]]: Initial observation and info dict.
@@ -188,10 +191,12 @@ class SimulationEnv(gym.Env):
         super().reset(seed=seed)
         logger.info("Resetting environment.")
 
-        # Extract initial_state from options if provided
+        # Extract options
         initial_state: PhysicsState | None = None
+        manual_goal: tuple[int, int] | None = None
         if options is not None:
             initial_state = options.get("initial_state", None)
+            manual_goal = options.get("goal_position", None)
 
         # Reset the simulation engine
         state, self.obs = self.engine.reset(initial_state)
@@ -199,8 +204,12 @@ class SimulationEnv(gym.Env):
         self._current_step = 0
         self._episode += 1
 
-        # Set random goal
-        self.set_random_goal()
+        # Set goal position – manual override or random
+        if manual_goal is not None:
+            self.goal_position = tuple(manual_goal)
+            logger.debug(f"Goal position manually set to: {self.goal_position}")
+        else:
+            self.set_random_goal()
 
         self.obs = draw_goal(self.obs, self.goal_position)
 

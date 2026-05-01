@@ -164,6 +164,15 @@ class RemoteWorldEnv(gym.Env):
         self.iface = None
 
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
+        """Reset the environment to initial state.
+
+        Args:
+            seed: Optional random seed for reproducibility.
+            options: Optional reset options. Supported keys:
+                - ``"goal_position"`` (tuple[int, int] | None): Manually set the goal
+                  position as ``(x, y)`` pixel coordinates. If omitted or ``None``,
+                  a random goal is chosen.
+        """
         super().reset(seed=seed)
         logger.info("Resetting environment.")
         self._episode = 0
@@ -177,7 +186,13 @@ class RemoteWorldEnv(gym.Env):
             self._disconnect()
             raise RuntimeError(f"Server connection error: {e}")
 
-        self.set_random_goal()
+        # Set goal position – manual override or random
+        manual_goal: tuple[int, int] | None = options.get("goal_position", None) if options is not None else None
+        if manual_goal is not None:
+            self.goal_position = (int(manual_goal[0]), int(manual_goal[1]))
+            logger.debug(f"Goal position manually set to: {self.goal_position}")
+        else:
+            self.set_random_goal()
 
         try:
             actions = []
