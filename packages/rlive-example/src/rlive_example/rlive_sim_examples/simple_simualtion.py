@@ -19,7 +19,9 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-# Number of episodes to run (episode 0 = random/default spawn, episode 1+ = fixed initial_state)
+# Number of episodes to run:
+#   episode 0 – random spawn, random goal
+#   episode 1 – fixed initial_state + fixed goal position
 NUM_EPISODES = 2
 
 def main() -> None:
@@ -66,17 +68,19 @@ def main() -> None:
     )
 
     for episode in range(NUM_EPISODES):
-        # Episode 0: default spawn (ball starts at centre of the box)
-        # Episode 1+: fixed initial state (ball placed at top-left quadrant, facing 45°)
+        # Episode 0: random spawn, random goal
+        # Episode 1: fixed initial state + manually fixed goal at (320, 240)
         reset_options = None
-        if episode > 0:
+        if episode == 1:
             reset_options = {
                 "initial_state": PhysicsState(
                     position=[-0.1, 0.1, 0.0],  # x, y, z in metres (2-D engine ignores z)
                     velocity=[0.0, 0.0, 0.0],
                     rotation=[0.0, 0.0, 45.0],  # roll, pitch, yaw in degrees
                     angular_velocity=[0.0, 0.0, 0.0],
-                )
+                ),
+                # Manually fix the goal at pixel position (x=320, y=240)
+                "goal_position": (320, 240),
             }
 
         obs, info = env.reset(options=reset_options)

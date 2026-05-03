@@ -31,7 +31,9 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-# Number of episodes to run
+# Number of episodes to run:
+#   episode 0 – random goal
+#   episode 1 – manually fixed goal at (320, 240)
 NUM_EPISODES = 2
 
 def main() -> None:
@@ -55,7 +57,13 @@ def main() -> None:
     )
 
     for episode in range(NUM_EPISODES):
-        obs, info = env.reset()
+        # Episode 0: random goal (default behaviour)
+        # Episode 1: manually fix the goal at pixel position (x=320, y=240)
+        reset_options = None
+        if episode == 1:
+            reset_options = {"goal_position": (320, 240)}
+
+        obs, info = env.reset(options=reset_options)
         env.render()
         logger.info(f"Episode {episode + 1}/{NUM_EPISODES} — reset -> obs={obs.shape}, info={info}")
 
@@ -63,7 +71,7 @@ def main() -> None:
         while not done:
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
-            env.render()
+            env.render(visualize=True)
             done = terminated or truncated
             logger.info(f"action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
 
