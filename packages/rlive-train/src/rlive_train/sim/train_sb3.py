@@ -1,116 +1,119 @@
-"""SB3 PPO Training - SAPIEN Simulation with Weights & Biases logging."""
-import os
+"""SB3 Training - SAPIEN Simulation
+
+This example demonstrates how to train a Stable Baselines 3 agent
+using the SimulationEnv with SAPIEN integrated backend.
+"""
+import argparse
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import gymnasium
+import torch as th
+import wandb
+from torch.backends.mkl import verbose
 
-# Spoof gym to avoid unmaintained gym warning checks from optional dependencies.
+# Spoof the gym module to suppress unmaintained gym warnings
+# (SB3 optionally checks for gym, which is present due to d3rlpy)
 sys.modules["gym"] = gymnasium
 
 from stable_baselines3 import PPO
-
-import wandb
-
-from rlive_common.utils import get_logger
-from rlive_train.config.config import LOGS_DIR
 from rlive_train.utils.sb3_callbacks import build_wandb_eval_callbacks
 from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_eval_env, build_sim_train_env
+from rlive_train.utils.utils import get_device
+from rlive_train.config.config import LOGS_DIR, MODELS_DIR
 
-logger = get_logger(__name__)
+
+def get_model_path(model_id):
+    path = Path(MODELS_DIR) / model_id
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def train(
+        lr=3e-4,
+        ent_coef=0.05,
+        max_episode_steps=20,
+        total_timesteps=1_000,
+        num_envs=1,
+        eval_backend=EvalVecBackend.SUBPROC,
+):
+    from rlive_train.utils.make_envs import make_sapiens_env, make_env_factory
+
+    env_args: dict = {
+        "max_episode_steps": max_episode_steps,
+    }
+
+    factory = make_env_factory(env_fn=make_sapiens_env, **env_args)
+
+    env_train = build_sim_train_env(env_factory=factory, n_stack=4, num_envs=num_envs)
+    env_eval = build_sim_eval_env(env_factory=factory, n_stack=4, backend=eval_backend)
+
+    params = {
+        "policy": "CnnPolicy",
+        "ent_coef": ent_coef,
+        "learning_rate": lr,
+        "n_steps": 2 * max_episode_steps,
+        # "batch_size": 64, # We recommend using a `batch_size` that is a factor of `n_steps * n_envs`.
+        "n_epochs": 2,
+    }
+
+    run_name = f"PPO_Sapien_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    with wandb.init(
+            project="rlive-train",
+            dir=str(LOGS_DIR),
+            name=run_name,
+            config=params,
+            sync_tensorboard=True,
+    )as wandb_logger:
+
+        path_model = get_model_path(wandb_logger.id)
+        path_logs = path_model / "logs"
+        path_weights = path_model / "checkpoints"
+
+        algorithm = PPO(
+            env=env_train,
+            device=get_device(),
+            verbose=1,
+            tensorboard_log=path_logs / "tensorboard",
+            **params
+		)
+
+        callbacks = build_wandb_eval_callbacks(
+            env_eval=env_eval,
+            log_path=str(path_logs),
+            save_path=str(path_weights),
+            eval_freq=100,
+            n_eval_episodes=5,
+
+        )
+
+        algorithm.learn(
+            total_timesteps=total_timesteps,
+            callback=callbacks,
+        )
+
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lr", type=float, default=3e-5)
+    parser.add_argument("--num-envs", type=int, default=4)
+    parser.add_argument(
+        "--eval-backend",
+        type=str,
+        choices=[backend.value for backend in EvalVecBackend],
+        default=EvalVecBackend.SUBPROC.value,
+    )
+    args = parser.parse_args()
 
-	run_name = f"PPO_Sapien_WandB_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-	run_dir = LOGS_DIR / run_name
-	run_dir.mkdir(parents=True, exist_ok=True)
-
-	tensorboard_log = str(run_dir / "tensorboard")
-	best_model_dir = str(run_dir / "best_model")
-
-	project_name = os.getenv("WANDB_PROJECT", "rlive-train")
-	entity_name = os.getenv("WANDB_ENTITY")
-
-	policy = "CnnPolicy"
-	n_envs = 2
-	n_steps = 2 * 20 * 2
-	batch_size = 10
-	n_epochs = 2
-	ent_coef = 0.01
-	learning_rate = 3e-4
-	total_timesteps = 5_000
-
-	hyperparams = {
-		"policy": policy,
-		"n_envs": n_envs,
-		"n_steps": n_steps,
-		"batch_size": batch_size,
-		"n_epochs": n_epochs,
-		"ent_coef": ent_coef,
-		"learning_rate": learning_rate,
-		"total_timesteps": total_timesteps,
-	}
-
-	logger.info("Initializing Weights & Biases run...")
-	wandb_run = wandb.init(
-		project=project_name,
-		entity=entity_name,
-		name=run_name,
-		dir=str(run_dir),
-		sync_tensorboard=True,
-		monitor_gym=False,
-		save_code=True,
-		config=hyperparams,
-	)
-
-	env = build_sim_train_env(num_envs=n_envs, n_stack=4)
-	eval_env = build_sim_eval_env(n_stack=4, backend=EvalVecBackend.DUMMY)
-
-	try:
-		logger.info(f"Initializing PPO Model with {policy}...")
-		model = PPO(
-			policy=policy,
-			env=env,
-			n_steps=n_steps,
-			batch_size=batch_size,
-			n_epochs=n_epochs,
-			verbose=1,
-			tensorboard_log=tensorboard_log,
-			ent_coef=ent_coef,
-			learning_rate=learning_rate,
-		)
-
-		callbacks = build_wandb_eval_callbacks(
-			env_eval=eval_env,
-			log_path=str(run_dir),
-			save_path=best_model_dir,
-			eval_freq=200,
-			n_eval_episodes=5,
-			wandb_model_save_path=best_model_dir,
-			wandb_model_save_freq=200,
-		)
-
-		logger.info(f"Starting training for {total_timesteps:,} timesteps...")
-		model.learn(
-			total_timesteps=total_timesteps,
-			callback=callbacks,
-			tb_log_name="PPO_Sapien",
-		)
-
-
-	finally:
-		model_path = str(run_dir / "last_model")
-		if model is not None:
-			model.save(model_path)
-		logger.info(f"Model saved to {model_path}.zip")
-		env.close()
-		eval_env.close()
-		wandb.finish()
+    train(
+        lr=args.lr,
+        num_envs=args.num_envs,
+        eval_backend=EvalVecBackend(args.eval_backend),
+    )
 
 
 if __name__ == "__main__":
-	main()
-
-
-
+    main()

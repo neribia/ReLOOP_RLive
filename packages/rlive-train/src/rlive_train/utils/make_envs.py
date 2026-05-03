@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 import gymnasium as gym
+from stable_baselines3.common.monitor import Monitor
 
 from rlive_common import ActionSpaceType
 from rlive_sim import (
@@ -30,7 +31,8 @@ def make_env_factory(
         env = SubprocVecEnv([factory for _ in range(4)])
     """
     def _make_env():
-        return env_fn(**env_kwargs)
+        env = env_fn(**env_kwargs)
+        return Monitor(env)
     return _make_env
 
 

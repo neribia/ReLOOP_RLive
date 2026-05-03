@@ -13,6 +13,7 @@ dependencies = [
     "rlive-sim[all]",
     "tensorboard>=2.20.0",
     "tqdm>=4.67.3",
+    "wandb>=0.26.0",
 ]
 
 [[tool.uv.index]]
