@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np
 import platform
+import time
 
 from rlive_world.camera.base_camera import BaseCamera
 
@@ -29,6 +30,16 @@ class Webcam(BaseCamera):
         self.cam.set(cv.CAP_PROP_FRAME_WIDTH, self._width)
         self.cam.set(cv.CAP_PROP_FRAME_HEIGHT, self._height)
 
+        # Warm up: let the camera stabilize (auto-exposure, focus, etc.)
+        time.sleep(0.5)
+        for _ in range(10):  # drain initial stale frames
+            self.cam.grab()
+
+        # Disable autofocus
+        self.cam.set(cv.CAP_PROP_AUTOFOCUS, 0)
+        # Optionally set a fixed focus value (0.0 = infinity, adjust as needed)
+        #self.cam.set(cv.CAP_PROP_FOCUS, 0)
+
     def release(self) -> None:
         """Releases the camera."""
         if self.cam:
@@ -45,10 +56,9 @@ class Webcam(BaseCamera):
         the frames, which is cheap.
         """
         # Flush the internal frame buffer
-        buffer_size = int(self.cam.get(cv.CAP_PROP_BUFFERSIZE))
-        flush_count = max(buffer_size, 1)  # at least 1 grab even if property returns 0
+        flush_count = int(max(self.cam.get(cv.CAP_PROP_BUFFERSIZE), 1))  # at least 1 grab even if property returns 0
         for _ in range(flush_count):
-            self.cam.grab()
+            self.cam.read()
 
         ret, frame = self.cam.read()
         if not ret:
