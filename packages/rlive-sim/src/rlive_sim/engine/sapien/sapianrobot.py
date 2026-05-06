@@ -11,6 +11,7 @@ except ImportError:
 
 from rlive_sim.engine.core.base_physics_engine import PhysicsState
 from rlive_sim.utils.math_utils import euler_to_quat, quat_to_euler
+from rlive_sim.config.bolt_config import BOLT_DEFAULTS, BoltDefaults
 
 
 class SapianRobot(ABC):
@@ -76,15 +77,14 @@ class SimpleSphereRobot(SapianRobot):
         shell_link_builder = builder.create_link_builder()
         shell_link_builder.set_name("shell")
         
-        shell_radius = self.config.get('robot_radius', 0.0365)
-        mass_shell = self.config.get('robot_mass', 0.12)
-        friction = self.config.get('friction', 0.8)
-        restitution = self.config.get('restitution', 0.1)
-        
+        bolt_cfg: BoltDefaults = self.config.get('bolt_config', BOLT_DEFAULTS)
+        shell_radius = self.config.get('robot_radius', bolt_cfg.radius_m)
+        mass_shell = self.config.get('robot_mass', bolt_cfg.mass_kg)
+
         shell_mat = self.scene.create_physical_material(
-            static_friction=friction,
-            dynamic_friction=friction,
-            restitution=restitution
+            static_friction=bolt_cfg.static_friction,
+            dynamic_friction=bolt_cfg.dynamic_friction,
+            restitution=bolt_cfg.restitution_coefficient,
         )
         
         shell_link_builder.add_sphere_collision(radius=shell_radius, material=shell_mat)
@@ -142,16 +142,15 @@ class KinematicSpheroRobot(SapianRobot):
         
         shell_link_builder.add_visual_from_file(self.shell_path)
             
-        shell_radius = self.config.get('robot_radius', 0.0365)
-        mass_robot = self.config.get('robot_mass', 0.28)
+        bolt_cfg: BoltDefaults = self.config.get('bolt_config', BOLT_DEFAULTS)
+        shell_radius = self.config.get('robot_radius', bolt_cfg.radius_m)
+        mass_robot = self.config.get('robot_mass', bolt_cfg.mass_kg)
         mass_shell = mass_robot * 0.1
-        friction = self.config.get('friction', 0.8)
-        restitution = self.config.get('restitution', 0.1)
-        
+
         shell_mat = self.scene.create_physical_material(
-            static_friction=self.config.get('static_friction', 1.0), # TODO: Add dynamic and static friction to config
-            dynamic_friction=friction,
-            restitution=restitution
+            static_friction=bolt_cfg.static_friction,
+            dynamic_friction=bolt_cfg.dynamic_friction,
+            restitution=bolt_cfg.restitution_coefficient,
         )
         
         shell_link_builder.add_sphere_collision(radius=shell_radius, material=shell_mat, density=100.0)
@@ -168,8 +167,8 @@ class KinematicSpheroRobot(SapianRobot):
         self.articulation.set_name("sphero_kinematic_shell")
         self.shell_link = self.articulation.get_links()[0]
 
-        linear_damping = self.config.get('linear_damping', 0.05)
-        angular_damping = self.config.get('angular_damping', 0.05)
+        linear_damping = self.config.get('linear_damping', 0.0)
+        angular_damping = self.config.get('angular_damping', 0.0)
 
         self.shell_link.set_linear_damping(linear_damping)
         self.shell_link.set_angular_damping(angular_damping)
@@ -221,6 +220,10 @@ class KinematicSpheroRobot(SapianRobot):
             return
         self.articulation.set_root_linear_velocity(np.array([vx, vy, vz], dtype=np.float32))
 
+    def set_root_angular_velocity(self, wx: float, wy: float, wz: float) -> None:
+        if self.articulation is None:
+            return
+        self.articulation.set_root_angular_velocity(np.array([wx, wy, wz], dtype=np.float32))
 
     def update(self, heading_deg: float = 0.0) -> None:
         self._sync_internal_pose(heading_deg)

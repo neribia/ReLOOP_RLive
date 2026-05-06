@@ -11,25 +11,18 @@ from dataclasses import dataclass, field
 # CONTROLLER CONFIGURATION
 # ============================================================================
 
-MAX_SPEED_MS: float = float(os.getenv("RLIVE_SIM_SAPIEN_MAX_SPEED_MS", "0.5"))
+MAX_SPEED_MS: float = float(os.getenv("RLIVE_SIM_SAPIEN_MAX_SPEED_MS", "1.9"))
 """
 m/s that maps to speed=255.
 
 default: 0.5
 """
 
-ACCELERATION_TIME: float = float(os.getenv("RLIVE_SIM_SAPIEN_ACCELERATION_TIME", "0.3"))
+MAX_ACCEL_MS2: float = float(os.getenv("RLIVE_SIM_SAPIEN_MAX_ACCEL_MS2", "1.0"))
 """
-Seconds to ramp 0 to max_speed.
+Max acceleration for the Controller in m/s2
 
-default: 0.3
-"""
-
-DECELERATION_TIME: float = float(os.getenv("RLIVE_SIM_SAPIEN_DECELERATION_TIME", "0.2"))
-"""
-Seconds to brake max_speed to 0.
-
-default: 0.2
+default: 1.0
 """
 
 CONTROLLER_KP: float = float(os.getenv("RLIVE_SIM_SAPIEN_CONTROLLER_KP", "0.1"))
@@ -62,20 +55,6 @@ ROBOT_MASS: float = float(os.getenv("RLIVE_SIM_SAPIEN_ROBOT_MASS", "0.28"))
 Robot mass in kg.
 
 default: 0.28
-"""
-
-FRICTION: float = float(os.getenv("RLIVE_SIM_SAPIEN_FRICTION", "0.8"))
-"""
-Friction coefficient.
-
-default: 0.8
-"""
-
-RESTITUTION: float = float(os.getenv("RLIVE_SIM_SAPIEN_RESTITUTION", "0.1"))
-"""
-Restitution coefficient.
-
-default: 0.1
 """
 
 # ============================================================================
@@ -130,8 +109,7 @@ class SapienDefaults:
     
     # Controller configuration
     max_speed_ms: float = MAX_SPEED_MS
-    acceleration_time: float = ACCELERATION_TIME
-    deceleration_time: float = DECELERATION_TIME
+    max_accel_ms2: float = MAX_ACCEL_MS2
     controller_kp: float = CONTROLLER_KP
     controller_kd: float = CONTROLLER_KD
     
@@ -143,8 +121,6 @@ class SapienDefaults:
     # Robot configuration
     robot_radius: float = ROBOT_RADIUS
     robot_mass: float = ROBOT_MASS
-    friction: float = FRICTION
-    restitution: float = RESTITUTION
     
     # Simulation configuration
     sim_dt: float = SIM_DT
@@ -158,16 +134,12 @@ SAPIEN_DEFAULTS = SapienDefaults()
 
 __all__ = [
     "MAX_SPEED_MS",
-    "ACCELERATION_TIME",
-    "DECELERATION_TIME",
     "CONTROLLER_KP",
     "CONTROLLER_KD",
     "ROBOT_TYPE",
     "ROBOT_PATH",
     "ROBOT_RADIUS",
     "ROBOT_MASS",
-    "FRICTION",
-    "RESTITUTION",
     "SIM_DT",
     "SapienDefaults",
     "SAPIEN_DEFAULTS",

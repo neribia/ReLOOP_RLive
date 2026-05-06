@@ -20,6 +20,8 @@ from rlive_sim.engine.core.base_integrated_engine import BaseIntegratedEngine
 from rlive_sim.engine.core.base_physics_engine import PhysicsState
 from rlive_sim.engine.core.registry import register_integrated_backend
 from rlive_sim.config import IntegratedBackend, SAPIEN_DEFAULTS
+from rlive_sim.config.bolt_config import BOLT_DEFAULTS, BoltDefaults
+from rlive_sim.config.eurobox_config import EUROBOX_DEFAULTS, EuroBoxDefaults
 from rlive_sim.utils.math_utils import euler_to_quat, deg_to_rad
 
 
@@ -42,18 +44,15 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         width: int = 640,
         height: int = 480,
         channels: int = 3,
-        scene_path: str | None = None,
         robot_type: str = SAPIEN_DEFAULTS.robot_type, # Keeps name for config compatibility, but maps to world_type
         robot_path: str | None = SAPIEN_DEFAULTS.robot_path,
         max_speed_ms: float = SAPIEN_DEFAULTS.max_speed_ms,
-        # acceleration_time: float = SAPIEN_DEFAULTS.acceleration_time, # TODO: Remove
-        # deceleration_time: float = SAPIEN_DEFAULTS.deceleration_time, # TODO: Remove
         controller_kp: float = SAPIEN_DEFAULTS.controller_kp,
         controller_kd: float = SAPIEN_DEFAULTS.controller_kd,
         robot_radius: float = SAPIEN_DEFAULTS.robot_radius, # FIXME: Use Bolt_Default
         robot_mass: float = SAPIEN_DEFAULTS.robot_mass,  # FIXME: Use Bolt_Default
-        friction: float = SAPIEN_DEFAULTS.friction, # FIXME: Use Bolt_Default
-        restitution: float = SAPIEN_DEFAULTS.restitution, # FIXME: Use Bolt_Default
+        bolt_config: BoltDefaults = BOLT_DEFAULTS,
+        eurobox_config: EuroBoxDefaults = EUROBOX_DEFAULTS,
         sim_dt: float = SAPIEN_DEFAULTS.sim_dt,
         *args: Any,
         **kwargs: Any,
@@ -65,18 +64,15 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             width: Render width in pixels
             height: Render height in pixels
             channels: Number of render channels
-            scene_path: Path to scene configuration
             robot_type: World loading type ('sapien', 'urdf', or 'glb') - formerly robot_type
             robot_path: Optional custom path to robot/world file
             max_speed_ms: Maximum speed in m/s
-            acceleration_time: Acceleration time in seconds
-            deceleration_time: Deceleration time in seconds
             controller_kp: Controller proportional gain
             controller_kd: Controller derivative gain
             robot_radius: Robot radius in meters
             robot_mass: Robot mass in kg
-            friction: Friction coefficient
-            restitution: Restitution coefficient
+            bolt_config: Bolt physics configuration (friction, restitution, etc.)
+            eurobox_config: EuroBox physics configuration (friction, restitution, etc.)
             sim_dt: Physics timestep in seconds
             *args: Unsupported positional arguments
             **kwargs: Unsupported keyword arguments
@@ -120,8 +116,8 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         self._controller_kd = controller_kd
         self._robot_radius = robot_radius
         self._robot_mass = robot_mass
-        self._friction = friction
-        self._restitution = restitution
+        self._bolt_config = bolt_config
+        self._eurobox_config = eurobox_config
 
         self.sim_dt = sim_dt
         self.render_dt = 1.0 / 60.0
@@ -180,8 +176,8 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             'robot_path': self._robot_path,
             'robot_radius': self._robot_radius,
             'robot_mass': self._robot_mass,
-            'friction': self._friction,
-            'restitution': self._restitution,
+            'bolt_config': self._bolt_config,
+            'eurobox_config': self._eurobox_config,
         }
 
         # Setup Camera
@@ -275,7 +271,13 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             )
 
         self.robot.reset(initial_state)
-        
+        self.robot.update(initial_state.rotation[2])
+
+        # Sync controller heading to the robot's initial yaw so the first
+        # action uses the correct reference direction
+        self.controller._reset()
+        self.controller._heading_deg = initial_state.rotation[2]  # yaw in degrees
+
         for _ in range(10):
             self.scene.step()
             
@@ -326,6 +328,11 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
                 self.scene.update_render()
                 self.viewer.render()
             n_steps += 1
+
+        # Explicitly zero velocity when action is complete so physics doesn't drift
+        self.robot.set_root_linear_velocity(vx=0, vy=0, vz=0)
+        self.robot.set_root_angular_velocity(wx=0, wy=0, wz=0)
+        self.scene.step()
 
         return self._get_state(), self._render_frame()
 

@@ -28,6 +28,7 @@ from enum import Enum, auto
 
 import numpy as np
 
+from rlive_sim.config.sapien_config import SAPIEN_DEFAULTS as sapien_cfg
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -58,8 +59,8 @@ class SpheroController:
 
     def __init__(
         self,
-        max_speed_ms: float = 3,
-        max_accel_ms2: float = 2.0,
+        max_speed_ms: float = sapien_cfg.max_speed_ms,
+        max_accel_ms2: float = sapien_cfg.max_accel_ms2,
         kp: float = 12,
         kd: float = 0.8,
         ki: float = 0.01,
