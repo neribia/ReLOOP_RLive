@@ -97,12 +97,12 @@ Moving duration (in s) of the Sphero Bolt+ robot.
 default: 1
 """
 
-SPHEROBOLTPLUS_SPEED_FACTOR: float = float(os.getenv("SPHEROBOLTPLUS_SPEED_FACTOR", "0.5"))
+SPHEROBOLTPLUS_SPEED_FACTOR: float = float(os.getenv("SPHEROBOLTPLUS_SPEED_FACTOR", "0.25"))
 """
 Factor to reduce the max_speed for ActionSpaceType.CARTESIAN. 
 Default is set to 0.5 to reduce slip.
 
-default: 0.5
+default: 0.25
 """
 
 
