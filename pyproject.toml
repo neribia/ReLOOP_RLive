@@ -4,7 +4,24 @@ version = "0.1.0"
 description = "Demonstrator for the ReLoop project — a reinforcement learning environment for controlling physical robots"
 readme = "README.md"
 requires-python = ">=3.10, <3.13"
-dependencies = []
+dependencies = [
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.8",
+    "numpy>=2.2.6",
+    "pandas>=2.3.3",
+    "pytorch-ignite>=0.5.4",
+    "torch>=2.0",
+    "torchvision>=0.26.0",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+torchvision = { index = "pytorch-cu126" }
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
 
 [tool.uv]
 # sphero-unsw declares <3.11 but works fine with <=3.12 (pure Python BLE wrapper)
