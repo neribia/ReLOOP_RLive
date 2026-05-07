@@ -102,14 +102,16 @@ class SpheroController:
         self._integral_error = np.zeros(2)
         self._prev_error = np.zeros(2)
 
-    def command(self,heading_deg: float, speed_255: float, duration_s: float) -> None:
+    def command(self, heading_deg: float, speed_255: float, duration_s: float) -> None:
         """Issue a new roll command.
 
         Heading changes are always instantaneous (macro-step mode only),
         matching the real Sphero BOLT+ roll() API behaviour.
 
         Args:
-            heading_deg: Absolute heading in degrees (0 = +X axis).
+            heading_deg: **Absolute** heading in CCW degrees (right-hand +Z,
+                Y-up world coords). 0° = +X (right), 90° = +Y (forward).
+                Callers must convert CW Bolt relative deltas before passing here.
             speed_255:   Speed on the 0-255 BOLT+ scale.
             duration_s:  Time of target_speed duration in seconds.
         """

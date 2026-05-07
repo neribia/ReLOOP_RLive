@@ -290,13 +290,21 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
 
     def update_and_render(self, action: np.ndarray | list[float], dt: float | None = None) -> tuple[PhysicsState, np.ndarray]:
         """
-        Action: [heading_deg, speed_0_255, duration_sec]
-        """
-        heading_deg, speed_255, duration_s = np.asarray(action, dtype=np.float32)
+        Action: [heading_delta_cw, speed_0_255, duration_sec]
 
-        # Set new commands
-        self.controller.command(heading_deg, speed_255, duration_s)
-        
+        ``heading_delta_cw`` is a **relative** CW offset matching the Bolt API
+        (same convention as ``SpheroBoltPlus.move()``).  It is converted to an
+        absolute CCW heading (right-hand +Z, Y-up world) before being forwarded
+        to the controller.
+        """
+        heading_delta_cw, speed_255, duration_s = np.asarray(action, dtype=np.float32)
+
+        # Convert relative CW Bolt delta → absolute CCW world heading [0, 360)
+        new_heading_ccw = (self.controller._heading_deg - float(heading_delta_cw)) % 360.0
+
+        # Set new commands (controller expects absolute CCW heading)
+        self.controller.command(new_heading_ccw, speed_255, duration_s)
+
         # Get physics component (for actors, this is PhysxRigidDynamicComponent)
         physics_comp = self.shell_link.find_component_by_type(sapien.physx.PhysxRigidDynamicComponent) if hasattr(self.shell_link, 'find_component_by_type') else None
 
