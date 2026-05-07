@@ -189,7 +189,7 @@ class SimulationEnv(gym.Env):
             tuple[np.ndarray, dict[str, Any]]: Initial observation and info dict.
         """
         super().reset(seed=seed)
-        logger.info("Resetting environment.")
+        logger.debug("Resetting environment.")
 
         # Extract options
         initial_state: PhysicsState | None = None
@@ -237,7 +237,7 @@ class SimulationEnv(gym.Env):
                 - truncated (bool): Whether episode was truncated (e.g., max steps).
                 - info (dict[str, Any]): Additional information.
         """
-        logger.info(f"Making a step with action: {action}")
+        logger.debug(f"Making a step with action: {action}")
 
         # Transform action using the configured action space transformer
         try:
