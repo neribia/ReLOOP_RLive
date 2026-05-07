@@ -315,46 +315,57 @@ def save_best_params(
 # ── Speed → Distance factor plot ──────────────────────────────────────────────
 
 def fit_speed_distance_factor(runs: list[RunMetrics]) -> float:
-    """Fit a through-origin linear model ``distance = factor × speed_cmd``.
+    """Fit a through-origin linear model ``distance_per_s = factor × speed_cmd``.
+
+    Distances are divided by ``STEADY_S`` so the factor represents metres
+    travelled **per 1 second of rolling** per speed-unit.  To recover the
+    actual distance use: ``distance = factor × speed × time``.
 
     Uses the ordinary-least-squares solution for a no-intercept model:
-    ``factor = Σ(s·d) / Σ(s²)``
+    ``factor = Σ(s·d_per_s) / Σ(s²)``
 
     Args:
         runs: List of :class:`RunMetrics` (one entry per speed command).
 
     Returns:
-        ``factor`` — metres per speed-unit (speed on 0-255 scale).
+        ``factor`` — metres per speed-unit per second (speed on 0-255 scale).
     """
-    speeds = np.array([r.speed_cmd      for r in runs], dtype=float)
-    dists  = np.array([r.real_final_dist for r in runs], dtype=float)
-    return float(np.dot(speeds, dists) / np.dot(speeds, speeds))
+    speeds    = np.array([r.speed_cmd      for r in runs], dtype=float)
+    dists     = np.array([r.real_final_dist for r in runs], dtype=float)
+    dists_per_s = dists / STEADY_S
+    return float(np.dot(speeds, dists_per_s) / np.dot(speeds, speeds))
 
 
 def plot_speed_distance_factor(
     runs: list[RunMetrics],
     out_path: str | Path | None = None,
 ) -> float:
-    """Plot ``distance = factor × speed_cmd`` fitted through the origin.
+    """Plot ``distance_per_s = factor × speed_cmd`` fitted through the origin.
 
-    Scatter-plots the real robot data (speed command vs final travel distance),
-    overlays the best-fit line ``d = factor × s`` that passes through (0, 0),
-    and annotates the factor value.
+    Distances are divided by ``STEADY_S`` so the y-axis shows metres per
+    second of rolling.  The returned factor satisfies::
+
+        actual_distance = factor × speed × time
+
+    Scatter-plots the real robot data (speed command vs distance-per-second),
+    overlays the best-fit line ``d/s = factor × speed`` through (0, 0), and
+    annotates the factor value.
 
     Args:
         runs:     List of :class:`RunMetrics` — one entry per speed command.
         out_path: If given, save the figure to this path instead of showing it.
 
     Returns:
-        ``factor`` — the fitted scale factor (m / speed-unit, 0-255 scale).
+        ``factor`` — metres per speed-unit per second (speed on 0-255 scale).
 
     Example::
 
         factor = plot_speed_distance_factor(runs_metrics)
-        # factor ≈ 0.0082  →  speed 100 ≈ 0.82 m
+        # factor ≈ 0.0041  →  distance = 0.0041 × speed × time
     """
-    speeds = np.array([r.speed_cmd       for r in runs], dtype=float)
-    dists  = np.array([r.real_final_dist  for r in runs], dtype=float)
+    speeds      = np.array([r.speed_cmd      for r in runs], dtype=float)
+    dists       = np.array([r.real_final_dist for r in runs], dtype=float)
+    dists_per_s = dists / STEADY_S
 
     factor = fit_speed_distance_factor(runs)
 
@@ -363,16 +374,16 @@ def plot_speed_distance_factor(
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    ax.scatter(speeds, dists, s=60, zorder=3, label="Measured data")
+    ax.scatter(speeds, dists_per_s, s=60, zorder=3, label="Measured data  (dist / STEADY_S)")
     ax.plot(
         s_line, d_line,
         color="tab:red", lw=2,
-        label=f"Fit: d = {factor:.5f} × speed  (R²={_r2(speeds, dists, factor):.4f})",
+        label=f"Fit: d/s = {factor:.5f} × speed  (R²={_r2(speeds, dists_per_s, factor):.4f})",
     )
     ax.plot(0, 0, "ko", ms=6, zorder=4, label="Origin (0, 0)")
 
     # Annotate each data point with its speed command
-    for s, d in zip(speeds, dists):
+    for s, d in zip(speeds, dists_per_s):
         ax.annotate(
             f"{int(s)}",
             (s, d),
@@ -383,8 +394,11 @@ def plot_speed_distance_factor(
         )
 
     ax.set_xlabel("Speed command (0-255)")
-    ax.set_ylabel("Final travel distance (m)")
-    ax.set_title("Speed-to-Distance linear factor  (through-origin fit)")
+    ax.set_ylabel(f"Distance per second of rolling (m/s)  [dist / {STEADY_S:.1f} s]")
+    ax.set_title(
+        f"Speed-to-Distance factor  (through-origin fit, ÷ STEADY_S={STEADY_S:.1f} s)\n"
+        "Usage:  distance = factor × speed × time"
+    )
     ax.legend(loc="upper left")
     ax.grid(True, linestyle="--", alpha=0.4)
     ax.set_xlim(left=0)
@@ -397,10 +411,10 @@ def plot_speed_distance_factor(
     else:
         plt.show()
 
-    print(f"\nFitted factor : {factor:.6f}  m / speed-unit")
-    print(f"  speed 50   → {factor * 50:.4f} m")
-    print(f"  speed 100  → {factor * 100:.4f} m")
-    print(f"  speed 200  → {factor * 200:.4f} m")
+    print(f"\nFitted factor : {factor:.6f}  m / (speed-unit · s)")
+    print(f"  Example — speed 50,  rolling 1 s  → {factor * 50 * 1:.4f} m")
+    print(f"  Example — speed 100, rolling 1 s  → {factor * 100 * 1:.4f} m")
+    print(f"  Example — speed 200, rolling 1 s  → {factor * 200 * 1:.4f} m")
     return factor
 
 
