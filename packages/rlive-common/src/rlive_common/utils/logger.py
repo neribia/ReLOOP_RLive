@@ -108,6 +108,21 @@ def setup_logger(
                 "handlers": list(handlers.keys()),
                 "propagate": False,
             },
+            "rlive_sim": {
+                "level": logging.getLevelName(level),
+                "handlers": list(handlers.keys()),
+                "propagate": False,
+            },
+            "rlive_train": {
+                "level": logging.getLevelName(level),
+                "handlers": list(handlers.keys()),
+                "propagate": False,
+            },
+            "rlive_example": {
+                "level": logging.getLevelName(level),
+                "handlers": list(handlers.keys()),
+                "propagate": False,
+            },
             # # Change the Unicorn logger
             # "uvicorn": {
             #     "level": "INFO",
