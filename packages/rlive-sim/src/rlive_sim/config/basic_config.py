@@ -8,6 +8,17 @@ import os
 import math
 
 # ============================================================================
+# SPHERO BOLT+ CONFIGURATION
+# ============================================================================
+
+SPEED_TO_DISTANCE_FACTOR: float = float(os.getenv("SPEED_TO_DISTANCE_FACTOR", "0.00713"))
+"""
+Speed factor to multiply with speed_cmd and duration.
+
+default: 0.00713
+"""
+
+# ============================================================================
 # PHYSICS CONFIGURATION
 # ============================================================================
 

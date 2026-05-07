@@ -11,18 +11,18 @@ from dataclasses import dataclass, field
 # CONTROLLER CONFIGURATION
 # ============================================================================
 
-MAX_SPEED_MS: float = float(os.getenv("RLIVE_SIM_SAPIEN_MAX_SPEED_MS", "1.9"))
+MAX_SPEED_MS: float = float(os.getenv("RLIVE_SIM_SAPIEN_MAX_SPEED_MS", "1.825"))
 """
 m/s that maps to speed=255.
 
-default: 0.5
+default: 1.825 
 """
 
-MAX_ACCEL_MS2: float = float(os.getenv("RLIVE_SIM_SAPIEN_MAX_ACCEL_MS2", "1.0"))
+MAX_ACCEL_MS2: float = float(os.getenv("RLIVE_SIM_SAPIEN_MAX_ACCEL_MS2", "0.575"))
 """
 Max acceleration for the Controller in m/s2
 
-default: 1.0
+default: 0.575
 """
 
 CONTROLLER_KP: float = float(os.getenv("RLIVE_SIM_SAPIEN_CONTROLLER_KP", "0.1"))

@@ -58,7 +58,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         box_height: float = basic_cfg.BOX_HEIGHT,
         ball_radius: float = bolt_cfg.RADIUS_M,
         dt: float = 0.01,
-        max_speed: float = 1.0,
+        speed_to_distance_factor: float = basic_cfg.SPEED_TO_DISTANCE_FACTOR,
         **kwargs: Any,
     ) -> None:
         """Initialize the simple physics engine.
@@ -75,8 +75,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
         self.box_width = box_width
         self.box_height = box_height
         self.ball_radius = ball_radius
-        self.distance = 0.05
-        self.max_speed = max_speed
+        self.speed_to_distance_factor = speed_to_distance_factor
 
         self._static_objects: list[SceneObject] = []
 
@@ -243,7 +242,7 @@ class SimplePhysicsEngine(BasePhysicsEngine):
 
         # Map speed from [0, 255] to [0, max_speed]
         clamped_speed = max(0.0, min(255.0, float(raw_speed)))
-        real_speed = (clamped_speed / 255.0) * self.max_speed
+        real_speed = clamped_speed * self.speed_to_distance_factor
 
         self._pending_action = [float(heading), real_speed * float(duration)]
 
