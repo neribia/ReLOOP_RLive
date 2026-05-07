@@ -40,12 +40,12 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from speed_data import (
+from .speed_data import (
     IDLE_S, STEADY_S, TOTAL_S,
     PHASE_WINDOWS, PHASE_COLORS,
     estimate_motion_delay, _reduce_points,
 )
-from calib_sim import simulate_run as _default_simulate_run, SIM_DT
+from .calib_sim import simulate_run as _default_simulate_run, SIM_DT
 
 
 # ── Private: plot utilities ───────────────────────────────────────────────────

@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import uniform_filter1d
 
-from speed_data import prepare_run_df, load_all_runs, CSV_COLS
+from .speed_data import prepare_run_df, load_all_runs, CSV_COLS
 
 
 # ── Data structure ────────────────────────────────────────────────────────────

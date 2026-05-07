@@ -26,9 +26,9 @@ import numpy as np
 from matplotlib.gridspec import GridSpec
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 — registers 3-D projection
 
-from calib_data import RunMetrics
-from calib_sim import simulate_run as _default_simulate_run
-from speed_data import STEADY_S
+from .calib_data import RunMetrics
+from .calib_sim import simulate_run as _default_simulate_run
+from .speed_data import STEADY_S
 
 
 # ── Panel registry ────────────────────────────────────────────────────────────
@@ -84,7 +84,8 @@ def plot_rmse_surface(
     ax.set_xlabel("max_speed_ms (m/s)", labelpad=6)
     ax.set_ylabel("max_accel_ms2 (m/s²)", labelpad=6)
     ax.set_zlabel(metric_label, labelpad=4)
-    ax.set_title("① RMSE Surface")
+    ax.set_title("RMSE Surface")
+    # ax.set_title("① RMSE Surface")
     ax.legend(fontsize=7, loc="upper right")
 
 
@@ -116,7 +117,8 @@ def plot_rmse_heatmap(
     )
     ax.set_xlabel("max_speed_ms (m/s)")
     ax.set_ylabel("max_accel_ms2 (m/s²)")
-    ax.set_title("② RMSE Heatmap")
+    ax.set_title("RMSE Heatmap")
+    # ax.set_title("② RMSE Heatmap")
     ax.legend(fontsize=7)
     plt.colorbar(im, ax=ax, label=metric_label)
 
@@ -126,7 +128,8 @@ def _fill_distance_comparison(ax, speed_cmds, real_dists, sim_dists) -> None:
     ax.plot(speed_cmds, sim_dists, "s--", label="Sim (best)", color="tomato")
     ax.set_xlabel("Speed cmd (0–255)")
     ax.set_ylabel("Final distance (m)")
-    ax.set_title("③ Final Distance: Real vs Sim")
+    ax.set_title("Final Distance: Real vs Sim")
+    # ax.set_title("③ Final Distance: Real vs Sim")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
@@ -141,7 +144,8 @@ def _fill_distance_gap(ax, speed_cmds, real_dists, sim_dists) -> None:
     ax.axhline(0, color="black", linewidth=0.8)
     ax.set_xlabel("Speed cmd")
     ax.set_ylabel("Gap %  (real − sim) / real")
-    ax.set_title("④ Sim2Real Distance Gap")
+    ax.set_title("Sim2Real Distance Gap")
+    # ax.set_title("④ Sim2Real Distance Gap")
     ax.grid(True, alpha=0.3)
 
 
@@ -170,7 +174,8 @@ def _fill_metrics_table(ax, runs: list[RunMetrics], print_table: bool = True) ->
     tbl.auto_set_font_size(False)
     tbl.set_fontsize(7.5)
     tbl.scale(1.0, 1.35)
-    ax.set_title("⑤ Per-Run Metrics", pad=12)
+    ax.set_title("Per-Run Metrics", pad=12)
+    # ax.set_title("⑤ Per-Run Metrics", pad=12)
 
 
 def _fill_peak_speed(ax, speed_cmds, runs, best_speed, best_accel, simulate_fn=None) -> None:
@@ -184,7 +189,8 @@ def _fill_peak_speed(ax, speed_cmds, runs, best_speed, best_accel, simulate_fn=N
             label=f"Linear map ({best_speed:.2f} m/s @ 255)")
     ax.set_xlabel("Speed cmd (0–255)")
     ax.set_ylabel("Peak speed (m/s)")
-    ax.set_title("⑤ Peak Speed: Real vs Sim")
+    ax.set_title("Peak Speed: Real vs Sim")
+    # ax.set_title("⑤ Peak Speed: Real vs Sim")
     ax.legend(fontsize=7)
     ax.grid(True, alpha=0.3)
 
@@ -200,7 +206,8 @@ def _fill_accel_decel(ax, speed_cmds, runs, best_accel) -> None:
                label=f"Sim decel = −{best_accel:.2f}")
     ax.set_xlabel("Speed cmd")
     ax.set_ylabel("Acceleration (m/s²)")
-    ax.set_title("⑥ Accel / Decel: Real vs Sim")
+    ax.set_title("Accel / Decel: Real vs Sim")
+    # ax.set_title("⑥ Accel / Decel: Real vs Sim")
     ax.legend(fontsize=7)
     ax.grid(True, alpha=0.3)
 

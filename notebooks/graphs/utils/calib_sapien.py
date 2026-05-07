@@ -24,8 +24,8 @@ from rlive_sim.engine.sapien.sapien_integrated_engine import SapienIntegratedEng
 from rlive_sim.engine.core.base_physics_engine import PhysicsState
 from rlive_sim.config import SAPIEN_DEFAULTS
 
-from calib_data import RunMetrics
-from calib_search import _compute_rmse, save_grid_results, load_grid_results
+from .calib_data import RunMetrics
+from .calib_search import _compute_rmse, save_grid_results, load_grid_results
 from pathlib import Path
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ def grid_search_sapien(
         ``(best_max_speed_ms, best_max_accel_ms2, rmse_grid)`` — identical
         structure to ``calib_search.grid_search``.
     """
-    from speed_data import STEADY_S
+    from .speed_data import STEADY_S
 
     # ── Cache hit ─────────────────────────────────────────────────────────────
     if cache_path is not None and Path(cache_path).exists():

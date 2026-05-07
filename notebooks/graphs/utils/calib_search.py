@@ -32,10 +32,10 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from calib_data import RunMetrics
-from calib_sim import simulate_run
+from .calib_data import RunMetrics
+from .calib_sim import simulate_run
 
-from speed_data import STEADY_S
+from .speed_data import STEADY_S
 
 
 # ── Parameter range builder ───────────────────────────────────────────────────
