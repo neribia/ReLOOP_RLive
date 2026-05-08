@@ -3,8 +3,9 @@
 from collections.abc import Callable
 from enum import Enum
 
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecTransposeImage
 from stable_baselines3.common.vec_env.vec_frame_stack import VecFrameStack
+
 
 class EvalVecBackend(Enum):
     """Supported vectorized backends for evaluation environments."""
@@ -32,7 +33,7 @@ def build_sim_train_env(
     if num_envs < 1:
         raise ValueError("num_envs must be >= 1")
 
-    env = SubprocVecEnv([env_factory for _ in range(num_envs)])
+    env = SubprocVecEnv([env_factory for _ in range(num_envs)], start_method="spawn")
     return VecFrameStack(env, n_stack)
 
 
@@ -58,8 +59,10 @@ def build_sim_eval_env(
         raise ValueError("num_envs must be >= 1")
 
     if backend is EvalVecBackend.SUBPROC:
-        env = SubprocVecEnv([env_factory for _ in range(num_envs)])
+        env = SubprocVecEnv([env_factory for _ in range(num_envs)], start_method="spawn")
     else:
         env = DummyVecEnv([env_factory for _ in range(num_envs)])
 
-    return VecFrameStack(env, n_stack)
+    env = VecFrameStack(env, n_stack)
+
+    return VecTransposeImage(env)
