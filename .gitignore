@@ -209,3 +209,5 @@ __marimo__/
 
 # Folders
 notebooks/actions_vis/image_folder/
+packages/rlive-train/resources/logs/
+packages/rlive-train/resources/models/
