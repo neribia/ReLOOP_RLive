@@ -27,7 +27,7 @@ from rlive_train.utils.sb3_callbacks import build_wandb_eval_callbacks
 from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_env
 from rlive_train.utils.utils import get_device
 from rlive_train.config.config import LOGS_DIR, MODELS_DIR
-
+from rlive_train.utils.make_envs import make_sapiens_env, make_simple_env, make_env_factory
 
 def get_model_path(model_id):
     path = Path(MODELS_DIR) / model_id
@@ -35,20 +35,53 @@ def get_model_path(model_id):
     return path
 
 
-def train(
-        lr=3e-4,
-        ent_coef=0.05,
-        max_episode_steps=20,
-        total_timesteps=10_000,
-        num_envs=1,
-):
-    from rlive_train.utils.make_envs import make_sapiens_env, make_env_factory
+ENV_CHOICES = ("sapien", "simple")
 
+# All keyword arguments accepted by PPO.__init__ (excluding env/device/verbose/tensorboard_log
+# which are passed explicitly).
+PPO_KEYS: frozenset[str] = frozenset({
+    "policy",
+    "learning_rate",
+    "n_steps",
+    "batch_size",
+    "n_epochs",
+    "gamma",
+    "gae_lambda",
+    "clip_range",
+    "clip_range_vf",
+    "normalize_advantage",
+    "ent_coef",
+    "vf_coef",
+    "max_grad_norm",
+    "use_sde",
+    "sde_sample_freq",
+    "rollout_buffer_class",
+    "rollout_buffer_kwargs",
+    "target_kl",
+    "stats_window_size",
+    "policy_kwargs",
+    "seed",
+})
+
+
+def train(
+        env_type: str = "sapien",
+        lr: float = 3e-4,
+        ent_coef: float = 0.05,
+        max_episode_steps: int = 20,
+        total_timesteps: int = 1_000_000,
+        num_envs: int = 1,
+        eval_freq: int = 1_000,
+        n_eval_episodes: int = 5,
+):
+
+
+    env_fn = make_sapiens_env if env_type == "sapien" else make_simple_env
     env_args: dict = {
         "max_episode_steps": max_episode_steps,
     }
 
-    factory = make_env_factory(env_fn=make_sapiens_env, **env_args)
+    factory = make_env_factory(env_fn=env_fn, **env_args)
 
     env_train = build_sim_env(env_factory=factory, n_stack=4, num_envs=num_envs, backend=EvalVecBackend.SUBPROC)
     env_eval = build_sim_env(env_factory=factory, n_stack=4, backend=EvalVecBackend.DUMMY)
@@ -62,10 +95,17 @@ def train(
         "learning_rate": lr,
         "n_steps": n_steps,
         "batch_size": batch_size,
-        "n_epochs": 2,
+        "n_epochs": 4,
+        # extra run metadata logged to W&B
+        "env_type": env_type,
+        "max_episode_steps": max_episode_steps,
+        "total_timesteps": total_timesteps,
+        "num_envs": num_envs,
+        "eval_freq": eval_freq,
+        "n_eval_episodes": n_eval_episodes,
     }
 
-    run_name = f"PPO_Sapien_{datetime.now().strftime('%Y%m%d_%H%M%S')}_Laptop"
+    run_name = f"{env_type.capitalize()}_lr{lr:.0e}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     with wandb.init(
             project="rlive-train",
@@ -73,27 +113,29 @@ def train(
             name=run_name,
             config=params,
             sync_tensorboard=True,
-    )as wandb_logger:
+    ) as wandb_logger:
 
         path_model = get_model_path(wandb_logger.id)
         path_logs = path_model / "logs"
         path_weights = path_model / "checkpoints"
+
+        # Keep only keys that PPO.__init__ actually accepts
+        ppo_params = {k: v for k, v in params.items() if k in PPO_KEYS}
 
         algorithm = PPO(
             env=env_train,
             device=get_device(),
             verbose=1,
             tensorboard_log=path_logs / "tensorboard",
-            **params
-		)
+            **ppo_params,
+        )
 
         callbacks = build_wandb_eval_callbacks(
             env_eval=env_eval,
             log_path=str(path_logs),
             save_path=str(path_weights),
-            eval_freq=100,
-            n_eval_episodes=5,
-
+            eval_freq=eval_freq,
+            n_eval_episodes=n_eval_episodes,
         )
 
         algorithm.learn(
@@ -101,17 +143,36 @@ def train(
             callback=callbacks,
         )
 
+    env_train.close()
+    env_eval.close()
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--lr", type=float, default=3e-4)
-    parser.add_argument("--num-envs", type=int, default=1)
+    parser = argparse.ArgumentParser(description="Train an SB3 PPO agent in simulation.")
+    parser.add_argument(
+        "--env",
+        choices=ENV_CHOICES,
+        default="sapien",
+        help="Simulation backend to use (default: sapien)",
+    )
+    parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate (default: 3e-4)")
+    parser.add_argument("--ent-coef", type=float, default=0.05, help="Entropy coefficient (default: 0.05)")
+    parser.add_argument("--num-envs", type=int, default=4, help="Number of parallel envs (default: 4)")
+    parser.add_argument("--max-episode-steps", type=int, default=20, help="Max steps per episode (default: 20)")
+    parser.add_argument("--total-timesteps", type=int, default=1_000_000, help="Total training timesteps (default: 1_000_000)")
+    parser.add_argument("--eval-freq", type=int, default=1_000, help="Eval frequency in timesteps (default: 1_000)")
+    parser.add_argument("--n-eval-episodes", type=int, default=5, help="Number of eval episodes (default: 5)")
     args = parser.parse_args()
 
     train(
+        env_type=args.env,
         lr=args.lr,
+        ent_coef=args.ent_coef,
         num_envs=args.num_envs,
+        max_episode_steps=args.max_episode_steps,
+        total_timesteps=args.total_timesteps,
+        eval_freq=args.eval_freq,
+        n_eval_episodes=args.n_eval_episodes,
     )
 
 

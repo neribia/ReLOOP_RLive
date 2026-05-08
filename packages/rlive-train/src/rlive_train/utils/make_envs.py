@@ -1,6 +1,5 @@
 from collections.abc import Callable
 
-import gymnasium as gym
 from stable_baselines3.common.monitor import Monitor
 
 from rlive_common import ActionSpaceType
@@ -69,7 +68,19 @@ def make_sapiens_env(
     return env
 
 
-def make_simple_env(num_envs):
+def make_simple_env(
+    max_episode_steps: int = 20,
+    action_space_type: ActionSpaceType = ActionSpaceType.CARTESIAN,
+) -> SimulationEnv:
+    """Create a Simple (non-SAPIEN) simulation environment with configurable parameters.
+
+    Args:
+        max_episode_steps: Maximum steps per episode (default: 20)
+        action_space_type: Action space type (default: CARTESIAN)
+
+    Returns:
+        SimulationEnv: Configured environment instance
+    """
     # Configure physics backend
     physics_config = PhysicsConfig(
         backend=PhysicsBackend.SIMPLE,
@@ -103,9 +114,7 @@ def make_simple_env(num_envs):
     # Create environment
     env = SimulationEnv(
         config=sim_config,
-        render_mode="opencv",
-        max_episode_steps=10,
-        action_space_type=ActionSpaceType.CARTESIAN,
+        max_episode_steps=max_episode_steps,
+        action_space_type=action_space_type,
     )
-    env = gym.wrappers.frame_stack.FrameStack(env, num_stack=4)
     return env
