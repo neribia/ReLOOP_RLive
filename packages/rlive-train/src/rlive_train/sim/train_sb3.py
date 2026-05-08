@@ -3,15 +3,20 @@
 This example demonstrates how to train a Stable Baselines 3 agent
 using the SimulationEnv with SAPIEN integrated backend.
 """
-import argparse
+import os
 import sys
+if sys.platform != "win32":
+    os.environ["NVIDIA_DRIVER_CAPABILITIES"] = "graphics,utility,compute"
+    os.environ["DISPLAY"] = ":0"
+    os.environ["SAPIEN_NO_DISPLAY"] = "1"
+    os.environ["VK_ICD_FILENAMES"] = "/usr/share/vulkan/icd.d/nvidia_icd.json"
+
+import argparse
 from datetime import datetime
 from pathlib import Path
 
 import gymnasium
-import torch as th
 import wandb
-from torch.backends.mkl import verbose
 
 # Spoof the gym module to suppress unmaintained gym warnings
 # (SB3 optionally checks for gym, which is present due to d3rlpy)
@@ -19,7 +24,7 @@ sys.modules["gym"] = gymnasium
 
 from stable_baselines3 import PPO
 from rlive_train.utils.sb3_callbacks import build_wandb_eval_callbacks
-from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_eval_env, build_sim_train_env
+from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_env
 from rlive_train.utils.utils import get_device
 from rlive_train.config.config import LOGS_DIR, MODELS_DIR
 
@@ -34,9 +39,8 @@ def train(
         lr=3e-4,
         ent_coef=0.05,
         max_episode_steps=20,
-        total_timesteps=1_000,
+        total_timesteps=10_000,
         num_envs=1,
-        eval_backend=EvalVecBackend.SUBPROC,
 ):
     from rlive_train.utils.make_envs import make_sapiens_env, make_env_factory
 
@@ -46,19 +50,22 @@ def train(
 
     factory = make_env_factory(env_fn=make_sapiens_env, **env_args)
 
-    env_train = build_sim_train_env(env_factory=factory, n_stack=4, num_envs=num_envs)
-    env_eval = build_sim_eval_env(env_factory=factory, n_stack=4, backend=eval_backend)
+    env_train = build_sim_env(env_factory=factory, n_stack=4, num_envs=num_envs, backend=EvalVecBackend.SUBPROC)
+    env_eval = build_sim_env(env_factory=factory, n_stack=4, backend=EvalVecBackend.DUMMY)
+
+    n_steps = 2 * max_episode_steps  # steps per env per rollout
+    batch_size = n_steps * num_envs  # one mini-batch = full rollout buffer
 
     params = {
         "policy": "CnnPolicy",
         "ent_coef": ent_coef,
         "learning_rate": lr,
-        "n_steps": 2 * max_episode_steps,
-        # "batch_size": 64, # We recommend using a `batch_size` that is a factor of `n_steps * n_envs`.
+        "n_steps": n_steps,
+        "batch_size": batch_size,
         "n_epochs": 2,
     }
 
-    run_name = f"PPO_Sapien_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    run_name = f"PPO_Sapien_{datetime.now().strftime('%Y%m%d_%H%M%S')}_Laptop"
 
     with wandb.init(
             project="rlive-train",
@@ -98,20 +105,13 @@ def train(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lr", type=float, default=3e-5)
-    parser.add_argument("--num-envs", type=int, default=4)
-    parser.add_argument(
-        "--eval-backend",
-        type=str,
-        choices=[backend.value for backend in EvalVecBackend],
-        default=EvalVecBackend.SUBPROC.value,
-    )
+    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--num-envs", type=int, default=1)
     args = parser.parse_args()
 
     train(
         lr=args.lr,
         num_envs=args.num_envs,
-        eval_backend=EvalVecBackend(args.eval_backend),
     )
 
 

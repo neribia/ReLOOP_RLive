@@ -14,55 +14,31 @@ class EvalVecBackend(Enum):
     SUBPROC = "subproc"
 
 
-def build_sim_train_env(
-    env_factory: Callable[[], object],
-    n_stack: int = 4,
-    num_envs: int = 4,
-):
-    """Create a frame-stacked SubprocVecEnv for simulation training.
-
-    Args:
-        num_envs: Number of parallel environments (default: 4)
-        n_stack: Number of frames to stack (default: 4)
-        env_factory: Optional factory function that returns env instances.
-                    If None, uses default sapiens_env_factory()
-
-    Returns:
-        VecFrameStack: Stacked vectorized training environment
-    """
-    if num_envs < 1:
-        raise ValueError("num_envs must be >= 1")
-
-    env = SubprocVecEnv([env_factory for _ in range(num_envs)], start_method="spawn")
-    return VecFrameStack(env, n_stack)
-
-
-def build_sim_eval_env(
+def build_sim_env(
     env_factory: Callable[[], object],
     n_stack: int = 4,
     num_envs: int = 1,
     backend: EvalVecBackend = EvalVecBackend.DUMMY,
 ):
-    """Create a frame-stacked evaluation vec env with a selectable backend.
+    """Create a frame-stacked vectorized environment.
+
+    Uses DummyVecEnv for num_envs=1 or backend=DUMMY, SubprocVecEnv otherwise.
 
     Args:
+        env_factory: Factory callable that returns an env instance.
         n_stack: Number of frames to stack (default: 4)
-        num_envs: Number of parallel eval environments (default: 1)
-        env_factory: Optional factory function that returns env instances.
-                    If None, uses default sapiens_env_factory()
+        num_envs: Number of parallel environments (default: 1)
         backend: Vectorization backend—DUMMY or SUBPROC (default: DUMMY)
 
     Returns:
-        VecFrameStack: Stacked vectorized evaluation environment
+        VecTransposeImage: Transposed, frame-stacked vectorized environment
     """
     if num_envs < 1:
         raise ValueError("num_envs must be >= 1")
 
-    if backend is EvalVecBackend.SUBPROC:
+    if num_envs > 1 and backend is EvalVecBackend.SUBPROC:
         env = SubprocVecEnv([env_factory for _ in range(num_envs)], start_method="spawn")
     else:
         env = DummyVecEnv([env_factory for _ in range(num_envs)])
 
-    env = VecFrameStack(env, n_stack)
-
-    return VecTransposeImage(env)
+    return VecTransposeImage(VecFrameStack(env, n_stack))

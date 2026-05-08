@@ -23,10 +23,12 @@ from rlive_sim.config import IntegratedBackend, SAPIEN_DEFAULTS
 from rlive_sim.config.bolt_config import BOLT_DEFAULTS, BoltDefaults
 from rlive_sim.config.eurobox_config import EUROBOX_DEFAULTS, EuroBoxDefaults
 from rlive_sim.utils.math_utils import euler_to_quat, deg_to_rad
-
-
 from rlive_sim.engine.sapien.sphero_controller import SpheroController, Phase
 from rlive_sim.engine.sapien.world_loading import WorldLoaderFactory, WorldLoaderType
+from rlive_common.utils import get_logger
+
+logger = get_logger(__name__)
+
 
 @register_integrated_backend(IntegratedBackend.SAPIEN)
 class SapienIntegratedEngine(BaseIntegratedEngine):
@@ -336,6 +338,10 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
                 self.scene.update_render()
                 self.viewer.render()
             n_steps += 1
+
+            if n_steps >= 1000:
+                logger.warning(f"Reached maximum number of steps {n_steps}")
+
 
         # Explicitly zero velocity when action is complete so physics doesn't drift
         self.robot.set_root_linear_velocity(vx=0, vy=0, vz=0)
