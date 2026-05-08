@@ -339,8 +339,9 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
                 self.viewer.render()
             n_steps += 1
 
-            if n_steps >= 1000:
+            if n_steps >= 2 * int(duration_s / self.sim_dt):
                 logger.warning(f"Reached maximum number of steps {n_steps}")
+                break
 
 
         # Explicitly zero velocity when action is complete so physics doesn't drift
