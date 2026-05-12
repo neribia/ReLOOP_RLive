@@ -37,6 +37,11 @@ def get_model_path(model_id):
 
 ENV_CHOICES = ("sapien", "simple")
 
+
+def int_or_sci(value: str) -> int:
+    """Accept plain integers and scientific notation (e.g. 1e6)."""
+    return int(float(value))
+
 # All keyword arguments accepted by PPO.__init__ (excluding env/device/verbose/tensorboard_log
 # which are passed explicitly).
 PPO_KEYS: frozenset[str] = frozenset({
@@ -155,13 +160,34 @@ def main() -> None:
         default="sapien",
         help="Simulation backend to use (default: sapien)",
     )
-    parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate (default: 3e-4)")
-    parser.add_argument("--ent-coef", type=float, default=0.05, help="Entropy coefficient (default: 0.05)")
-    parser.add_argument("--num-envs", type=int, default=4, help="Number of parallel envs (default: 4)")
-    parser.add_argument("--max-episode-steps", type=int, default=20, help="Max steps per episode (default: 20)")
-    parser.add_argument("--total-timesteps", type=int, default=1_000_000, help="Total training timesteps (default: 1_000_000)")
-    parser.add_argument("--eval-freq", type=int, default=1_000, help="Eval frequency in timesteps (default: 1_000)")
-    parser.add_argument("--n-eval-episodes", type=int, default=5, help="Number of eval episodes (default: 5)")
+    parser.add_argument(
+        "--lr", type=float, default=3e-4,
+        help="Learning rate (default: 3e-4)",
+    )
+    parser.add_argument(
+        "--ent-coef", type=float, default=0.05,
+        help="Entropy coefficient (default: 0.05)",
+    )
+    parser.add_argument(
+        "--num-envs", type=int, default=4,
+        help="Number of parallel envs (default: 4)",
+    )
+    parser.add_argument(
+        "--max-episode-steps", type=int, default=20,
+        help="Max steps per episode (default: 20)",
+    )
+    parser.add_argument(
+        "--total-timesteps", type=int_or_sci, default=1_000_000,
+        help="Total training timesteps, accepts e.g. 1e6 (default: 1_000_000)",
+    )
+    parser.add_argument(
+        "--eval-freq", type=int, default=1_000,
+        help="Eval frequency in timesteps (default: 1_000)",
+    )
+    parser.add_argument(
+        "--n-eval-episodes", type=int, default=5,
+        help="Number of eval episodes (default: 5)",
+    )
     args = parser.parse_args()
 
     train(
