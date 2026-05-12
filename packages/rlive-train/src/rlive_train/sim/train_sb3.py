@@ -73,6 +73,7 @@ def train(
         env_type: str = "sapien",
         lr: float = 3e-4,
         ent_coef: float = 0.05,
+        log_std_init: float = 0.0,
         max_episode_steps: int = 20,
         total_timesteps: int = 1_000_000,
         num_envs: int = 1,
@@ -98,6 +99,7 @@ def train(
         "policy": "CnnPolicy",
         "ent_coef": ent_coef,
         "learning_rate": lr,
+        "policy_kwargs": {"log_std_init": log_std_init},
         "n_steps": n_steps,
         "batch_size": batch_size,
         "n_epochs": 4,
@@ -169,6 +171,10 @@ def main() -> None:
         help="Entropy coefficient (default: 0.05)",
     )
     parser.add_argument(
+        "--log-std-init", type=float, default=0.0,
+        help="Initial log std for action distribution (default: 0.0)",
+    )
+    parser.add_argument(
         "--num-envs", type=int, default=4,
         help="Number of parallel envs (default: 4)",
     )
@@ -194,6 +200,7 @@ def main() -> None:
         env_type=args.env,
         lr=args.lr,
         ent_coef=args.ent_coef,
+        log_std_init=args.log_std_init,
         num_envs=args.num_envs,
         max_episode_steps=args.max_episode_steps,
         total_timesteps=args.total_timesteps,
