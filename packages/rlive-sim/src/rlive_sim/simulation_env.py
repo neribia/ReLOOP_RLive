@@ -101,6 +101,7 @@ class SimulationEnv(gym.Env):
         render_mode: str | None = None,
         action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
         options: dict[str, Any] | None = None,
+        fixed_goal: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the simulation environment.
@@ -166,6 +167,7 @@ class SimulationEnv(gym.Env):
         self.action_space = self.action_transformer.get_action_space()
 
         # Goal variables
+        self._fixed_goal = fixed_goal
         self.goal_position: tuple[int, int] | None = None
         self.ball_location: BallLocation | None = None
         self._max_distance = (obs_shape[0] ** 2 + obs_shape[1] ** 2) ** 0.5
@@ -204,10 +206,14 @@ class SimulationEnv(gym.Env):
         self._current_step = 0
         self._episode += 1
 
-        # Set goal position – manual override or random
+        # Set goal position – manual override, fixed centre, or random
         if manual_goal is not None:
             self.goal_position = tuple(manual_goal)
             logger.debug(f"Goal position manually set to: {self.goal_position}")
+        elif self._fixed_goal:
+            h, w = self.obs.shape[:2]
+            self.goal_position = (w // 2, h // 2)
+            logger.debug(f"Goal position fixed to centre: {self.goal_position}")
         else:
             self.set_random_goal()
 

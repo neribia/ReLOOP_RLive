@@ -12,11 +12,13 @@ nohup uv run "$SCRIPT_DIR/train_sb3.py" \
     --env sapien \                  # options: sapien, simple
     --lr 3e-4 \                     # default: 3e-4
     --ent-coef 0.05 \               # default: 0.05
+    --log-std-init 0.0 \            # default: 0.0
     --num-envs 4 \                  # default: 4
     --max-episode-steps 20 \        # default: 20
-    --total-timesteps 1e6 \     # default: 1_000_000, 10e6, 
+    --total-timesteps 1e6 \         # default: 1_000_000, e.g. 10e6
     --eval-freq 5000 \              # default: 1_000
     --n-eval-episodes 5 \           # default: 5
+    # --fixed-goal \                # flag: fix goal at image centre
     > "$LOG_FILE" 2>&1 &
 
 PID=$!

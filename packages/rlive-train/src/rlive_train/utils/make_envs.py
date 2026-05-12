@@ -14,6 +14,7 @@ from rlive_sim import (
     SimulationEnv,
 )
 
+
 def make_env_factory(
     env_fn: Callable,
     **env_kwargs,
@@ -38,12 +39,14 @@ def make_env_factory(
 def make_sapiens_env(
     max_episode_steps: int = 20,
     action_space_type: ActionSpaceType = ActionSpaceType.CARTESIAN,
+    fixed_goal: bool = False,
 ) -> SimulationEnv:
     """Create a SAPIEN simulation environment with configurable parameters.
 
     Args:
         max_episode_steps: Maximum steps per episode (default: 20)
         action_space_type: Action space type (default: CARTESIAN)
+        fixed_goal: If True, the goal is always placed at the centre of the image (default: False)
 
     Returns:
         SimulationEnv: Configured environment instance
@@ -63,6 +66,7 @@ def make_sapiens_env(
         config=sim_config,
         max_episode_steps=max_episode_steps,
         action_space_type=action_space_type,
+        fixed_goal=fixed_goal,
     )
 
     return env
@@ -71,12 +75,14 @@ def make_sapiens_env(
 def make_simple_env(
     max_episode_steps: int = 20,
     action_space_type: ActionSpaceType = ActionSpaceType.CARTESIAN,
+    fixed_goal: bool = False,
 ) -> SimulationEnv:
     """Create a Simple (non-SAPIEN) simulation environment with configurable parameters.
 
     Args:
         max_episode_steps: Maximum steps per episode (default: 20)
         action_space_type: Action space type (default: CARTESIAN)
+        fixed_goal: If True, the goal is always placed at the centre of the image (default: False)
 
     Returns:
         SimulationEnv: Configured environment instance
@@ -116,5 +122,6 @@ def make_simple_env(
         config=sim_config,
         max_episode_steps=max_episode_steps,
         action_space_type=action_space_type,
+        fixed_goal=fixed_goal,
     )
     return env

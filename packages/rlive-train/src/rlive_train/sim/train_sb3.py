@@ -79,12 +79,14 @@ def train(
         num_envs: int = 1,
         eval_freq: int = 1_000,
         n_eval_episodes: int = 5,
+        fixed_goal: bool = False,
 ):
 
 
     env_fn = make_sapiens_env if env_type == "sapien" else make_simple_env
     env_args: dict = {
         "max_episode_steps": max_episode_steps,
+        "fixed_goal": fixed_goal,
     }
 
     factory = make_env_factory(env_fn=env_fn, **env_args)
@@ -110,6 +112,7 @@ def train(
         "num_envs": num_envs,
         "eval_freq": eval_freq,
         "n_eval_episodes": n_eval_episodes,
+        "fixed_goal": fixed_goal,
     }
 
     run_name = f"{env_type.capitalize()}_lr{lr:.0e}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -194,6 +197,10 @@ def main() -> None:
         "--n-eval-episodes", type=int, default=5,
         help="Number of eval episodes (default: 5)",
     )
+    parser.add_argument(
+        "--fixed-goal", action="store_true", default=False,
+        help="Fix the goal at the centre of the image for every episode (default: False)",
+    )
     args = parser.parse_args()
 
     train(
@@ -206,6 +213,7 @@ def main() -> None:
         total_timesteps=args.total_timesteps,
         eval_freq=args.eval_freq,
         n_eval_episodes=args.n_eval_episodes,
+        fixed_goal=args.fixed_goal,
     )
 
 
