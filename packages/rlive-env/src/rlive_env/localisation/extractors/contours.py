@@ -29,18 +29,109 @@ class ContourExtractor(AbstractBallExtractor):
             location = extractor.extract(binary_image)
     """
 
-    def __init__(self, min_contour_area: int = extractor_config.MIN_CONTOUR_AREA):
+    def __init__(
+        self,
+        min_contour_area: int = extractor_config.MIN_CONTOUR_AREA,
+        min_circularity: float = 0.0,
+    ):
         """Initialize contour extractor with defaults from config module.
 
         Args:
-            min_contour_area: Minimum contour area for valid detection.
+            min_contour_area: Minimum contour area in pixels² for a contour to
+                be considered a valid detection candidate.  Contours smaller
+                than this value are discarded before any other filtering.
+
+            min_circularity: Minimum circularity score required for a contour
+                to be accepted as the ball.
+
+                Circularity is defined as::
+
+                    C = (4π · A) / P²
+
+                where A is the contour area and P is its perimeter.  The value
+                lies in [0.0, 1.0]:
+
+                * ``1.0`` — perfect circle
+                * ``0.7 – 0.95`` — Sphero BOLT+ under normal conditions
+                * ``0.05 – 0.35`` — shadow edges / elongated blobs (rejected)
+
+                Recommended starting values:
+
+                ================  ===============================================
+                Value             When to use
+                ================  ===============================================
+                ``0.0`` (default) Disabled; keeps original behaviour
+                ``0.5``           Lenient; removes most blobs, keeps blurry ball
+                ``0.6``           Good default for real camera footage
+                ``0.75``          Strict; use when lighting is stable
+                ================  ===============================================
         """
         self.min_contour_area = min_contour_area
+        self.min_circularity = min_circularity
 
     @property
     def name(self) -> str:
         """Return extractor name."""
         return "Contour"
+
+    @staticmethod
+    def _circularity(contour) -> float:
+        """Compute the circularity score of a contour.
+
+        Circularity is a dimensionless shape descriptor defined as:
+
+            C = (4π · A) / P²
+
+        where
+            A  = contour area       (cv.contourArea)
+            P  = contour perimeter  (cv.arcLength, closed)
+            π  = 3.14159…
+
+        Properties
+        ----------
+        - C = 1.0  →  perfect circle (theoretical maximum)
+        - C → 0.0  →  increasingly elongated or irregular shape
+        - C is scale-invariant: doubling the object size leaves C unchanged
+        - C is rotation-invariant
+
+        Typical values observed in this system
+        ---------------------------------------
+        =========================================  ===========
+        Shape                                      C (approx.)
+        =========================================  ===========
+        Perfect circle                             1.00
+        Sphero BOLT+ (real camera, good lighting)  0.70 – 0.95
+        Sphero BOLT+ (motion blur / compression)   0.50 – 0.70
+        Shadow edge blob / irregular region        0.05 – 0.35
+        Rectangle / square                        ~0.79
+        =========================================  ===========
+
+        Returns
+        -------
+        float
+            Circularity in the range [0.0, 1.0].
+            Returns 0.0 if the perimeter is zero (degenerate contour).
+        """
+        area = cv.contourArea(contour)
+        perimeter = cv.arcLength(contour, True)
+        if perimeter == 0:
+            return 0.0
+        return (4 * np.pi * area) / (perimeter ** 2)
+
+    def _filter_contours(self, contours) -> list:
+        """Filter contours by area and circularity."""
+        valid = []
+        for c in contours:
+            if cv.contourArea(c) < self.min_contour_area:
+                continue
+            if self.min_circularity > 0.0 and self._circularity(c) < self.min_circularity:
+                logger.debug(
+                    f"{self.name}: Contour rejected (circularity={self._circularity(c):.2f} "
+                    f"< min={self.min_circularity:.2f})"
+                )
+                continue
+            valid.append(c)
+        return valid
 
     def extract(self, image: np.ndarray) -> BallLocation | None:
         """Extract ball location using contour analysis.
@@ -63,10 +154,8 @@ class ContourExtractor(AbstractBallExtractor):
                 logger.debug(f"{self.name}: No contours found")
                 return None
 
-            # Filter by area
-            valid_contours = [
-                c for c in contours if cv.contourArea(c) >= self.min_contour_area
-            ]
+            # Filter by area and circularity
+            valid_contours = self._filter_contours(contours)
 
             if not valid_contours:
                 logger.debug(
@@ -119,10 +208,8 @@ class ContourExtractor(AbstractBallExtractor):
             if not contours:
                 return debug_img
 
-            # Filter by area
-            valid_contours = [
-                c for c in contours if cv.contourArea(c) >= self.min_contour_area
-            ]
+            # Filter by area and circularity
+            valid_contours = self._filter_contours(contours)
 
             # Draw all valid contours
             cv.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 2)

@@ -58,6 +58,7 @@ class RemoteWorldEnv(gym.Env):
         self.reward_mode: Literal["dense", "sparse"] | str = reward_mode or cfg.REWARD_MODE
         self.iface: WorldInterface | None = None
         self.obs = None
+        self._raw_image = None
         self._hardware_attached = False
         self.world_config = world_config or WorldConfig()
 
@@ -203,6 +204,7 @@ class RemoteWorldEnv(gym.Env):
             data: ResetResponse = self.iface.reset(actions)
             logger.info(f"reset data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
+            self._raw_image = data.observation
             self.obs = draw_goal(data.observation, self.goal_position)
             info = data.info
             return self.obs, info
@@ -238,6 +240,8 @@ class RemoteWorldEnv(gym.Env):
         try:
             data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(transformed_action) # self.iface.step_multipart(transformed_action)
             logger.debug(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
+
+            self._raw_image = data.observation
 
             # Ball localisation before draw_goal
             terminated, reward = self.calculate_reward(observation=data.observation)

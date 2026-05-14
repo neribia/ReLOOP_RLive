@@ -37,6 +37,7 @@ from rlive_example.config import RESOURCES_DIR
 from rlive_env.localisation import BallLocalisator, BallLocation
 from rlive_env.localisation.processors import *
 from rlive_env.localisation.extractors import *
+from rlive_common.utils.visualisation_utils import annotate_image
 
 
 class KeyHandler:
@@ -281,7 +282,7 @@ class TrackingDemo:
             skip_frames: Number of frames to skip between detections (0 = no skip, process every frame)
         """
         # Initialize video source
-        self.video_source = VideoSource(str(source), width, height, target_fps=target_fps)
+        self.video_source = VideoSource(source, width, height, target_fps=target_fps)
         self.localiser = BallLocalisator()
 
         # Use custom pipeline if provided
@@ -342,7 +343,7 @@ class TrackingDemo:
         annotated_frame = frame.copy()
         annotated_frame = self._draw_goal(annotated_frame, self.goal_position, self.goal_radius)
 
-        annotated = self.localiser.annotate_image(
+        annotated = annotate_image(
             annotated_frame,
             ball_location=ball,
             goal_position=self.goal_position,
@@ -591,7 +592,7 @@ def main():
 
     # ========== CONFIGURATION ==========
     # Video source settings
-    VIDEO_SOURCE = RESOURCES_DIR / "demo_video.mp4"  # Use 0 for webcam, or path to video file
+    VIDEO_SOURCE = 2 #RESOURCES_DIR / "demo_video.mp4"  # Use 0 for webcam, or path to video file
     FRAME_WIDTH = 640 # Frame width for webcam
     FRAME_HEIGHT = 480 # Frame height for webcam
     TARGET_FPS = 30  # Target frames per second
@@ -623,7 +624,9 @@ def main():
 
     # Custom extractor configuration - loads defaults from config module
     # Override specific parameters as needed:
-    custom_extractor = ContourExtractor(min_contour_area=50)
+    custom_extractor = ContourExtractor(min_contour_area=50, min_circularity=0.6)
+    # Circularity 0.0 = off (original behaviour), 0.6 = reject shadow blobs,
+    # 0.8 = only near-perfect circles. Tune if ball is still missed.
     # Or use defaults:
     # custom_extractor = ContourExtractor()
     # ====================================
