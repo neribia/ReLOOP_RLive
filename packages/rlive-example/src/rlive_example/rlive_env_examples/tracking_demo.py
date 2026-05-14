@@ -354,6 +354,23 @@ class TrackingDemo:
         info_lines = [
             f"Frame: {self.frame_count}",
             f"Ball: {ball.as_tuple() if ball else 'Not detected'}",
+        ]
+
+        # Show circularity and area of the selected contour
+        if hasattr(self.localiser.extractor, "last_circularity"):
+            c_val = self.localiser.extractor.last_circularity
+            min_c = getattr(self.localiser.extractor, "min_circularity", 0.0)
+            a_val = getattr(self.localiser.extractor, "last_area", None)
+            if c_val is not None:
+                info_lines.append(f"Circularity C: {c_val:.3f}  (min={min_c})")
+            else:
+                info_lines.append(f"Circularity C: --  (min={min_c})")
+            if a_val is not None:
+                info_lines.append(f"Area A: {int(a_val)} px²")
+            else:
+                info_lines.append("Area A: --")
+
+        info_lines += [
             f"Goal: {self.goal_position if self.goal_position else 'Click to set'}",
         ]
 
@@ -624,7 +641,7 @@ def main():
 
     # Custom extractor configuration - loads defaults from config module
     # Override specific parameters as needed:
-    custom_extractor = ContourExtractor(min_contour_area=50, min_circularity=0.6)
+    custom_extractor = ContourExtractor(min_contour_area=2000, min_circularity=0.6)
     # Circularity 0.0 = off (original behaviour), 0.6 = reject shadow blobs,
     # 0.8 = only near-perfect circles. Tune if ball is still missed.
     # Or use defaults:
