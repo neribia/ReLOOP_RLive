@@ -73,6 +73,7 @@ def train(
         env_type: str = "sapien",
         lr: float = 3e-4,
         ent_coef: float = 0.01,
+        log_std_init: float = 0.0,
         max_episode_steps: int = 20,
         total_timesteps: int = 10_000_000,
         num_envs: int = 4,
@@ -175,7 +176,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--log-std-init", type=float, default=0.0,
-        help="Initial log std for action distribution (default: 0.0)",
+        help="Initial log std for action distribution, e.g. -2.0 (less random) to 1.0 (more random) (default: 0.0)",
     )
     parser.add_argument(
         "--num-envs", type=int, default=4,
