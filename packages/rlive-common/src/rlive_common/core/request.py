@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 
-from rlive_common.core.types import NumpyArray
+from rlive_common.core.custom_types import NumpyArray
 from rlive_common.core.hardware_config import WorldConfig
 
 class AttachHardwareRequest(BaseModel):
