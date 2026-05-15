@@ -72,14 +72,14 @@ PPO_KEYS: frozenset[str] = frozenset({
 def train(
         env_type: str = "sapien",
         lr: float = 3e-4,
-        ent_coef: float = 0.05,
-        log_std_init: float = 0.0,
+        ent_coef: float = 0.01,
         max_episode_steps: int = 20,
-        total_timesteps: int = 1_000_000,
-        num_envs: int = 1,
-        eval_freq: int = 1_000,
+        total_timesteps: int = 10_000_000,
+        num_envs: int = 4,
+        eval_freq: int = 10_000,
         n_eval_episodes: int = 5,
         fixed_goal: bool = False,
+        n_epochs: int = 10,
 ):
 
 
@@ -104,7 +104,7 @@ def train(
         "policy_kwargs": {"log_std_init": log_std_init},
         "n_steps": n_steps,
         "batch_size": batch_size,
-        "n_epochs": 4,
+        "n_epochs": n_epochs,
         # extra run metadata logged to W&B
         "env_type": env_type,
         "max_episode_steps": max_episode_steps,
@@ -170,8 +170,8 @@ def main() -> None:
         help="Learning rate (default: 3e-4)",
     )
     parser.add_argument(
-        "--ent-coef", type=float, default=0.05,
-        help="Entropy coefficient (default: 0.05)",
+        "--ent-coef", type=float, default=0.01,
+        help="Entropy coefficient (default: 0.01)",
     )
     parser.add_argument(
         "--log-std-init", type=float, default=0.0,
@@ -186,16 +186,20 @@ def main() -> None:
         help="Max steps per episode (default: 20)",
     )
     parser.add_argument(
-        "--total-timesteps", type=int_or_sci, default=1_000_000,
-        help="Total training timesteps, accepts e.g. 1e6 (default: 1_000_000)",
+        "--total-timesteps", type=int_or_sci, default=10_000_000,
+        help="Total training timesteps, accepts e.g. 1e6, 1_000_000 (default: 10e6)",
     )
     parser.add_argument(
-        "--eval-freq", type=int, default=1_000,
-        help="Eval frequency in timesteps (default: 1_000)",
+        "--eval-freq", type=int, default=10_000,
+        help="Eval frequency in timesteps (default: 10_000)",
     )
     parser.add_argument(
         "--n-eval-episodes", type=int, default=5,
         help="Number of eval episodes (default: 5)",
+    )
+    parser.add_argument(
+        "--n-epochs", type=int, default=10,
+        help="Number of PPO epochs per update (default: 10)",
     )
     parser.add_argument(
         "--fixed-goal", action="store_true", default=False,
@@ -214,6 +218,7 @@ def main() -> None:
         eval_freq=args.eval_freq,
         n_eval_episodes=args.n_eval_episodes,
         fixed_goal=args.fixed_goal,
+        n_epochs=args.n_epochs,
     )
 
 
