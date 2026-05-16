@@ -18,9 +18,22 @@ BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_ROOT))
 APP_HOME = os.getenv("APP_HOME", str(BUNDLE_DIR))
 
 # --- Goal settings ------------------------------------------------------------
+GOAL_RADIUS_FACTOR: float = float(os.getenv("GOAL_RADIUS_FACTOR", "0.0625"))
+"""
+Goal radius as a fraction of the image diagonal (√(w²+h²)).
+A factor of 0.0625 yields 50 px on a 640×480 image (diagonal = 800 px).
+
+Env var: GOAL_RADIUS_FACTOR
+default: 0.0625
+"""
+
+# DEPRECATED – use GOAL_RADIUS_FACTOR instead.
+# Kept for backward-compatibility; code should derive the pixel radius at runtime
+# via compute_goal_radius() in rlive_common.utils.visualisation_utils.
 GOAL_RADIUS: int = int(os.getenv("GOAL_RADIUS", "50"))
 """
-Radius around the center point to consider as goal reached (in pixels).
+[DEPRECATED] Fixed goal radius in pixels.
+Replaced by GOAL_RADIUS_FACTOR which scales with the image diagonal.
 
 default: 50
 """

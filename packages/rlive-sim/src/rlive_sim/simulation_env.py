@@ -17,7 +17,7 @@ from rlive_common.utils import get_logger
 from rlive_common.core.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
 from rlive_common.core.ball_location import BallLocation
 from rlive_common.config import config as common_cfg
-from rlive_common.utils.visualisation_utils import draw_goal, annotate_image
+from rlive_common.utils.visualisation_utils import draw_goal, annotate_image, compute_goal_radius
 from rlive_sim.config import SimulationConfig, BOLT_DEFAULTS
 from rlive_sim.config import config as sim_cfg
 import rlive_sim.config.config as cfg
@@ -325,8 +325,14 @@ class SimulationEnv(gym.Env):
 
         self.ball_location = BallLocation(x=ball_pos_tuple[0], y=ball_pos_tuple[1])
 
-        # Check if goal is reached
-        goal_radius = self.options.get("goal_radius", common_cfg.GOAL_RADIUS)
+        # Check if goal is reached – radius scales with image diagonal by default
+        goal_radius = self.options.get(
+            "goal_radius",
+            compute_goal_radius(
+                self.observation_space.shape,
+                self.options.get("goal_radius_factor", common_cfg.GOAL_RADIUS_FACTOR),
+            ),
+        )
         goal_reached = self.ball_location.is_within_radius(self.goal_position, goal_radius)
 
         reward_mode = self.options.get("reward_mode", "dense")
@@ -349,7 +355,13 @@ class SimulationEnv(gym.Env):
     def set_random_goal(self) -> None:
         """Set a random goal position within the observation space."""
         height, width, _ = self.observation_space.shape
-        goal_radius = self.options.get("goal_radius", common_cfg.GOAL_RADIUS)
+        goal_radius = self.options.get(
+            "goal_radius",
+            compute_goal_radius(
+                self.observation_space.shape,
+                self.options.get("goal_radius_factor", common_cfg.GOAL_RADIUS_FACTOR),
+            ),
+        )
 
         min_x, min_y, max_x, max_y = self.engine.get_reachable_bounds()
         

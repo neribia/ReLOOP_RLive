@@ -6,7 +6,7 @@ import cv2 as cv
 import gymnasium as gym
 
 from rlive_common.config import config as common_cfg
-from rlive_common.utils.visualisation_utils import annotate_image, draw_goal
+from rlive_common.utils.visualisation_utils import annotate_image, draw_goal, compute_goal_radius
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
 from rlive_env.localisation import BallLocalisator
@@ -268,7 +268,8 @@ class RemoteWorldEnv(gym.Env):
             if self.obs is not None:
                 show_image = self.obs.copy()
                 if visualize:
-                    show_image = annotate_image(show_image, self.ball_location, self.goal_position, common_cfg.GOAL_RADIUS)
+                    show_image = annotate_image(show_image, self.ball_location, self.goal_position,
+                                               compute_goal_radius(self.observation_space.shape))
                 show_image = cv.cvtColor(show_image, cv.COLOR_RGB2BGR)
                 res_show_image = cv.resize(show_image, dsize=None, fx=scale, fy=scale)
                 cv.imshow("Environment", res_show_image)
@@ -308,8 +309,9 @@ class RemoteWorldEnv(gym.Env):
             logger.debug("Ball not detected in observation")
             raise RuntimeError("Ball not detected in observation")
 
-        # Check if goal is reached
-        goal_reached = self.ball_location.is_within_radius(self.goal_position, common_cfg.GOAL_RADIUS)
+        # Check if goal is reached – radius scales with image diagonal by default
+        goal_radius = compute_goal_radius(observation.shape)
+        goal_reached = self.ball_location.is_within_radius(self.goal_position, goal_radius)
         logger.debug(f"Ball location: {self.ball_location.as_tuple()}, Goal position: {self.goal_position}, Goal reached: {goal_reached}")
 
         if self.reward_mode == "sparse":
@@ -335,11 +337,14 @@ class RemoteWorldEnv(gym.Env):
         """
         height, width, _ = self.observation_space.shape
 
+        # Radius scales with the image diagonal so the goal is proportional to resolution
+        goal_radius = compute_goal_radius(self.observation_space.shape)
+
         # Ensure goal is fully visible by constraining it away from borders
-        min_x = common_cfg.GOAL_RADIUS
-        max_x = width - common_cfg.GOAL_RADIUS
-        min_y = common_cfg.GOAL_RADIUS
-        max_y = height - common_cfg.GOAL_RADIUS
+        min_x = goal_radius
+        max_x = width - goal_radius
+        min_y = goal_radius
+        max_y = height - goal_radius
 
         x = int(self.np_random.integers(min_x, max_x))
         y = int(self.np_random.integers(min_y, max_y))
