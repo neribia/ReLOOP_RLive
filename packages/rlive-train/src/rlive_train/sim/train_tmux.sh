@@ -21,8 +21,8 @@ ARGS=(
     --eval-freq 10000         # default: 10000
     --n-eval-episodes 5       # default: 5
     --n-epochs 10             # default: 10
+    --checkpoint-freq 100000   # default: same as eval-freq; set higher to save fewer checkpoints
     # --fixed-goal            # flag: fix goal at image centre
 )
 
 uv run "$SCRIPT_DIR/train_sb3.py" "${ARGS[@]}"
-

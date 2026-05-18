@@ -1,123 +1,281 @@
-"""SB3 Training - Real Environment
+"""SB3 Training - Real Environment.
 
-This example demonstrates how to train a Stable Baselines 3 agent
-using the RemoteWorldEnv with a real robot or dummy robot backend.
+Trains a Stable Baselines 3 PPO agent using the RemoteWorldEnv with a real
+robot or dummy robot backend. Results are logged to Weights & Biases.
+
+Usage
+-----
+    python train_sb3.py
+    python train_sb3.py --bolt-use-dummy --total-timesteps 50000
 """
 import os
 import sys
-import json
 from datetime import datetime
+from pathlib import Path
 
 import gymnasium as gym
 
 # Spoof the gym module to suppress unmaintained gym warnings
 sys.modules["gym"] = gym
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import EvalCallback
+import argparse  # noqa: E402
+import wandb  # noqa: E402
 
-from rlive_env import RemoteWorldEnv, ActionSpaceType
-from rlive_common.core.hardware_config import WorldConfig, CameraType, CameraResolution
-from rlive_common.utils import get_logger
+from stable_baselines3 import PPO  # noqa: E402
 
-from rlive_train.config.config import LOGS_DIR
+from rlive_common.utils import get_logger  # noqa: E402
+from rlive_train.config.config import LOGS_DIR, MODELS_DIR  # noqa: E402
+from rlive_train.utils.make_envs import make_env_factory, make_real_env  # noqa: E402
+from rlive_train.utils.sb3_callbacks import build_wandb_eval_callbacks  # noqa: E402
+from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_env  # noqa: E402
+from rlive_train.utils.utils import get_device  # noqa: E402
 
 logger = get_logger(__name__)
 
-def main() -> None:
-    base_url = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
+# All keyword arguments accepted by PPO.__init__ (excluding env/device/verbose/tensorboard_log
+# which are passed explicitly).
+PPO_KEYS: frozenset[str] = frozenset({
+    "policy",
+    "learning_rate",
+    "n_steps",
+    "batch_size",
+    "n_epochs",
+    "gamma",
+    "gae_lambda",
+    "clip_range",
+    "clip_range_vf",
+    "normalize_advantage",
+    "ent_coef",
+    "vf_coef",
+    "max_grad_norm",
+    "use_sde",
+    "sde_sample_freq",
+    "rollout_buffer_class",
+    "rollout_buffer_kwargs",
+    "target_kl",
+    "stats_window_size",
+    "policy_kwargs",
+    "seed",
+})
 
-    logger.info("Setting up RemoteWorldEnv for training...")
-    world_config = WorldConfig(
-        camera_type=CameraType.WEBCAM,
-        camera_id=1,
-        camera_resolution=CameraResolution.RES_640x480,
-        bolt_name="BP-D217",
-        # Keep use_dummy=True for testing, change to False for real robot
-        bolt_use_dummy=True
-    )
 
-    def make_env():
-        return RemoteWorldEnv(
-            max_episode_steps=500,
-            base_url=base_url,
-            render_mode="opencv", # Used for displaying the camera stream bounding box
-            action_space_type=ActionSpaceType.CARTESIAN,
-            world_config=world_config,
-        )
+def get_model_path(model_id: str) -> Path:
+    """Return (and create) the model directory for the given W&B run id."""
+    path = Path(MODELS_DIR) / model_id
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
-    env = make_env()
-    eval_env = make_env()
 
-    run_name = f"PPO_Real_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    run_dir = LOGS_DIR / run_name
-    run_dir.mkdir(parents=True, exist_ok=True)
+def int_or_sci(value: str) -> int:
+    """Accept plain integers and scientific notation (e.g. 1e6)."""
+    return int(float(value))
 
-    tensorboard_log = str(run_dir / "tensorboard")
 
-    logger.info("Saving hyperparameters...")
+# ---------------------------------------------------------------------------
+# Core training function
+# ---------------------------------------------------------------------------
 
-    # Define hyperparameters explicitly to resolve static type hinting issues
-    policy = "MlpPolicy"
-    n_steps = 2 * 20 * 2
-    batch_size = 10
-    n_epochs = 2
-    ent_coef = 0.1
-    learning_rate = 3e-4
-    total_timesteps = 10_000
+def train(  # noqa: PLR0913
+    base_url: str = "http://127.0.0.1:8000",
+    bolt_name: str = "BP-D217",
+    bolt_use_dummy: bool = True,
+    camera_id: int = 1,
+    lr: float = 3e-4,
+    ent_coef: float = 0.01,
+    log_std_init: float = 0.0,
+    max_episode_steps: int = 20,
+    total_timesteps: int = 10_000,
+    n_epochs: int = 10,
+    eval_freq: int = 200,
+    n_eval_episodes: int = 5,
+    n_stack: int = 4,
+) -> None:
+    """Train a PPO agent on the real RemoteWorldEnv and log to W&B.
 
-    hyperparams = {
-        "policy": policy,
+    The environment is wrapped with the same DummyVecEnv → VecFrameStack →
+    VecTransposeImage pipeline as the sim training so that a sim-trained
+    CnnPolicy model can be fine-tuned or evaluated here directly (sim2real).
+
+    Args:
+        base_url: Base URL of the world server.
+        bolt_name: Sphero Bolt device name.
+        bolt_use_dummy: If True, use a dummy robot (no physical hardware needed).
+        camera_id: OpenCV camera index.
+        lr: PPO learning rate.
+        ent_coef: PPO entropy coefficient.
+        log_std_init: Initial log std for the action distribution.
+        max_episode_steps: Maximum steps per episode.
+        total_timesteps: Total training timesteps.
+        n_epochs: PPO epochs per update.
+        eval_freq: Evaluation frequency in timesteps.
+        n_eval_episodes: Number of episodes per evaluation.
+        n_stack: Number of frames to stack — must match the sim model (default: 4).
+    """
+    env_args = {
+        "base_url": base_url,
+        "bolt_name": bolt_name,
+        "bolt_use_dummy": bolt_use_dummy,
+        "camera_id": camera_id,
+        "max_episode_steps": max_episode_steps,
+    }
+    factory = make_env_factory(env_fn=make_real_env, **env_args)
+
+    # Wrap with the same pipeline as sim so CnnPolicy models are compatible.
+    env_train = build_sim_env(env_factory=factory, n_stack=n_stack, backend=EvalVecBackend.DUMMY)
+    env_eval  = build_sim_env(env_factory=factory, n_stack=n_stack, backend=EvalVecBackend.DUMMY)
+
+    # Derive n_steps / batch_size the same way as sim/train_sb3.py
+    n_steps = 2 * max_episode_steps      # steps per env per rollout
+    batch_size = n_steps                  # num_envs=1 for real
+
+    params = {
+        "policy": "CnnPolicy",
+        "learning_rate": lr,
+        "ent_coef": ent_coef,
+        "policy_kwargs": {"log_std_init": log_std_init},
         "n_steps": n_steps,
         "batch_size": batch_size,
         "n_epochs": n_epochs,
-        "ent_coef": ent_coef,
-        "learning_rate": learning_rate,
+        # extra run metadata logged to W&B
+        "bolt_name": bolt_name,
+        "bolt_use_dummy": bolt_use_dummy,
+        "max_episode_steps": max_episode_steps,
         "total_timesteps": total_timesteps,
+        "eval_freq": eval_freq,
+        "n_eval_episodes": n_eval_episodes,
+        "n_stack": n_stack,
     }
 
-    with open(run_dir / "hyperparams.json", "w") as f:
-        json.dump(hyperparams, f, indent=4)
+    run_name = f"Real_lr{lr:.0e}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    logger.info(f"Initializing PPO Model with {policy} ...")
-    model = PPO(
-        policy=policy, # Update to CnnPolicy if using image observations
-        env=env,
-        n_steps=n_steps,
-        batch_size=batch_size,
-        n_epochs=n_epochs,
-        verbose=1,
-        tensorboard_log=tensorboard_log,
-        ent_coef=ent_coef,
-        learning_rate=learning_rate
+    with wandb.init(
+        project="rlive-train",
+        dir=str(LOGS_DIR),
+        name=run_name,
+        config=params,
+        sync_tensorboard=True,
+    ) as wandb_logger:
+
+        path_model = get_model_path(wandb_logger.id)
+        path_logs = path_model / "logs"
+        path_weights = path_model / "checkpoints"
+
+        ppo_params = {k: v for k, v in params.items() if k in PPO_KEYS}
+
+        logger.info(f"Initializing PPO with CnnPolicy — run '{run_name}'")
+        algorithm = PPO(
+            env=env_train,
+            device=get_device(),
+            verbose=1,
+            tensorboard_log=str(path_logs / "tensorboard"),
+            **ppo_params,
+        )
+
+        callbacks = build_wandb_eval_callbacks(
+            env_eval=env_eval,
+            log_path=str(path_logs),
+            save_path=str(path_weights),
+            eval_freq=eval_freq,
+            n_eval_episodes=n_eval_episodes,
+        )
+
+        logger.info(f"Starting training for {total_timesteps:,} timesteps...")
+        algorithm.learn(
+            total_timesteps=total_timesteps,
+            callback=callbacks,
+        )
+
+    env_train.close()
+    env_eval.close()
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    """Entry point for the real-environment training CLI."""
+    parser = argparse.ArgumentParser(
+        description="Train an SB3 PPO agent on the real RemoteWorldEnv."
+    )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default=os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000"),
+        help="World server base URL (default: $WORLD_BASE_URL or http://127.0.0.1:8000)",
+    )
+    parser.add_argument(
+        "--bolt-name",
+        type=str,
+        default="BP-D217",
+        help="Sphero Bolt device name (default: BP-D217)",
+    )
+    parser.add_argument(
+        "--bolt-use-dummy",
+        action="store_true",
+        default=False,
+        help="Use a dummy robot instead of real hardware (default: False)",
+    )
+    parser.add_argument(
+        "--camera-id",
+        type=int,
+        default=1,
+        help="OpenCV camera index (default: 1)",
+    )
+    parser.add_argument(
+        "--lr", type=float, default=3e-4,
+        help="Learning rate (default: 3e-4)",
+    )
+    parser.add_argument(
+        "--ent-coef", type=float, default=0.01,
+        help="Entropy coefficient (default: 0.01)",
+    )
+    parser.add_argument(
+        "--log-std-init", type=float, default=0.0,
+        help="Initial log std for action distribution (default: 0.0)",
+    )
+    parser.add_argument(
+        "--max-episode-steps", type=int, default=20,
+        help="Max steps per episode (default: 20)",
+    )
+    parser.add_argument(
+        "--total-timesteps", type=int_or_sci, default=10_000,
+        help="Total training timesteps, accepts e.g. 1e5 (default: 10_000)",
+    )
+    parser.add_argument(
+        "--n-epochs", type=int, default=10,
+        help="PPO epochs per update (default: 10)",
+    )
+    parser.add_argument(
+        "--eval-freq", type=int, default=200,
+        help="Eval frequency in timesteps (default: 200)",
+    )
+    parser.add_argument(
+        "--n-eval-episodes", type=int, default=5,
+        help="Number of eval episodes (default: 5)",
+    )
+    parser.add_argument(
+        "--n-stack", type=int, default=4,
+        help="Number of frames to stack — must match the sim model (default: 4)",
+    )
+    args = parser.parse_args()
+
+    train(
+        base_url=args.base_url,
+        bolt_name=args.bolt_name,
+        bolt_use_dummy=args.bolt_use_dummy,
+        camera_id=args.camera_id,
+        lr=args.lr,
+        ent_coef=args.ent_coef,
+        log_std_init=args.log_std_init,
+        max_episode_steps=args.max_episode_steps,
+        total_timesteps=args.total_timesteps,
+        n_epochs=args.n_epochs,
+        eval_freq=args.eval_freq,
+        n_eval_episodes=args.n_eval_episodes,
+        n_stack=args.n_stack,
     )
 
-    best_model_dir = str(run_dir / "best_model")
-    eval_callback = EvalCallback(
-        eval_env,
-        best_model_save_path=best_model_dir,
-        log_path=str(run_dir),
-        eval_freq=200,
-        deterministic=True,
-        render=False,
-        n_eval_episodes=5,
-    )
-
-    logger.info(f"Starting training for {total_timesteps:,} timesteps...")
-    model.learn(
-        total_timesteps=total_timesteps,
-        callback=eval_callback,
-        tb_log_name="PPO_Real",
-    )
-
-    model_path = str(run_dir / "ppo_real_env_model")
-    model.save(model_path)
-    logger.info(f"Model saved to {model_path}.zip")
-
-    logger.info(f"To view tensorboard logs, run: tensorboard --logdir {tensorboard_log}")
-
-    env.close()
-    eval_env.close()
 
 if __name__ == "__main__":
     main()

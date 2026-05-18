@@ -81,6 +81,7 @@ def train(
         n_eval_episodes: int = 5,
         fixed_goal: bool = False,
         n_epochs: int = 10,
+        checkpoint_freq: int | None = None,
 ):
 
 
@@ -114,6 +115,7 @@ def train(
         "eval_freq": eval_freq,
         "n_eval_episodes": n_eval_episodes,
         "fixed_goal": fixed_goal,
+        "checkpoint_freq": checkpoint_freq if checkpoint_freq is not None else eval_freq,
     }
 
     run_name = f"{env_type.capitalize()}_lr{lr:.0e}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -147,6 +149,7 @@ def train(
             save_path=str(path_weights),
             eval_freq=eval_freq,
             n_eval_episodes=n_eval_episodes,
+            checkpoint_freq=checkpoint_freq,
         )
 
         algorithm.learn(
@@ -206,6 +209,13 @@ def main() -> None:
         "--fixed-goal", action="store_true", default=False,
         help="Fix the goal at the centre of the image for every episode (default: False)",
     )
+    parser.add_argument(
+        "--checkpoint-freq", type=int_or_sci, default=None,
+        help=(
+            "Periodic checkpoint save frequency in timesteps. "
+            "Defaults to --eval-freq when not set."
+        ),
+    )
     args = parser.parse_args()
 
     train(
@@ -220,6 +230,7 @@ def main() -> None:
         n_eval_episodes=args.n_eval_episodes,
         fixed_goal=args.fixed_goal,
         n_epochs=args.n_epochs,
+        checkpoint_freq=args.checkpoint_freq,
     )
 
 

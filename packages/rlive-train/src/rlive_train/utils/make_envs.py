@@ -1,8 +1,11 @@
+"""Environment factory helpers for sim and real RL environments."""
 from collections.abc import Callable
 
 from stable_baselines3.common.monitor import Monitor
 
 from rlive_common import ActionSpaceType
+from rlive_common.core.hardware_config import CameraResolution, CameraType, WorldConfig
+from rlive_env import RemoteWorldEnv
 from rlive_sim import (
     SimulationConfig,
     PhysicsConfig,
@@ -125,3 +128,43 @@ def make_simple_env(
         fixed_goal=fixed_goal,
     )
     return env
+
+
+def make_real_env(
+    base_url: str = "http://127.0.0.1:8000",
+    bolt_name: str = "BP-D217",
+    camera_id: int = 1,
+    max_episode_steps: int = 20,
+    action_space_type: ActionSpaceType = ActionSpaceType.CARTESIAN,
+) -> RemoteWorldEnv:
+    """Create a real RemoteWorldEnv with configurable parameters.
+
+    Resolution is fixed to 640×480 by the server-side world config to match
+    the sim observation space, so a sim-trained CnnPolicy transfers directly.
+
+    Args:
+        base_url: Base URL of the world server (default: http://127.0.0.1:8000).
+        bolt_name: Sphero Bolt device name (default: BP-D217).
+        bolt_use_dummy: If True, use a dummy robot — no physical hardware needed (default: False).
+        camera_id: OpenCV camera index (default: 1).
+        max_episode_steps: Maximum steps per episode (default: 20).
+        action_space_type: Action space type (default: CARTESIAN).
+
+    Returns:
+        RemoteWorldEnv: Configured environment instance.
+    """
+    world_config = WorldConfig(
+        camera_type=CameraType.WEBCAM,
+        camera_id=camera_id,
+        camera_resolution=CameraResolution.RES_640x480,
+        bolt_name=bolt_name,
+        bolt_use_dummy=bolt_use_dummy,
+    )
+
+    return RemoteWorldEnv(
+        max_episode_steps=max_episode_steps,
+        base_url=base_url,
+        action_space_type=action_space_type,
+        world_config=world_config,
+    )
+

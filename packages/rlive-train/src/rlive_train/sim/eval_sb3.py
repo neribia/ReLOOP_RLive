@@ -1,66 +1,220 @@
-"""SB3 Evaluation - SAPIEN Simulation
+"""SB3 Evaluation - SAPIEN / Simple Simulation.
 
-This example demonstrates how to evaluate an existing Stable Baselines 3 agent
-using the SimulationEnv with SAPIEN integrated backend.
+Evaluates an existing Stable Baselines 3 PPO model and logs results to
+Weights & Biases, linked to the original training run via the W&B *group*.
+
+Usage
+-----
+    python eval_sb3.py --model-path /path/to/best_model.zip
+    python eval_sb3.py --model-path /path/to/best_model.zip --env simple --n-episodes 10
+
+The eval W&B run is placed in the same project ("rlive-train") and the same
+*group* as the training run so both appear side-by-side in the W&B UI.
+The group name is inferred automatically from the model path
+(grandparent folder == W&B run-id used during training) but can be
+overridden with --run-group.
 """
+import argparse
 import sys
+from pathlib import Path
+
 import gymnasium as gym
+import numpy as np
+import wandb
 
 # Spoof the gym module to suppress unmaintained gym warnings
 sys.modules["gym"] = gym
 
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO  # noqa: E402
+from stable_baselines3.common.evaluation import evaluate_policy  # noqa: E402
 
-from rlive_train.config.config import LOGS_DIR
-from rlive_common.utils import get_logger
-from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_eval_env
+from rlive_common.utils import get_logger  # noqa: E402
+from rlive_train.utils.make_envs import make_env_factory, make_sapiens_env, make_simple_env  # noqa: E402
+from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_env  # noqa: E402
 
 logger = get_logger(__name__)
 
-# Replace with the actual run folder name you want to evaluate
-RUN_ID = "PPO_Sapien_YYYYMMDD_HHMMSS"
+ENV_CHOICES = ("sapien", "simple")
 
 
-def main() -> None:
-    env = build_sim_eval_env(n_stack=4, backend=EvalVecBackend.DUMMY)
+# ---------------------------------------------------------------------------
+# Core evaluation function
+# ---------------------------------------------------------------------------
 
-    # Load from the specific run's best_model directory
-    model_path = LOGS_DIR / RUN_ID / "best_model" / "best_model.zip"
+def evaluate(  # noqa: PLR0913
+    model_path: str | Path,
+    env_type: str = "sapien",
+    n_episodes: int = 10,
+    max_episode_steps: int = 50,
+    fixed_goal: bool = False,
+    run_group: str | None = None,
+    run_name: str | None = None,
+) -> None:
+    """Evaluate a trained PPO model and log results to Weights & Biases.
+
+    Args:
+        model_path: Path to the model .zip file.
+        env_type: Simulation backend — 'sapien' or 'simple'.
+        n_episodes: Number of deterministic evaluation episodes.
+        max_episode_steps: Max steps per episode (must match training).
+        fixed_goal: Whether the goal is fixed at the image centre.
+        run_group: W&B group name linking this eval to its training run.
+            When None, inferred from the grandparent folder of model_path.
+        run_name: Custom W&B run name. When None, defaults to
+            ``eval_<run_group>_<env_type>``.
+    """
+    model_path = Path(model_path)
 
     if not model_path.exists():
-        logger.error(f"Could not find model at {model_path}. Please update RUN_ID.")
+        logger.error(f"Model not found: {model_path}")
         return
 
-    logger.info(f"Loading model from {model_path}")
-    model = PPO.load(model_path, env=env)
+    # Infer W&B group from path when not provided explicitly.
+    # Training stores weights at: MODELS_DIR / <wandb_run_id> / checkpoints / *.zip
+    # So grandparent folder == the W&B run id used during training.
+    if run_group is None:
+        run_group = model_path.parent.parent.name
+        logger.info(f"Inferred run group from model path: '{run_group}'")
 
-    logger.info("Evaluating the trained model for 5 episodes...")
-    for episode in range(5):
-        obs = env.reset()
-        # env.render(visualize=True)
+    if run_name is None:
+        run_name = f"eval_{run_group}_{env_type}"
 
-        done = False
-        step_count = 0
-        episode_reward = 0.0
+    # ------------------------------------------------------------------
+    # Build evaluation environment (identical setup to training)
+    # ------------------------------------------------------------------
+    env_fn = make_sapiens_env if env_type == "sapien" else make_simple_env
+    factory = make_env_factory(env_fn=env_fn, max_episode_steps=max_episode_steps, fixed_goal=fixed_goal)
+    env = build_sim_env(env_factory=factory, n_stack=4, backend=EvalVecBackend.DUMMY)
 
-        while not done:
-            action, _states = model.predict(obs, deterministic=True)
-            obs, reward, dones, info = env.step(action)
-            episode_reward += reward
-            print(action)
-            # Visualize the current state
-            image = obs
-            # env.render(visualize=True)
-            # cv2.waitKey(100)  # Optional small delay to regulate playback speed
+    # ------------------------------------------------------------------
+    # W&B run — linked to the training run via group
+    # ------------------------------------------------------------------
+    eval_params = {
+        "model_path": str(model_path),
+        "env_type": env_type,
+        "n_episodes": n_episodes,
+        "max_episode_steps": max_episode_steps,
+        "fixed_goal": fixed_goal,
+    }
 
-            done = dones[0]
-            step_count += 1
+    with wandb.init(
+        project="rlive-train",
+        job_type="eval",
+        group=run_group,
+        name=run_name,
+        config=eval_params,
+    ) as run:
+        logger.info(f"W&B run: {run.url}")
 
-        # logger.info(f"Episode {episode + 1}/5 completed - Steps: {step_count}, Reward: {episode_reward:.3f}")
+        # ------------------------------------------------------------------
+        # Load model
+        # ------------------------------------------------------------------
+        logger.info(f"Loading model from {model_path}")
+        model = PPO.load(model_path, env=env)
+
+        # ------------------------------------------------------------------
+        # Run evaluation — collect per-episode rewards & lengths
+        # ------------------------------------------------------------------
+        logger.info(f"Evaluating for {n_episodes} episodes...")
+
+        episode_rewards, episode_lengths = evaluate_policy(
+            model,
+            env,
+            n_eval_episodes=n_episodes,
+            deterministic=True,
+            return_episode_rewards=True,
+        )
+
+        # Log per-episode metrics as a W&B table
+        table = wandb.Table(columns=["episode", "reward", "length"])
+        for i, (reward, length) in enumerate(zip(episode_rewards, episode_lengths)):
+            table.add_data(i + 1, reward, length)
+            wandb.log({"eval/episode_reward": reward, "eval/episode_length": length, "episode": i + 1})
+
+        mean_reward = float(np.mean(episode_rewards))
+        std_reward = float(np.std(episode_rewards))
+        mean_length = float(np.mean(episode_lengths))
+
+        # Summary metrics (shown prominently in the W&B run overview)
+        run.summary["eval/mean_reward"] = mean_reward
+        run.summary["eval/std_reward"] = std_reward
+        run.summary["eval/mean_episode_length"] = mean_length
+
+        wandb.log({"eval/episodes_table": table})
+
+        logger.info(
+            f"Evaluation complete — "
+            f"mean reward: {mean_reward:.3f} ± {std_reward:.3f}, "
+            f"mean length: {mean_length:.1f} steps"
+        )
 
     env.close()
 
 
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    """Entry point for the evaluation CLI."""
+
+    # ===========================================================================
+    # CONFIG — edit these defaults, then run:  uv run eval_sb3.py
+    # All values can still be overridden via CLI flags.
+    # ===========================================================================
+    MODEL_PATH = r"C:\Users\kilia\Documents\GitHub\ReLoop_RLive\packages\rlive-train\resources\models\mwkhb73p\checkpoints\best_model.zip"        # required — e.g. r"C:\Downloads\best_model.zip"
+    ENV_TYPE   = "sapien"  # options: sapien | simple
+    N_EPISODES = 20        # recommended: 20–30
+    MAX_STEPS  = 50        # must match training!
+    FIXED_GOAL = False     # True to fix goal at image centre
+    RUN_GROUP  = None      # None = auto-infer from model path
+    RUN_NAME   = None      # None = auto  e.g. "PPO_v1_sim_sapien"
+    # ===========================================================================
+
+    parser = argparse.ArgumentParser(
+        description="Evaluate a trained SB3 PPO agent and log results to W&B."
+    )
+    parser.add_argument(
+        "--model-path", type=str, default=MODEL_PATH,
+        required=not bool(MODEL_PATH),
+        help="Path to the model .zip file.",
+    )
+    parser.add_argument(
+        "--env", choices=ENV_CHOICES, default=ENV_TYPE,
+        help=f"Simulation backend (default: {ENV_TYPE})",
+    )
+    parser.add_argument(
+        "--n-episodes", type=int, default=N_EPISODES,
+        help=f"Number of evaluation episodes (default: {N_EPISODES})",
+    )
+    parser.add_argument(
+        "--max-episode-steps", type=int, default=MAX_STEPS,
+        help=f"Max steps per episode — must match training (default: {MAX_STEPS})",
+    )
+    parser.add_argument(
+        "--fixed-goal", action="store_true", default=FIXED_GOAL,
+        help="Fix the goal at the centre of the image",
+    )
+    parser.add_argument(
+        "--run-group", type=str, default=RUN_GROUP,
+        help="W&B group (default: inferred from model path)",
+    )
+    parser.add_argument(
+        "--run-name", type=str, default=RUN_NAME,
+        help="Custom W&B run name (default: eval_<group>_<env>)",
+    )
+    args = parser.parse_args()
+
+    evaluate(
+        model_path=args.model_path,
+        env_type=args.env,
+        n_episodes=args.n_episodes,
+        max_episode_steps=args.max_episode_steps,
+        fixed_goal=args.fixed_goal,
+        run_group=args.run_group,
+        run_name=args.run_name,
+    )
+
+
 if __name__ == "__main__":
     main()
-
