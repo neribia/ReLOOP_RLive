@@ -30,9 +30,13 @@ class Webcam(BaseCamera):
         self.cam.set(cv.CAP_PROP_FRAME_WIDTH, self._width)
         self.cam.set(cv.CAP_PROP_FRAME_HEIGHT, self._height)
 
-        # Warm up: let the camera stabilize (auto-exposure, focus, etc.)
-        time.sleep(0.5)
-        for _ in range(10):  # drain initial stale frames
+        # Enable autofocus
+        self.cam.set(cv.CAP_PROP_AUTOFOCUS, 1)
+
+        # Warm up: let autofocus converge BEFORE locking it.
+        # 2 s + 30 frames is enough for most USB webcams to find focus.
+        time.sleep(2.0)
+        for _ in range(30):  # drain stale frames while autofocus runs
             self.cam.grab()
 
         # Disable autofocus
