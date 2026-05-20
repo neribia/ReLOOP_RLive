@@ -121,9 +121,6 @@ class BallLocalisator:
         """
         processors = [
             HSVProcessor(
-                lower_hue=90, upper_hue=130,  # blue hue range
-                lower_sat=50, upper_sat=255,  # require some color (not gray)
-                lower_val=50, upper_val=255,  # require some brightness (not black)
                 apply_mask=True,
             ),
             DilationProcessor(kernel_size=(7, 7), iterations=3),
@@ -138,7 +135,7 @@ class BallLocalisator:
         before processing to ensure consistent behavior.
 
         Args:
-            image: BGR or RGB image as numpy array.
+            image: RGB image as numpy array.
 
         Returns:
             BallLocation if ball is detected, None otherwise.
@@ -213,7 +210,7 @@ class BallLocalisator:
         """Get ball position and debug information.
 
         Args:
-            image: BGR or RGB image as numpy array.
+            image: RGB image as numpy array.
 
         Returns:
             DetectionResult with location and debug images.
