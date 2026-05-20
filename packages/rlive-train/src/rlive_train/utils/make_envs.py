@@ -135,6 +135,7 @@ def make_real_env(
     bolt_name: str = "BP-D217",
     camera_id: int = 1,
     max_episode_steps: int = 20,
+    render_mode: str | None = None,
     action_space_type: ActionSpaceType = ActionSpaceType.CARTESIAN,
 ) -> RemoteWorldEnv:
     """Create a real RemoteWorldEnv with configurable parameters.
@@ -145,9 +146,9 @@ def make_real_env(
     Args:
         base_url: Base URL of the world server (default: http://127.0.0.1:8000).
         bolt_name: Sphero Bolt device name (default: BP-D217).
-        bolt_use_dummy: If True, use a dummy robot — no physical hardware needed (default: False).
         camera_id: OpenCV camera index (default: 1).
         max_episode_steps: Maximum steps per episode (default: 20).
+        render_mode: Render mode passed to RemoteWorldEnv (default: "opencv").
         action_space_type: Action space type (default: CARTESIAN).
 
     Returns:
@@ -158,12 +159,12 @@ def make_real_env(
         camera_id=camera_id,
         camera_resolution=CameraResolution.RES_640x480,
         bolt_name=bolt_name,
-        bolt_use_dummy=bolt_use_dummy,
     )
 
     return RemoteWorldEnv(
         max_episode_steps=max_episode_steps,
         base_url=base_url,
+        render_mode=render_mode,
         action_space_type=action_space_type,
         world_config=world_config,
     )

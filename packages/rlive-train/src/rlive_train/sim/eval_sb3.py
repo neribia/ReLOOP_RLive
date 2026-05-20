@@ -1,18 +1,12 @@
 """SB3 Evaluation - SAPIEN / Simple Simulation.
 
 Evaluates an existing Stable Baselines 3 PPO model and logs results to
-Weights & Biases, linked to the original training run via the W&B *group*.
+Weights & Biases.
 
 Usage
 -----
     python eval_sb3.py --model-path /path/to/best_model.zip
     python eval_sb3.py --model-path /path/to/best_model.zip --env simple --n-episodes 10
-
-The eval W&B run is placed in the same project ("rlive-train") and the same
-*group* as the training run so both appear side-by-side in the W&B UI.
-The group name is inferred automatically from the model path
-(grandparent folder == W&B run-id used during training) but can be
-overridden with --run-group.
 """
 import argparse
 import sys
@@ -47,7 +41,6 @@ def evaluate(  # noqa: PLR0913
     n_episodes: int = 10,
     max_episode_steps: int = 50,
     fixed_goal: bool = False,
-    run_group: str | None = None,
     run_name: str | None = None,
 ) -> None:
     """Evaluate a trained PPO model and log results to Weights & Biases.
@@ -58,10 +51,8 @@ def evaluate(  # noqa: PLR0913
         n_episodes: Number of deterministic evaluation episodes.
         max_episode_steps: Max steps per episode (must match training).
         fixed_goal: Whether the goal is fixed at the image centre.
-        run_group: W&B group name linking this eval to its training run.
-            When None, inferred from the grandparent folder of model_path.
         run_name: Custom W&B run name. When None, defaults to
-            ``eval_<run_group>_<env_type>``.
+            ``eval_<env_type>``.
     """
     model_path = Path(model_path)
 
@@ -69,15 +60,8 @@ def evaluate(  # noqa: PLR0913
         logger.error(f"Model not found: {model_path}")
         return
 
-    # Infer W&B group from path when not provided explicitly.
-    # Training stores weights at: MODELS_DIR / <wandb_run_id> / checkpoints / *.zip
-    # So grandparent folder == the W&B run id used during training.
-    if run_group is None:
-        run_group = model_path.parent.parent.name
-        logger.info(f"Inferred run group from model path: '{run_group}'")
-
     if run_name is None:
-        run_name = f"eval_{run_group}_{env_type}"
+        run_name = f"eval_{env_type}"
 
     # ------------------------------------------------------------------
     # Build evaluation environment (identical setup to training)
@@ -100,7 +84,6 @@ def evaluate(  # noqa: PLR0913
     with wandb.init(
         project="rlive-train",
         job_type="eval",
-        group=run_group,
         name=run_name,
         config=eval_params,
     ) as run:
@@ -113,9 +96,19 @@ def evaluate(  # noqa: PLR0913
         model = PPO.load(model_path, env=env)
 
         # ------------------------------------------------------------------
-        # Run evaluation — collect per-episode rewards & lengths
+        # Run evaluation — collect per-episode rewards, lengths & success
         # ------------------------------------------------------------------
         logger.info(f"Evaluating for {n_episodes} episodes...")
+
+        # Callback to harvest `is_success` from the final info dict of each episode
+        successes: list[bool] = []
+
+        def _success_callback(locals_: dict, _globals: dict) -> None:
+            infos = locals_.get("infos", [{}])
+            dones = locals_.get("dones", [False])
+            for info, done in zip(infos, dones):
+                if done:
+                    successes.append(bool(info.get("is_success", False)))
 
         episode_rewards, episode_lengths = evaluate_policy(
             model,
@@ -123,29 +116,43 @@ def evaluate(  # noqa: PLR0913
             n_eval_episodes=n_episodes,
             deterministic=True,
             return_episode_rewards=True,
+            callback=_success_callback,
         )
 
-        # Log per-episode metrics as a W&B table
-        table = wandb.Table(columns=["episode", "reward", "length"])
+        mean_reward  = float(np.mean(episode_rewards))
+        std_reward   = float(np.std(episode_rewards))
+        mean_length  = float(np.mean(episode_lengths))
+        success_rate = float(np.mean(successes)) if successes else float("nan")
+
+        # ── Per-episode table (visible in W&B Artifacts / Tables tab) ────
+        has_success = len(successes) == len(episode_rewards)
+        columns = ["episode", "reward", "length"] + (["success"] if has_success else [])
+        table = wandb.Table(columns=columns)
         for i, (reward, length) in enumerate(zip(episode_rewards, episode_lengths)):
-            table.add_data(i + 1, reward, length)
-            wandb.log({"eval/episode_reward": reward, "eval/episode_length": length, "episode": i + 1})
+            row = [str(i + 1), reward, length]   # str → column stays String
+            if has_success:
+                row.append(float(successes[i]))
+            table.add_data(*row)
 
-        mean_reward = float(np.mean(episode_rewards))
-        std_reward = float(np.std(episode_rewards))
-        mean_length = float(np.mean(episode_lengths))
+        # Summary row
+        summary_row = ["MEAN", mean_reward, mean_length]
+        if has_success:
+            summary_row.append(success_rate)
+        table.add_data(*summary_row)
 
-        # Summary metrics (shown prominently in the W&B run overview)
-        run.summary["eval/mean_reward"] = mean_reward
-        run.summary["eval/std_reward"] = std_reward
-        run.summary["eval/mean_episode_length"] = mean_length
-
+        # ── Summary — single values, no step axis ────────────────────────
+        run.summary["eval/mean_reward"]          = mean_reward
+        run.summary["eval/std_reward"]           = std_reward
+        run.summary["eval/mean_episode_length"]  = mean_length
+        run.summary["eval/success_rate"]         = success_rate
+        run.summary["eval/n_episodes"]           = n_episodes
         wandb.log({"eval/episodes_table": table})
 
         logger.info(
             f"Evaluation complete — "
             f"mean reward: {mean_reward:.3f} ± {std_reward:.3f}, "
-            f"mean length: {mean_length:.1f} steps"
+            f"mean length: {mean_length:.1f} steps, "
+            f"success rate: {success_rate:.1%}"
         )
 
     env.close()
@@ -157,18 +164,18 @@ def evaluate(  # noqa: PLR0913
 
 def main() -> None:
     """Entry point for the evaluation CLI."""
-
+    from rlive_train.config.config import MODELS_DIR  # noqa: PLC0415
     # ===========================================================================
     # CONFIG — edit these defaults, then run:  uv run eval_sb3.py
     # All values can still be overridden via CLI flags.
     # ===========================================================================
-    MODEL_PATH = r"C:\Users\kilia\Documents\GitHub\ReLoop_RLive\packages\rlive-train\resources\models\mwkhb73p\checkpoints\best_model.zip"        # required — e.g. r"C:\Downloads\best_model.zip"
-    ENV_TYPE   = "sapien"  # options: sapien | simple
+
+    MODEL_PATH = MODELS_DIR / "simple_1160000_steps.zip"        # required — e.g. r"C:\Downloads\best_model.zip"
+    ENV_TYPE   = "simple"  # options: sapien | simple
     N_EPISODES = 20        # recommended: 20–30
     MAX_STEPS  = 50        # must match training!
-    FIXED_GOAL = False     # True to fix goal at image centre
-    RUN_GROUP  = None      # None = auto-infer from model path
-    RUN_NAME   = None      # None = auto  e.g. "PPO_v1_sim_sapien"
+    FIXED_GOAL = True     # True to fix goal at image centre
+    RUN_NAME   = "Simple_on_Simple"      # None = auto  e.g. "PPO_v1_sim_sapien"
     # ===========================================================================
 
     parser = argparse.ArgumentParser(
@@ -196,12 +203,8 @@ def main() -> None:
         help="Fix the goal at the centre of the image",
     )
     parser.add_argument(
-        "--run-group", type=str, default=RUN_GROUP,
-        help="W&B group (default: inferred from model path)",
-    )
-    parser.add_argument(
         "--run-name", type=str, default=RUN_NAME,
-        help="Custom W&B run name (default: eval_<group>_<env>)",
+        help="Custom W&B run name (default: eval_<env>)",
     )
     args = parser.parse_args()
 
@@ -211,7 +214,6 @@ def main() -> None:
         n_episodes=args.n_episodes,
         max_episode_steps=args.max_episode_steps,
         fixed_goal=args.fixed_goal,
-        run_group=args.run_group,
         run_name=args.run_name,
     )
 
