@@ -125,9 +125,9 @@ class HoughCircleExtractor(AbstractBallExtractor):
                 maxRadius=self.hough_max_radius,
             )
 
-            # Convert grayscale to BGR for colored annotations
+            # Convert grayscale to RGB for colored annotations
             if len(image.shape) == 2:
-                debug_img = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+                debug_img = cv.cvtColor(image, cv.COLOR_GRAY2RGB)
             else:
                 debug_img = image.copy()
 
@@ -136,10 +136,10 @@ class HoughCircleExtractor(AbstractBallExtractor):
                 # Draw all detected circles
                 for circle in circles[0, :]:
                     x, y, r = circle
-                    # Draw circle
+                    # Draw circle outline in green
                     cv.circle(debug_img, (x, y), r, (0, 255, 0), 2)
-                    # Draw center
-                    cv.circle(debug_img, (x, y), 3, (0, 0, 255), -1)
+                    # Draw centre in red
+                    cv.circle(debug_img, (x, y), 3, (255, 0, 0), -1)
 
             return debug_img
 

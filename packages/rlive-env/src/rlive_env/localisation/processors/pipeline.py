@@ -62,7 +62,7 @@ class ImagePipeline:
         """Execute all pipeline steps on the image.
 
         Args:
-            image: Input image (BGR typically).
+            image: Input image (RGB).
             debug: If True, store intermediate results for debugging.
 
         Returns:

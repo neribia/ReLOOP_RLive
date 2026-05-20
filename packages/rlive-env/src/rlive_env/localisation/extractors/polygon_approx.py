@@ -134,9 +134,9 @@ class PolygonApproxExtractor(AbstractBallExtractor):
             # Find contours
             contours, _ = cv.findContours(image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-            # Convert to BGR
+            # Convert to RGB
             if len(image.shape) == 2:
-                debug_img = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+                debug_img = cv.cvtColor(image, cv.COLOR_GRAY2RGB)
             else:
                 debug_img = image.copy()
 
@@ -164,19 +164,19 @@ class PolygonApproxExtractor(AbstractBallExtractor):
                 )
 
                 # Draw approximated polygon in red
-                cv.polylines(debug_img, [best_approx], True, (0, 0, 255), 3)
+                cv.polylines(debug_img, [best_approx], True, (255, 0, 0), 3)
 
-                # Draw centroid
+                # Draw centroid in blue
                 M = cv.moments(best_approx)
                 if M["m00"] != 0:
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])
-                    cv.circle(debug_img, (cx, cy), 5, (255, 0, 0), -1)
+                    cv.circle(debug_img, (cx, cy), 5, (0, 0, 255), -1)
 
                     vertices = len(best_approx)
                     text = f"Vertices: {vertices}"
                     cv.putText(debug_img, text, (cx + 10, cy - 10),
-                              cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                              cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
             return debug_img
 

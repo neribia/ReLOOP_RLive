@@ -110,7 +110,7 @@ class BallLocalisator:
         Returns:
             AbstractBallExtractor instance.
         """
-        return ContourExtractor(min_contour_area=2000, min_circularity=0.6)
+        return ContourExtractor()
 
     @staticmethod
     def _create_default_pipeline() -> ImagePipeline:

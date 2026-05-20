@@ -7,11 +7,11 @@ from rlive_env.localisation.processors.base import AbstractProcessor
 
 
 class GrayscaleProcessor(AbstractProcessor):
-    """Convert BGR image to grayscale.
+    """Convert RGB image to grayscale.
 
     Examples:
         processor = GrayscaleProcessor()
-        gray = processor.process(bgr_image)
+        gray = processor.process(rgb_image)
     """
 
     @property
@@ -20,13 +20,13 @@ class GrayscaleProcessor(AbstractProcessor):
         return "Grayscale"
 
     def process(self, image: np.ndarray) -> np.ndarray:
-        """Convert BGR image to grayscale.
+        """Convert RGB image to grayscale.
 
         Args:
-            image: Input BGR image.
+            image: Input RGB image.
 
         Returns:
             Grayscale image.
         """
-        return cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+        return cv.cvtColor(image, cv.COLOR_RGB2GRAY)
 

@@ -32,7 +32,8 @@ class ContourExtractor(AbstractBallExtractor):
     def __init__(
         self,
         min_contour_area: int = extractor_config.MIN_CONTOUR_AREA,
-        min_circularity: float = 0.0,
+        max_contour_area: int | None = extractor_config.MAX_CONTOUR_AREA,
+        min_circularity: float = extractor_config.MIN_CIRCULARITY,
     ):
         """Initialize contour extractor with defaults from config module.
 
@@ -40,6 +41,10 @@ class ContourExtractor(AbstractBallExtractor):
             min_contour_area: Minimum contour area in pixels² for a contour to
                 be considered a valid detection candidate.  Contours smaller
                 than this value are discarded before any other filtering.
+
+            max_contour_area: Maximum contour area in pixels².  Contours larger
+                than this are discarded — useful to reject the arena border or
+                large shadows.  ``None`` (default) disables the upper limit.
 
             min_circularity: Minimum circularity score required for a contour
                 to be accepted as the ball.
@@ -67,6 +72,7 @@ class ContourExtractor(AbstractBallExtractor):
                 ================  ===============================================
         """
         self.min_contour_area = min_contour_area
+        self.max_contour_area = max_contour_area
         self.min_circularity = min_circularity
         self.last_circularity: float | None = None  # C of the selected contour, updated after each extract()
         self.last_area: float | None = None          # pixel² area of the selected contour, updated after each extract()
@@ -124,7 +130,13 @@ class ContourExtractor(AbstractBallExtractor):
         """Filter contours by area and circularity."""
         valid = []
         for c in contours:
-            if cv.contourArea(c) < self.min_contour_area:
+            area = cv.contourArea(c)
+            if area < self.min_contour_area:
+                continue
+            if self.max_contour_area is not None and area > self.max_contour_area:
+                logger.debug(
+                    f"{self.name}: Contour rejected (area={area:.0f} > max={self.max_contour_area})"
+                )
                 continue
             if self.min_circularity > 0.0 and self._circularity(c) < self.min_circularity:
                 logger.debug(
@@ -203,18 +215,22 @@ class ContourExtractor(AbstractBallExtractor):
             # Find contours
             contours, _ = cv.findContours(image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-            # Convert grayscale to BGR for colored annotations
+            # Convert grayscale to RGB for colored annotations
             if len(image.shape) == 2:
-                debug_img = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+                debug_img = cv.cvtColor(image, cv.COLOR_GRAY2RGB)
             else:
                 debug_img = image.copy()
 
             if not contours:
                 return debug_img
 
-            # Draw ALL contours (area >= min) in orange so rejected ones are still visible
-            area_filtered = [c for c in contours if cv.contourArea(c) >= self.min_contour_area]
-            cv.drawContours(debug_img, area_filtered, -1, (0, 140, 255), 1)
+            # Draw ALL contours (area in [min, max]) in orange so rejected ones are still visible
+            area_filtered = [
+                c for c in contours
+                if cv.contourArea(c) >= self.min_contour_area
+                and (self.max_contour_area is None or cv.contourArea(c) <= self.max_contour_area)
+            ]
+            cv.drawContours(debug_img, area_filtered, -1, (255, 140, 0), 1)
 
             # Filter by area and circularity
             valid_contours = self._filter_contours(contours)
@@ -230,7 +246,7 @@ class ContourExtractor(AbstractBallExtractor):
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])
                     accepted = circ >= self.min_circularity or self.min_circularity == 0.0
-                    colour = (0, 220, 0) if accepted else (0, 140, 255)
+                    colour = (0, 220, 0) if accepted else (255, 140, 0)
                     area = int(cv.contourArea(c))
                     cv.putText(debug_img, f"C={circ:.2f}", (cx - 28, cy + 8),
                                cv.FONT_HERSHEY_SIMPLEX, 0.45, colour, 1)
@@ -240,13 +256,13 @@ class ContourExtractor(AbstractBallExtractor):
             # Highlight the selected (largest valid) contour in red
             if valid_contours:
                 largest = max(valid_contours, key=cv.contourArea)
-                cv.drawContours(debug_img, [largest], 0, (0, 0, 255), 3)
+                cv.drawContours(debug_img, [largest], 0, (255, 0, 0), 3)
 
                 M = cv.moments(largest)
                 if M["m00"] != 0:
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])
-                    cv.circle(debug_img, (cx, cy), 5, (255, 0, 0), -1)
+                    cv.circle(debug_img, (cx, cy), 5, (0, 0, 255), -1)
 
             return debug_img
 

@@ -84,7 +84,7 @@ class MOG2BackgroundSubtractorProcessor(AbstractProcessor):
         """Apply MOG2 background subtraction to extract foreground mask.
 
         Args:
-            image: Input frame (BGR color image or grayscale).
+            image: Input frame (RGB color image or grayscale).
 
         Returns:
             Binary foreground mask where:
@@ -211,6 +211,9 @@ class MOG2BackgroundSubtractorProcessor(AbstractProcessor):
         bg_image = cv.imread(path)
         if bg_image is None:
             raise RuntimeError(f"Failed to read background model: {path}")
+
+        # cv.imread returns BGR — convert to RGB to match pipeline convention
+        bg_image = cv.cvtColor(bg_image, cv.COLOR_BGR2RGB)
 
         # Reset the subtractor
         self.reset()

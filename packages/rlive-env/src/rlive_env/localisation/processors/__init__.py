@@ -15,6 +15,7 @@ from rlive_env.localisation.processors.mog2 import MOG2BackgroundSubtractorProce
 from rlive_env.localisation.processors.clahe import CLAHEProcessor
 from rlive_env.localisation.processors.pipeline import ImagePipeline
 from rlive_env.localisation.processors.image_absdiff import ImageAbsDiff
+from rlive_env.localisation.processors.channel_range import ChannelRangeProcessor
 
 __all__ = [
     "AbstractProcessor",
@@ -28,6 +29,7 @@ __all__ = [
     "FFTBandpassProcessor",
     "HSVProcessor",
     "ChannelExtractorProcessor",
+    "ChannelRangeProcessor",
     "MOG2BackgroundSubtractorProcessor",
     "CLAHEProcessor",
     "ImagePipeline",

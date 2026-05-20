@@ -11,7 +11,7 @@ class HSVProcessor(AbstractProcessor):
     """Convert image to HSV color space and apply color range filtering.
 
     HSV (Hue, Saturation, Value) color space is useful for isolating colors
-    that are robust to lighting changes. This processor converts RGB/BGR to HSV
+    that are robust to lighting changes. This processor converts RGB to HSV
     and optionally applies a color range mask.
 
     Loads default parameters from rlive_env.config.processing_config module.
@@ -19,7 +19,7 @@ class HSVProcessor(AbstractProcessor):
     Examples:
         Basic HSV conversion without masking:
             processor = HSVProcessor()
-            hsv_image = processor.process(bgr_image)
+            hsv_image = processor.process(rgb_image)
 
         HSV conversion with color range filtering:
             processor = HSVProcessor(
@@ -27,7 +27,7 @@ class HSVProcessor(AbstractProcessor):
                 lower_sat=50, upper_sat=255,
                 lower_val=50, upper_val=255
             )
-            mask = processor.process(bgr_image)  # Returns binary mask
+            mask = processor.process(rgb_image)  # Returns binary mask
 
         Red color detection (red wraps around 0-10 and 170-180):
             processor = HSVProcessor(
@@ -88,14 +88,14 @@ class HSVProcessor(AbstractProcessor):
         """Convert image to HSV and optionally apply color range mask.
 
         Args:
-            image: Input image in BGR format (standard OpenCV format).
+            image: Input image in RGB format.
 
         Returns:
             If apply_mask=False: HSV image (3-channel).
             If apply_mask=True: Binary mask of pixels within color range.
         """
-        # Convert BGR to HSV
-        hsv_image = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+        # Convert RGB to HSV
+        hsv_image = cv.cvtColor(image, cv.COLOR_RGB2HSV)
 
         if not self.apply_mask:
             return hsv_image
