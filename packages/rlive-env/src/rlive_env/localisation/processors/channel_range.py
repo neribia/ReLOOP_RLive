@@ -58,8 +58,8 @@ class ChannelRangeProcessor(AbstractProcessor):
             mask = processor.process(bgr_image)
 
     Supported color spaces (color_space parameter):
-        "bgr"    – no conversion; channels = B, G, R
         "rgb"    – channels = R, G, B
+        "bgr"    – channels = B, G, R
         "hsv"    – channels = H (0–180), S (0–255), V (0–255)
         "lab"    – channels = L, A, B
         "ycrcb"  – channels = Y, Cr, Cb
@@ -74,7 +74,7 @@ class ChannelRangeProcessor(AbstractProcessor):
 
     def __init__(
         self,
-        color_space: str = "hsv",
+        color_space: str = "rgb",
         channel: int = 2,
         lower: int = 0,
         upper: int = 255,
