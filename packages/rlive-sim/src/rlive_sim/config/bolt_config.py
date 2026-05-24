@@ -9,6 +9,8 @@ Reference: Sphero Bolt Plus Technical Specifications
 import os
 from dataclasses import dataclass
 
+
+
 # ============================================================================
 # PHYSICAL DIMENSIONS
 # ============================================================================
@@ -90,11 +92,25 @@ Friction coefficient between Bolt and surface.
 default: 0.6
 """
 
-RESTITUTION_COEFFICIENT: float = float(os.getenv("RLIVE_SIM_BOLT_RESTITUTION_COEFFICIENT", "0.15"))
+STATIC_FRICTION: float = float(os.getenv("RLIVE_SIM_BOLT_STATIC_FRICTION", 1.0))
+"""
+Static friction coefficient (resistance to starting motion).
+
+default: 0.8
+"""
+
+DYNAMIC_FRICTION: float = float(os.getenv("RLIVE_SIM_BOLT_DYNAMIC_FRICTION", 0.1))
+"""
+Dynamic friction coefficient (resistance while moving).
+
+default: 0.6
+"""
+
+RESTITUTION_COEFFICIENT: float = float(os.getenv("RLIVE_SIM_BOLT_RESTITUTION_COEFFICIENT", "0.0"))
 """
 Coefficient of restitution (elasticity) on collision.
 
-default: 0.15
+default: 0.0
 """
 
 # ============================================================================
@@ -220,6 +236,8 @@ class BoltDefaults:
     # Rotational dynamics
     moment_of_inertia: float = MOMENT_OF_INERTIA
     friction_coefficient: float = FRICTION_COEFFICIENT
+    static_friction: float = STATIC_FRICTION
+    dynamic_friction: float = DYNAMIC_FRICTION
     restitution_coefficient: float = RESTITUTION_COEFFICIENT
     
     # Power & battery
@@ -294,4 +312,3 @@ __all__ = [
     "BoltDefaults",
     "BOLT_DEFAULTS",
 ]
-

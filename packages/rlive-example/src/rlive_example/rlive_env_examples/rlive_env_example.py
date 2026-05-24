@@ -31,7 +31,9 @@ from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-# Number of episodes to run
+# Number of episodes to run:
+#   episode 0 – random goal
+#   episode 1 – manually fixed goal at (320, 240)
 NUM_EPISODES = 2
 
 def main() -> None:
@@ -40,10 +42,10 @@ def main() -> None:
     # Configure world settings
     world_config = WorldConfig(
         camera_type=CameraType.WEBCAM,
-        camera_id=1,
+        camera_id=2,
         camera_resolution=CameraResolution.RES_640x480,  # Can use custom tuple or CameraResolution.RES_640x480
         bolt_name="BP-D217",
-        bolt_use_dummy=False
+        # bolt_use_dummy=False
     )
 
     env = RemoteWorldEnv(
@@ -52,10 +54,17 @@ def main() -> None:
         render_mode="opencv",
         action_space_type=ActionSpaceType.CARTESIAN,
         world_config=world_config,
+        decay=0,
     )
 
     for episode in range(NUM_EPISODES):
-        obs, info = env.reset()
+        # Episode 0: random goal (default behaviour)
+        # Episode 1: manually fix the goal at pixel position (x=320, y=240)
+        reset_options = None
+        if episode == 2:
+            reset_options = {"goal_position": (320, 240)}
+
+        obs, info = env.reset(options=reset_options)
         env.render()
         logger.info(f"Episode {episode + 1}/{NUM_EPISODES} — reset -> obs={obs.shape}, info={info}")
 
@@ -63,7 +72,7 @@ def main() -> None:
         while not done:
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
-            env.render()
+            env.render(visualize=True)
             done = terminated or truncated
             logger.info(f"action={action} reward={reward:.3f} term={terminated} trunc={truncated} info={info}")
 

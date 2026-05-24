@@ -62,7 +62,7 @@ class ImagePipeline:
         """Execute all pipeline steps on the image.
 
         Args:
-            image: Input image (BGR typically).
+            image: Input image (RGB).
             debug: If True, store intermediate results for debugging.
 
         Returns:
@@ -97,4 +97,25 @@ class ImagePipeline:
             List of images at each pipeline stage (if debug=True was used).
         """
         return self.intermediate_results
+
+    def get_stage_names(self) -> list[str]:
+        """Return human-readable names for each pipeline stage.
+
+        Matches the order of get_intermediate_results():
+            index 0  → "Input"  (original image)
+            index 1+ → each step's .name property, or the function's __name__
+                        for plain callables / lambdas.
+
+        Returns:
+            List of stage name strings.
+        """
+        names = ["Input"]
+        for step in self.steps:
+            if hasattr(step, "name"):
+                names.append(step.name)
+            elif hasattr(step, "__name__"):
+                names.append(step.__name__)
+            else:
+                names.append(type(step).__name__)
+        return names
 

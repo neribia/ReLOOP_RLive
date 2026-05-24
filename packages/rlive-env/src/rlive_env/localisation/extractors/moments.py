@@ -163,9 +163,9 @@ class MomentsExtractor(AbstractBallExtractor):
             # Find contours
             contours, _ = cv.findContours(image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
 
-            # Convert to BGR
+            # Convert to RGB
             if len(image.shape) == 2:
-                debug_img = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+                debug_img = cv.cvtColor(image, cv.COLOR_GRAY2RGB)
             else:
                 debug_img = image.copy()
 
@@ -180,7 +180,7 @@ class MomentsExtractor(AbstractBallExtractor):
             if not valid_contours:
                 return debug_img
 
-            # Draw all valid contours (area-filtered) in gray
+            # Draw all valid contours (area-filtered) in grey
             cv.drawContours(debug_img, valid_contours, -1, (128, 128, 128), 1)
 
             # Filter by circularity
@@ -195,25 +195,25 @@ class MomentsExtractor(AbstractBallExtractor):
             if not circular_contours:
                 return debug_img
 
-            # Highlight best contour by circularity
+            # Highlight best contour by circularity in red
             best_contour = max(
                 circular_contours,
                 key=lambda c: self._calculate_circularity(c, cv.contourArea(c))
             )
-            cv.drawContours(debug_img, [best_contour], 0, (0, 0, 255), 3)
+            cv.drawContours(debug_img, [best_contour], 0, (255, 0, 0), 3)
 
             # Draw centroid and moment info
             M = cv.moments(best_contour)
             if M["m00"] != 0:
                 cx = int(M["m10"] / M["m00"])
                 cy = int(M["m01"] / M["m00"])
-                cv.circle(debug_img, (cx, cy), 5, (255, 0, 0), -1)
+                cv.circle(debug_img, (cx, cy), 5, (0, 0, 255), -1)
 
                 area = cv.contourArea(best_contour)
                 circularity = self._calculate_circularity(best_contour, area)
                 text = f"Circ: {circularity:.2f}"
                 cv.putText(debug_img, text, (cx + 10, cy - 10),
-                          cv.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                          cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
             return debug_img
 

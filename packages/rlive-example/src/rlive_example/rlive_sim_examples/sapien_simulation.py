@@ -8,7 +8,7 @@ It shows how to use 3 different robot loading options:
 
 Run with different ROBOT_TYPE values to test each option.
 """
-import cv2
+import cv2 as cv
 
 from rlive_common import ActionSpaceType
 from rlive_sim import (
@@ -20,26 +20,20 @@ from rlive_sim import (
     RenderBackend,
     IntegratedBackend,
     SimulationEnv,
+    PhysicsState,
 )
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
 
-# Number of episodes to run
-NUM_EPISODES = 1
+# Number of episodes to run:
+#   episode 0 – random spawn, random goal
+#   episode 1 – fixed initial_state + fixed goal position
+NUM_EPISODES = 2
 
-# Robot loading option: "rigid_body", "urdf", or "glb"
-ROBOT_TYPE = "glb"
-
-# Optional: Path to custom URDF or GLB file
-ROBOT_PATH = None  # e.g., "path/to/my_robot.urdf" or "path/to/my_robot.glb"
 
 def main() -> None:
     """Run SAPIEN simulation with configurable robot loading."""
-    
-    logger.info(f"Starting simulation with robot_type='{ROBOT_TYPE}'")
-    if ROBOT_PATH:
-        logger.info(f"Using custom robot path: {ROBOT_PATH}")
 
     # Configure integrated backend with robot loading option
     integrated_config = IntegratedConfig(
@@ -47,16 +41,12 @@ def main() -> None:
         width=640,
         height=480,
         extra={
-            # Robot loading configuration
-            "robot_type": ROBOT_TYPE,
-            "robot_path": ROBOT_PATH,
-
-            # Controller configuration
-            "max_speed_ms": 0.5,
-            "acceleration_time": 0.3,
-            "deceleration_time": 0.2,
-            "controller_kp": 0.1,
-            "controller_kd": 0.1,
+            # # Controller configuration
+            # "max_speed_ms": 0.5,
+            # "acceleration_time": 0.3,
+            # "deceleration_time": 0.2,
+            # "controller_kp": 0.1,
+            # "controller_kd": 0.1,
             
             # Viewer configuration
             "use_viewer": True,
@@ -77,10 +67,23 @@ def main() -> None:
         action_space_type=ActionSpaceType.CARTESIAN,
     )
 
-    logger.info(f"Simulation using SAPIEN with robot_type={ROBOT_TYPE}")
-
     for episode in range(NUM_EPISODES):
-        obs, info = env.reset()
+        # --- Episode 0: random spawn, random goal ---
+        # --- Episode 1: fixed initial state + manually fixed goal at (320, 240) ---
+        reset_options = None
+        if episode == 1:
+            reset_options = {
+                "initial_state": PhysicsState(
+                    position=[0.0, 0.0, 0.04],   # x, y, z in metres
+                    velocity=[0.0, 0.0, 0.0],
+                    rotation=[0.0, 0.0, 90.0],   # roll, pitch, yaw in degrees
+                    angular_velocity=[0.0, 0.0, 0.0],
+                ),
+                # Manually fix the goal at pixel position (x=320, y=240)
+                "goal_position": (320, 240),
+            }
+
+        obs, info = env.reset(options=reset_options)
         env.render()
         logger.info(f"Episode {episode + 1}/{NUM_EPISODES} — reset -> obs={obs.shape}, info={info}")
 
@@ -90,7 +93,7 @@ def main() -> None:
             action = env.action_space.sample()
             obs, reward, terminated, truncated, info = env.step(action)
             env.render(visualize=True)
-            cv2.waitKey(500) # Wait 1000ms between frames
+            cv.waitKey(500) # Wait 1000ms between frames
             done = terminated or truncated
             step_count += 1
             logger.info(f"Step {step_count}: action={action} reward={reward:.3f} term={terminated} trunc={truncated}")

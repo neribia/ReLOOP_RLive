@@ -12,7 +12,8 @@ from rlive_sim.config.model_config import (
 )
 from rlive_sim.config.config import RESOURCES_DIR
 from rlive_sim.config.sapien_config import SAPIEN_DEFAULTS
-from rlive_sim.config.bolt_config import BOLT_DEFAULTS
+from rlive_sim.config.bolt_config import BOLT_DEFAULTS, BoltDefaults
+from rlive_sim.config.eurobox_config import EUROBOX_DEFAULTS, EuroBoxDefaults
 
 __all__ = [
     "RESOURCES_DIR",
@@ -26,4 +27,7 @@ __all__ = [
     "config",
     "SAPIEN_DEFAULTS",
     "BOLT_DEFAULTS",
+    "BoltDefaults",
+    "EUROBOX_DEFAULTS",
+    "EuroBoxDefaults",
 ]

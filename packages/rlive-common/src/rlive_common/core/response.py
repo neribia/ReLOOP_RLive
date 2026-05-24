@@ -6,7 +6,7 @@ import numpy as np
 import cv2 as cv
 from email.message import Message
 
-from rlive_common.core.types import ImageArray
+from rlive_common.core.custom_types import ImageArray
 
 
 class AttachHardwareResponse(BaseModel):

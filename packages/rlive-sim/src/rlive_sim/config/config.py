@@ -45,6 +45,7 @@ Contains subdirectories:
 """
 
 # --- Environment config ------------------------------------------------------
+
 MAX_STEPS_PER_EPISODE: int = int(os.getenv("MAX_STEPS_PER_EPISODE", "100"))
 """
 Number of max steps per episode. After this number of steps, the episode will be terminated.
@@ -52,7 +53,33 @@ Number of max steps per episode. After this number of steps, the episode will be
 default: 100
 """
 
+# --- Sphero Bolt+ config -----------------------------------------------------
+
+SPHEROBOLTPLUS_SPEED: int = int(os.getenv("SPHEROBOLTPLUS_SPEED", "50"))
+"""
+Speed of the Sphero Bolt+ robot. (-255, 255)
+
+default: 50
+"""
+
+SPHEROBOLTPLUS_DURATION: float = float(os.getenv("SPHEROBOLTPLUS_DURATION", "1"))
+"""
+Moving duration (in s) of the Sphero Bolt+ robot.
+
+default: 1
+"""
+
+SPHEROBOLTPLUS_SPEED_FACTOR: float = float(os.getenv("SPHEROBOLTPLUS_SPEED_FACTOR", "0.25"))
+"""
+Factor to reduce the max_speed for ActionSpaceType.CARTESIAN. 
+Default is set to 0.25 to reduce slip.
+Should be the same as from the rlive_env-package.
+
+default: 0.25
+"""
+
 # --- Reset settings -----------------------------------------------------------
+
 NUMBER_RESET_ACTIONS: int = int(os.getenv("DECAY_STEPS", "5"))
 """
 Number of steps to decouple the episodes in the reset phase.

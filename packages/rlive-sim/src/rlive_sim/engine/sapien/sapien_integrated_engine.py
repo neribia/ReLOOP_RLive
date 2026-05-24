@@ -20,11 +20,15 @@ from rlive_sim.engine.core.base_integrated_engine import BaseIntegratedEngine
 from rlive_sim.engine.core.base_physics_engine import PhysicsState
 from rlive_sim.engine.core.registry import register_integrated_backend
 from rlive_sim.config import IntegratedBackend, SAPIEN_DEFAULTS
+from rlive_sim.config.bolt_config import BOLT_DEFAULTS, BoltDefaults
+from rlive_sim.config.eurobox_config import EUROBOX_DEFAULTS, EuroBoxDefaults
 from rlive_sim.utils.math_utils import euler_to_quat, deg_to_rad
-
-
-from rlive_sim.engine.sapien.sphero_controller import SpheroController
+from rlive_sim.engine.sapien.sphero_controller import SpheroController, Phase
 from rlive_sim.engine.sapien.world_loading import WorldLoaderFactory, WorldLoaderType
+from rlive_common.utils import get_logger
+
+logger = get_logger(__name__)
+
 
 @register_integrated_backend(IntegratedBackend.SAPIEN)
 class SapienIntegratedEngine(BaseIntegratedEngine):
@@ -42,18 +46,15 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         width: int = 640,
         height: int = 480,
         channels: int = 3,
-        scene_path: str | None = None,
         robot_type: str = SAPIEN_DEFAULTS.robot_type, # Keeps name for config compatibility, but maps to world_type
         robot_path: str | None = SAPIEN_DEFAULTS.robot_path,
         max_speed_ms: float = SAPIEN_DEFAULTS.max_speed_ms,
-        acceleration_time: float = SAPIEN_DEFAULTS.acceleration_time,
-        deceleration_time: float = SAPIEN_DEFAULTS.deceleration_time,
         controller_kp: float = SAPIEN_DEFAULTS.controller_kp,
         controller_kd: float = SAPIEN_DEFAULTS.controller_kd,
         robot_radius: float = SAPIEN_DEFAULTS.robot_radius, # FIXME: Use Bolt_Default
         robot_mass: float = SAPIEN_DEFAULTS.robot_mass,  # FIXME: Use Bolt_Default
-        friction: float = SAPIEN_DEFAULTS.friction, # FIXME: Use Bolt_Default
-        restitution: float = SAPIEN_DEFAULTS.restitution, # FIXME: Use Bolt_Default
+        bolt_config: BoltDefaults = BOLT_DEFAULTS,
+        eurobox_config: EuroBoxDefaults = EUROBOX_DEFAULTS,
         sim_dt: float = SAPIEN_DEFAULTS.sim_dt,
         *args: Any,
         **kwargs: Any,
@@ -65,18 +66,15 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             width: Render width in pixels
             height: Render height in pixels
             channels: Number of render channels
-            scene_path: Path to scene configuration
             robot_type: World loading type ('sapien', 'urdf', or 'glb') - formerly robot_type
             robot_path: Optional custom path to robot/world file
             max_speed_ms: Maximum speed in m/s
-            acceleration_time: Acceleration time in seconds
-            deceleration_time: Deceleration time in seconds
             controller_kp: Controller proportional gain
             controller_kd: Controller derivative gain
             robot_radius: Robot radius in meters
             robot_mass: Robot mass in kg
-            friction: Friction coefficient
-            restitution: Restitution coefficient
+            bolt_config: Bolt physics configuration (friction, restitution, etc.)
+            eurobox_config: EuroBox physics configuration (friction, restitution, etc.)
             sim_dt: Physics timestep in seconds
             *args: Unsupported positional arguments
             **kwargs: Unsupported keyword arguments
@@ -116,14 +114,12 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         self._robot_type = robot_type
         self._robot_path = robot_path
         self._max_speed_ms = max_speed_ms
-        self._acceleration_time = acceleration_time
-        self._deceleration_time = deceleration_time
         self._controller_kp = controller_kp
         self._controller_kd = controller_kd
         self._robot_radius = robot_radius
         self._robot_mass = robot_mass
-        self._friction = friction
-        self._restitution = restitution
+        self._bolt_config = bolt_config
+        self._eurobox_config = eurobox_config
 
         self.sim_dt = sim_dt
         self.render_dt = 1.0 / 60.0
@@ -146,8 +142,6 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         self.shell_link = None
         self.sled_link = None
 
-
-
         # Setup Viewer
         self._setup_viewer()
         
@@ -159,8 +153,7 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
         # Setup Controller
         self.controller = SpheroController(
             max_speed_ms=self._max_speed_ms,
-            acceleration_time=self._acceleration_time,
-            deceleration_time=self._deceleration_time,
+            # max_accel_ms2=self._max_accel_ms2, # TODO: Setup
             kp=self._controller_kp,
             kd=self._controller_kd,
             mass=self._robot_mass
@@ -185,8 +178,8 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             'robot_path': self._robot_path,
             'robot_radius': self._robot_radius,
             'robot_mass': self._robot_mass,
-            'friction': self._friction,
-            'restitution': self._restitution,
+            'bolt_config': self._bolt_config,
+            'eurobox_config': self._eurobox_config,
         }
 
         # Setup Camera
@@ -269,20 +262,24 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
             y = np.random.uniform(min_y, max_y)
             z = self._robot_radius + 0.005 # Ensure robot rests gently on the ground
             
-            # Initial yaw or rotation
-            quat = euler_to_quat(0.0, 0.0, float(np.random.uniform(-180, 180)), degrees=True)
+            # Random initial yaw in degrees
+            yaw_deg = float(np.random.uniform(-180, 180))
 
             initial_state = PhysicsState(
                 position=[float(x), float(y), float(z)],
                 velocity=[0.0, 0.0, 0.0],
-                rotation=quat.tolist(),
+                rotation=[0.0, 0.0, yaw_deg],  # Euler degrees [roll, pitch, yaw]
                 angular_velocity=[0.0, 0.0, 0.0]
             )
 
         self.robot.reset(initial_state)
+        self.robot.update(initial_state.rotation[2])
 
-        self.controller.reset()
-        
+        # Sync controller heading to the robot's initial yaw so the first
+        # action uses the correct reference direction
+        self.controller._reset()
+        self.controller._heading_deg = initial_state.rotation[2]  # yaw in degrees
+
         for _ in range(10):
             self.scene.step()
             
@@ -295,23 +292,26 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
 
     def update_and_render(self, action: np.ndarray | list[float], dt: float | None = None) -> tuple[PhysicsState, np.ndarray]:
         """
-        Action: [heading_deg, speed_0_255, duration_sec]
+        Action: [heading_delta_cw, speed_0_255, duration_sec]
+
+        ``heading_delta_cw`` is a **relative** CW offset matching the Bolt API
+        (same convention as ``SpheroBoltPlus.move()``).  It is converted to an
+        absolute CCW heading (right-hand +Z, Y-up world) before being forwarded
+        to the controller.
         """
-        heading_deg, speed_255, duration_s = np.asarray(action, dtype=np.float32)
+        heading_delta_cw, speed_255, duration_s = np.asarray(action, dtype=np.float32)
 
-        n_steps = int(duration_s / self.sim_dt)
-        if n_steps < 1: 
-            n_steps = 1
-        
-        # The commanded heading is relative to the current heading
-        target_heading = self.controller.heading_deg + heading_deg
+        # Convert relative CW Bolt delta → absolute CCW world heading [0, 360)
+        new_heading_ccw = (self.controller._heading_deg - float(heading_delta_cw)) % 360.0
 
-        self.controller.command(target_heading, speed_255, duration_s)
-        
+        # Set new commands (controller expects absolute CCW heading)
+        self.controller.command(new_heading_ccw, speed_255, duration_s)
+
         # Get physics component (for actors, this is PhysxRigidDynamicComponent)
         physics_comp = self.shell_link.find_component_by_type(sapien.physx.PhysxRigidDynamicComponent) if hasattr(self.shell_link, 'find_component_by_type') else None
 
-        for i in range(n_steps):
+        n_steps = 0
+        while self.controller.phase !=  Phase.IDLE:
             # Get linear velocity
             if physics_comp:
                 linear_vel = physics_comp.get_linear_velocity()
@@ -319,22 +319,35 @@ class SapienIntegratedEngine(BaseIntegratedEngine):
                 linear_vel = self.shell_link.get_linear_velocity()
             v_linear = linear_vel[:2]
 
-            fx, fy = self.controller.get_forces(self.sim_dt, v_linear[0], v_linear[1])
-            
+            #fx, fy = self.controller.get_forces(self.sim_dt, v_linear[0], v_linear[1])
+            vx, vy = self.controller.get_velocity(self.sim_dt, v_linear[0], v_linear[1])
+
             # Apply force
-            self.robot.apply_force(fx, fy, self.sim_dt)
+            #self.robot.apply_force(fx, fy, self.sim_dt)
+            self.robot.set_root_linear_velocity(vx=vx, vy=vy, vz=0)
 
             self.scene.step()
             
             # Update internal robot representation using the current commanded heading
             heading_deg_current = self.controller.heading_deg
-            self.robot.update(self.sim_dt, linear_vel, heading_deg_current)
+            self.robot.update(heading_deg_current)
 
             # Update viewer if active
             # Only render every N steps to maintain performance
-            if self.viewer and not self.viewer.closed and (i % self.render_stride == 0):
+            if self.viewer and not self.viewer.closed and (n_steps % self.render_stride == 0):
                 self.scene.update_render()
                 self.viewer.render()
+            n_steps += 1
+
+            if n_steps >= 2 * int(duration_s / self.sim_dt):
+                logger.warning(f"Reached maximum number of steps {n_steps}")
+                break
+
+
+        # Explicitly zero velocity when action is complete so physics doesn't drift
+        self.robot.set_root_linear_velocity(vx=0, vy=0, vz=0)
+        self.robot.set_root_angular_velocity(wx=0, wy=0, wz=0)
+        self.scene.step()
 
         return self._get_state(), self._render_frame()
 

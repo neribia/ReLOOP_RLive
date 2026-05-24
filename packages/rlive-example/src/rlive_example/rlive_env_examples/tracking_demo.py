@@ -37,6 +37,8 @@ from rlive_example.config import RESOURCES_DIR
 from rlive_env.localisation import BallLocalisator, BallLocation
 from rlive_env.localisation.processors import *
 from rlive_env.localisation.extractors import *
+from rlive_common.utils.visualisation_utils import annotate_image, compute_goal_radius
+from rlive_common.config import config as common_cfg
 
 
 class KeyHandler:
@@ -166,7 +168,7 @@ class VideoSource:
         self.width = width
         self.height = height
         self._cap: cv.VideoCapture | None = None
-        self._is_file = isinstance(source, str)
+        self._is_file = isinstance(source, (str, Path))
         # Target frames per second to enforce on the consumer side.
         # We keep timing state here so the VideoSource can control frame pacing
         # uniformly for any consumer of frames.
@@ -182,11 +184,12 @@ class VideoSource:
         Raises:
             RuntimeError: If the video source cannot be opened.
         """
-        if isinstance(self.source, str):
-            # Video file
-            if not Path(self.source).exists():
+        if isinstance(self.source, (str, Path)):
+            # Video file — normalise to string so OpenCV can open it
+            path = Path(self.source)
+            if not path.exists():
                 raise RuntimeError(f"Video file not found: {self.source}")
-            self._cap = cv.VideoCapture(self.source)
+            self._cap = cv.VideoCapture(str(path))
         else:
             # Webcam
             self._cap = cv.VideoCapture(self.source, cv.CAP_DSHOW)
@@ -257,7 +260,7 @@ class TrackingDemo:
         width: int,
         height: int,
         target_fps: int,
-        goal_radius: int = 50,
+        goal_radius_factor: float = common_cfg.GOAL_RADIUS_FACTOR,
         show_debug_on_start: bool = True,
         custom_pipeline: ImagePipeline | None = None,
         custom_extractor = None,
@@ -272,7 +275,9 @@ class TrackingDemo:
             width: Frame width
             height: Frame height
             target_fps: Target frames per second
-            goal_radius: Radius around goal for success detection
+            goal_radius_factor: Goal radius as a fraction of the image diagonal
+                (√(w²+h²)).  Defaults to ``common_cfg.GOAL_RADIUS_FACTOR``
+                (0.0625), which yields 50 px on a 640×480 frame.
             show_debug_on_start: Show debug view on startup
             custom_pipeline: Optional custom ImagePipeline to use
             custom_extractor: Optional custom extractor instance to use
@@ -281,7 +286,7 @@ class TrackingDemo:
             skip_frames: Number of frames to skip between detections (0 = no skip, process every frame)
         """
         # Initialize video source
-        self.video_source = VideoSource(str(source), width, height, target_fps=target_fps)
+        self.video_source = VideoSource(source, width, height, target_fps=target_fps)
         self.localiser = BallLocalisator()
 
         # Use custom pipeline if provided
@@ -293,7 +298,9 @@ class TrackingDemo:
             self.localiser.extractor = custom_extractor
 
         self.goal_position: tuple[int, int] | None = None
-        self.goal_radius = goal_radius
+        # Radius scales with the actual frame diagonal so it stays proportional
+        # regardless of the capture resolution.
+        self.goal_radius = compute_goal_radius((height, width), goal_radius_factor)
         self.mouse_position = (0, 0)
 
         self.frame_count = 0
@@ -342,7 +349,7 @@ class TrackingDemo:
         annotated_frame = frame.copy()
         annotated_frame = self._draw_goal(annotated_frame, self.goal_position, self.goal_radius)
 
-        annotated = self.localiser.annotate_image(
+        annotated = annotate_image(
             annotated_frame,
             ball_location=ball,
             goal_position=self.goal_position,
@@ -353,6 +360,23 @@ class TrackingDemo:
         info_lines = [
             f"Frame: {self.frame_count}",
             f"Ball: {ball.as_tuple() if ball else 'Not detected'}",
+        ]
+
+        # Show circularity and area of the selected contour
+        if hasattr(self.localiser.extractor, "last_circularity"):
+            c_val = self.localiser.extractor.last_circularity
+            min_c = getattr(self.localiser.extractor, "min_circularity", 0.0)
+            a_val = getattr(self.localiser.extractor, "last_area", None)
+            if c_val is not None:
+                info_lines.append(f"Circularity C: {c_val:.3f}  (min={min_c})")
+            else:
+                info_lines.append(f"Circularity C: --  (min={min_c})")
+            if a_val is not None:
+                info_lines.append(f"Area A: {int(a_val)} px²")
+            else:
+                info_lines.append("Area A: --")
+
+        info_lines += [
             f"Goal: {self.goal_position if self.goal_position else 'Click to set'}",
         ]
 
@@ -591,13 +615,17 @@ def main():
 
     # ========== CONFIGURATION ==========
     # Video source settings
-    VIDEO_SOURCE = RESOURCES_DIR / "demo_video.mp4"  # Use 0 for webcam, or path to video file
+    VIDEO_SOURCE = 2  # webcam index — change to a file path string to use a video file
+    #VIDEO_SOURCE = str(RESOURCES_DIR / "demo.mp4")  # ← use this for a video file
     FRAME_WIDTH = 640 # Frame width for webcam
     FRAME_HEIGHT = 480 # Frame height for webcam
     TARGET_FPS = 30  # Target frames per second
 
     # Goal settings
-    GOAL_RADIUS = 50  # Radius around goal for success detection
+    # GOAL_RADIUS = 50  # DEPRECATED – use GOAL_RADIUS_FACTOR instead
+    # Factor relative to the image diagonal (√(w²+h²)).
+    # 0.0625 → 50 px on 640×480 (diagonal = 800 px).
+    GOAL_RADIUS_FACTOR = common_cfg.GOAL_RADIUS_FACTOR
 
     # Debug settings
     SHOW_DEBUG_ON_START = True  # Show debug view on startup
@@ -611,20 +639,25 @@ def main():
                       # Example: 5 will skip 5 frames, process the 6th frame, then skip 5 more, etc.
 
     # Custom pipeline processors
-    custom_pipeline = ImagePipeline([
-        HSVProcessor(
-            lower_hue=90, upper_hue=130,  # blue hue range
-            lower_sat=50, upper_sat=255,  # require some color (not gray)
-            lower_val=50, upper_val=255,  # require some brightness (not black)
-            apply_mask=True,
-        ),
-        DilationProcessor(kernel_size=(7, 7), iterations=3),
-    ])
+    # Set to None to use the default pipeline from BallLocalisator
+    custom_pipeline = None
+    # custom_pipeline = ImagePipeline([
+    #     GrayscaleProcessor(),
+    #     ThresholdProcessor(threshold_value=55, max_value=255),
+    #     InvertProcessor(),
+    #     DilationProcessor(kernel_size=(7, 7), iterations=2),
+    # ])
+    # custom_pipeline = ImagePipeline([
+    #     HSVProcessor(
+    #         apply_mask=True,
+    #     ),
+    #     DilationProcessor(kernel_size=(7, 7), iterations=3),
+    # ])
+    
 
-    # Custom extractor configuration - loads defaults from config module
-    # Override specific parameters as needed:
-    custom_extractor = ContourExtractor(min_contour_area=50)
-    # Or use defaults:
+    # Custom extractor configuration
+    # Set to None to use the default extractor from BallLocalisator
+    custom_extractor = None
     # custom_extractor = ContourExtractor()
     # ====================================
 
@@ -634,7 +667,7 @@ def main():
         width=FRAME_WIDTH,
         height=FRAME_HEIGHT,
         target_fps=TARGET_FPS,
-        goal_radius=GOAL_RADIUS,
+        goal_radius_factor=GOAL_RADIUS_FACTOR,
         show_debug_on_start=SHOW_DEBUG_ON_START,
         custom_pipeline=custom_pipeline,
         custom_extractor=custom_extractor,

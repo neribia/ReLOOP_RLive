@@ -10,7 +10,8 @@ except ImportError:
     sapien = None
 
 from rlive_sim.engine.core.base_physics_engine import PhysicsState
-from rlive_sim.utils.math_utils import euler_to_quat
+from rlive_sim.utils.math_utils import euler_to_quat, quat_to_euler
+from rlive_sim.config.bolt_config import BOLT_DEFAULTS, BoltDefaults
 
 
 class SapianRobot(ABC):
@@ -38,7 +39,7 @@ class SapianRobot(ABC):
         pass
 
     @abstractmethod
-    def update(self, dt: float, linear_vel: np.ndarray, heading_deg: float = 0.0) -> None:
+    def update(self, heading_deg: float = 0.0) -> None:
         """Update any kinematic or visual mechanisms (called each sub-step)."""
         pass
 
@@ -63,7 +64,7 @@ class SapianRobot(ABC):
         return PhysicsState(
             position=pose.p.tolist(),
             velocity=linear_vel.tolist(),
-            rotation=pose.q.tolist(),
+            rotation=quat_to_euler(pose.q, degrees=True).tolist(),  # Convert SAPIEN quat → Euler deg
             angular_velocity=angular_vel.tolist()
         )
 
@@ -76,15 +77,14 @@ class SimpleSphereRobot(SapianRobot):
         shell_link_builder = builder.create_link_builder()
         shell_link_builder.set_name("shell")
         
-        shell_radius = self.config.get('robot_radius', 0.0365)
-        mass_shell = self.config.get('robot_mass', 0.12)
-        friction = self.config.get('friction', 0.8)
-        restitution = self.config.get('restitution', 0.1)
-        
+        bolt_cfg: BoltDefaults = self.config.get('bolt_config', BOLT_DEFAULTS)
+        shell_radius = self.config.get('robot_radius', bolt_cfg.radius_m)
+        mass_shell = self.config.get('robot_mass', bolt_cfg.mass_kg)
+
         shell_mat = self.scene.create_physical_material(
-            static_friction=friction,
-            dynamic_friction=friction,
-            restitution=restitution
+            static_friction=bolt_cfg.static_friction,
+            dynamic_friction=bolt_cfg.dynamic_friction,
+            restitution=bolt_cfg.restitution_coefficient,
         )
         
         shell_link_builder.add_sphere_collision(radius=shell_radius, material=shell_mat)
@@ -117,7 +117,7 @@ class SimpleSphereRobot(SapianRobot):
     def apply_force(self, fx: float, fy: float, dt: float) -> None:
         self.shell_link.add_force_at_point([fx, fy, 0], self.shell_link.pose.p)
 
-    def update(self, dt: float, linear_vel: np.ndarray, heading_deg: float = 0.0) -> None:
+    def update(self, heading_deg: float = 0.0) -> None:
         pass
 
 
@@ -142,29 +142,36 @@ class KinematicSpheroRobot(SapianRobot):
         
         shell_link_builder.add_visual_from_file(self.shell_path)
             
-        shell_radius = self.config.get('robot_radius', 0.0365)
-        mass_shell = self.config.get('robot_mass', 0.12)
-        friction = self.config.get('friction', 0.8)
-        restitution = self.config.get('restitution', 0.1)
-        
+        bolt_cfg: BoltDefaults = self.config.get('bolt_config', BOLT_DEFAULTS)
+        shell_radius = self.config.get('robot_radius', bolt_cfg.radius_m)
+        mass_robot = self.config.get('robot_mass', bolt_cfg.mass_kg)
+        mass_shell = mass_robot * 0.1
+
         shell_mat = self.scene.create_physical_material(
-            static_friction=friction,
-            dynamic_friction=friction,
-            restitution=restitution
+            static_friction=bolt_cfg.static_friction,
+            dynamic_friction=bolt_cfg.dynamic_friction,
+            restitution=bolt_cfg.restitution_coefficient,
         )
         
         shell_link_builder.add_sphere_collision(radius=shell_radius, material=shell_mat, density=100.0)
         
-        inertia_shell = (2/3) * mass_shell * (shell_radius**2)
+        inertia_shell = (2/5) * mass_robot * (shell_radius**2)
+        com_offset = sapien.Pose([0, 0, -shell_radius * 0.5])
         shell_link_builder.set_mass_and_inertia(
-            mass_shell,
-            sapien.Pose(),
+            mass_robot,
+            com_offset,
             [inertia_shell, inertia_shell, inertia_shell]
         )
         
         self.articulation = builder.build(fix_root_link=False)
         self.articulation.set_name("sphero_kinematic_shell")
         self.shell_link = self.articulation.get_links()[0]
+
+        linear_damping = self.config.get('linear_damping', 0.0)
+        angular_damping = self.config.get('angular_damping', 0.0)
+
+        self.shell_link.set_linear_damping(linear_damping)
+        self.shell_link.set_angular_damping(angular_damping)
         
         # 2. Build kinematic internal visual robot
         actor_builder = self.scene.create_actor_builder()
@@ -185,14 +192,40 @@ class KinematicSpheroRobot(SapianRobot):
         self.articulation.set_qvel(np.zeros(self.articulation.dof))
         
         if initial_state:
-            self.articulation.set_pose(sapien.Pose(initial_state.position, initial_state.rotation))
-            
+            # Convert Euler degrees → quaternion for SAPIEN Pose
+            q = euler_to_quat(*initial_state.rotation, degrees=True).reshape(4)
+            self.articulation.set_pose(sapien.Pose(initial_state.position, q))
+
         self._sync_internal_pose(0.0)
         
     def apply_force(self, fx: float, fy: float, dt: float) -> None:
-        self.shell_link.add_force_at_point([fx, fy, 0], self.shell_link.pose.p)
+        if self.shell_link is None:
+            return
 
-    def update(self, dt: float, linear_vel: np.ndarray, heading_deg: float = 0.0) -> None:
+        shell_radius = self.config.get('robot_radius', 0.0365)
+
+        # We want to apply the force at the inside bottom of the shell
+        # Transform the local bottom point (0, 0, -radius) to world coordinates
+        pose = self.shell_link.pose
+
+        # SAPIEN's add_force_at_point expects world coordinates for both the force and the point.
+        # So we take the ball's center and subtract the radius on the Z-axis.
+        contact_point = pose.p + np.array([0, 0, -shell_radius])
+
+        # Apply the linear force to the bottom, which creates natural rolling torque
+        self.shell_link.add_force_at_point([fx, fy, 0], contact_point)
+
+    def set_root_linear_velocity(self, vx: float, vy: float, vz: float) -> None:
+        if self.articulation is None:
+            return
+        self.articulation.set_root_linear_velocity(np.array([vx, vy, vz], dtype=np.float32))
+
+    def set_root_angular_velocity(self, wx: float, wy: float, wz: float) -> None:
+        if self.articulation is None:
+            return
+        self.articulation.set_root_angular_velocity(np.array([wx, wy, wz], dtype=np.float32))
+
+    def update(self, heading_deg: float = 0.0) -> None:
         self._sync_internal_pose(heading_deg)
         
     def _sync_internal_pose(self, heading_deg: float) -> None:

@@ -28,7 +28,9 @@ class PhysicsState(BaseModel):
     Attributes:
         position: 3D position vector [x, y, z] in world coordinates.
         velocity: 3D velocity vector [vx, vy, vz] in world coordinates.
-        rotation: Rotation as quaternion [w, x, y, z] or Euler angles [roll, pitch, yaw].
+        rotation: Euler angles in degrees [roll, pitch, yaw] using ZYX intrinsic
+            convention (roll=X, pitch=Y, yaw=Z). Range: roll/pitch ∈ [-180, 180],
+            yaw ∈ [-180, 180].
         angular_velocity: 3D angular velocity vector [wx, wy, wz].
         extra: Additional custom state data (e.g., joint angles, contact forces).
 
@@ -42,14 +44,14 @@ class PhysicsState(BaseModel):
             state = PhysicsState(
                 position=[1.0, 2.0, 0.0],
                 velocity=[0.5, 0.0, 0.0],
-                rotation=[1.0, 0.0, 0.0, 0.0],
+                rotation=[0.0, 0.0, 45.0],   # facing 45° (yaw)
                 angular_velocity=[0.0, 0.0, 0.1]
             )
 
         Converting state to numpy array for ML pipelines:
 
             state = PhysicsState(position=[1.0, 2.0, 0.0])
-            arr = state.to_array()  # Returns shape (13,)
+            arr = state.to_array()  # Returns shape (12,)
             restored = PhysicsState.from_array(arr)
     """
 
@@ -57,7 +59,7 @@ class PhysicsState(BaseModel):
 
     position: list[float] = [0.0, 0.0, 0.0]
     velocity: list[float] = [0.0, 0.0, 0.0]
-    rotation: list[float] = [1.0, 0.0, 0.0, 0.0]  # Quaternion [w, x, y, z]
+    rotation: list[float] = [0.0, 0.0, 0.0]  # Euler angles in degrees [roll, pitch, yaw]
     angular_velocity: list[float] = [0.0, 0.0, 0.0]
     extra: dict[str, Any] = {}
 
@@ -65,12 +67,12 @@ class PhysicsState(BaseModel):
     def to_array(self) -> np.ndarray:
         """Convert state to a flat numpy array.
 
-        Flattens position, velocity, rotation (quaternion), and angular_velocity
+        Flattens position, velocity, rotation (Euler degrees), and angular_velocity
         into a single 1D array for use with machine learning models.
 
         Returns:
-            np.ndarray: Flattened state vector with shape (13,) containing
-                [position (3), velocity (3), rotation (4), angular_velocity (3)].
+            np.ndarray: Flattened state vector with shape (12,) containing
+                [position (3), velocity (3), rotation (3), angular_velocity (3)].
 
         Examples:
             Converting state to array for neural network input:
@@ -78,12 +80,12 @@ class PhysicsState(BaseModel):
                 state = PhysicsState(
                     position=[1.0, 2.0, 0.0],
                     velocity=[0.5, 0.0, 0.0],
-                    rotation=[1.0, 0.0, 0.0, 0.0],
+                    rotation=[0.0, 0.0, 45.0],
                     angular_velocity=[0.0, 0.0, 0.1]
                 )
                 arr = state.to_array()
-                # arr.shape == (13,)
-                # arr == [1.0, 2.0, 0.0, 0.5, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1]
+                # arr.shape == (12,)
+                # arr == [1.0, 2.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 45.0, 0.0, 0.0, 0.1]
         """
         return np.concatenate([
             self.position,
@@ -101,22 +103,22 @@ class PhysicsState(BaseModel):
         used after neural network predictions or state serialization.
 
         Args:
-            arr: Flattened state vector of shape (13,) with elements
-                [position (3), velocity (3), rotation (4), angular_velocity (3)].
+            arr: Flattened state vector of shape (12,) with elements
+                [position (3), velocity (3), rotation (3), angular_velocity (3)].
 
         Returns:
             PhysicsState: Reconstructed state object with all components.
 
         Raises:
-            ValueError: If array length is not 13.
+            ValueError: If array length is not 12.
 
         Examples:
             Reconstructing state from neural network output:
 
-                output = model.predict(input_state)  # Shape (13,)
+                output = model.predict(input_state)  # Shape (12,)
                 state = PhysicsState.from_array(output)
-                print(state.position)  # [x, y, z]
-                print(state.velocity)  # [vx, vy, vz]
+                print(state.position)   # [x, y, z]
+                print(state.rotation)   # [roll_deg, pitch_deg, yaw_deg]
 
             Round-trip conversion (state -> array -> state):
 
@@ -125,13 +127,13 @@ class PhysicsState(BaseModel):
                 restored = PhysicsState.from_array(arr)
                 assert restored.position == original.position
         """
-        if len(arr) != 13:
-            raise ValueError(f"Expected array of length 13, got {len(arr)}")
+        if len(arr) != 12:
+            raise ValueError(f"Expected array of length 12, got {len(arr)}")
         return cls(
             position=arr[0:3].tolist(),
             velocity=arr[3:6].tolist(),
-            rotation=arr[6:10].tolist(),
-            angular_velocity=arr[10:13].tolist(),
+            rotation=arr[6:9].tolist(),
+            angular_velocity=arr[9:12].tolist(),
         )
 
 
@@ -214,7 +216,8 @@ class BasePhysicsEngine(ABC):
 
                 initial = PhysicsState(
                     position=[0.0, 1.0, 0.0],
-                    velocity=[0.0, 0.0, 0.0]
+                    velocity=[0.0, 0.0, 0.0],
+                    rotation=[0.0, 0.0, 90.0],  # 90° yaw
                 )
                 state = engine.reset(initial_state=initial)
         """

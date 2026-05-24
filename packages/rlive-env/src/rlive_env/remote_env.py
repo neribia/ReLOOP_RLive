@@ -1,12 +1,14 @@
 from typing import Any, Literal
 import math
+from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import cv2 as cv
 import gymnasium as gym
 
 from rlive_common.config import config as common_cfg
-from rlive_common.utils.visualisation_utils import annotate_image, draw_goal
+from rlive_common.utils.visualisation_utils import annotate_image, draw_goal, compute_goal_radius
 from rlive_env.config import config as cfg
 from rlive_env.world_client import WorldInterface
 from rlive_env.localisation import BallLocalisator
@@ -20,8 +22,7 @@ logger = get_logger(__name__)
 
 
 class RemoteWorldEnv(gym.Env):
-    """Gymnasium-compatible environment that communicates with a remote World server over HTTP.
-    """
+    """Gymnasium-compatible environment that communicates with a remote World server over HTTP."""
 
     metadata = {"render_modes": ["opencv"]}
 
@@ -31,6 +32,9 @@ class RemoteWorldEnv(gym.Env):
                  world_config: WorldConfig | None = None,
                  reward_mode: Literal["dense", "sparse"] | None = None,
                  action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
+                 decay: int = cfg.NUMBER_RESET_ACTIONS,
+                 fixed_goal: bool = False,
+                 save_failed_detections: bool = True,
                  options: dict | None = None,
                  **kwargs,
                  ) -> None:
@@ -44,6 +48,11 @@ class RemoteWorldEnv(gym.Env):
               None values use rlive-world defaults.
             - reward_mode (str): Reward calculation mode ('dense' or 'sparse'). Defaults to config value.
             - action_space_type (ActionSpaceType): Action space transformer type. Default: ActionSpaceType.CARTESIAN
+            - decay (int | None): Number of random scatter actions sent during reset to decouple episodes.
+              Set to 0 to skip scatter moves entirely. Defaults to cfg.NUMBER_RESET_ACTIONS (env var DECAY_STEPS).
+            - fixed_goal (bool): If True, the goal is always placed at the centre of the image (default: False).
+            - save_failed_detections (bool): If True, saves raw + debug images to disk whenever ball
+              detection fails (default: False).
             - base_url (Optional[str]): Base URL for remote environment.
             - timeout (Optional[float]): Time in seconds to wait for the server to send data
         """
@@ -55,6 +64,7 @@ class RemoteWorldEnv(gym.Env):
         self.reward_mode: Literal["dense", "sparse"] | str = reward_mode or cfg.REWARD_MODE
         self.iface: WorldInterface | None = None
         self.obs = None
+        self._raw_image = None
         self._hardware_attached = False
         self.world_config = world_config or WorldConfig()
 
@@ -64,7 +74,8 @@ class RemoteWorldEnv(gym.Env):
             self.action_transformer = get_action_transformer(
                 action_space_type,
                 speed=int(cfg.SPHEROBOLTPLUS_SPEED),
-                duration=float(cfg.SPHEROBOLTPLUS_DURATION)
+                duration=float(cfg.SPHEROBOLTPLUS_DURATION),
+                speed_factor=float(cfg.SPHEROBOLTPLUS_SPEED_FACTOR)
             )
 
             # Explicitly validate the returned object
@@ -77,16 +88,22 @@ class RemoteWorldEnv(gym.Env):
             raise ValueError(f"Invalid action_space_type '{action_space_type}': {e}") from e
 
         # Ball localisation
-        self.localiser = BallLocalisator()
+        self.localiser = BallLocalisator(debug=True)
         self.ball_location: BallLocation | None = None
 
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint8)
         self.action_space = self.action_transformer.get_action_space()
         # Goal variables
         self.goal_position = None
+        self._fixed_goal = fixed_goal
+
+        # Failed-detection saving
+        self._save_failed_detections = save_failed_detections
+        self._failed_detections_dir = Path("failed_detections")
+        self._failed_detection_count = 0
 
         # Decay for reset
-        self._decay = cfg.NUMBER_RESET_ACTIONS
+        self._decay = decay
 
         # Calculate max possible distance for reward normalization (diagonal of observation space)
         height, width, _ = self.observation_space.shape
@@ -160,6 +177,15 @@ class RemoteWorldEnv(gym.Env):
         self.iface = None
 
     def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[np.ndarray, dict]:
+        """Reset the environment to initial state.
+
+        Args:
+            seed: Optional random seed for reproducibility.
+            options: Optional reset options. Supported keys:
+                - ``"goal_position"`` (tuple[int, int] | None): Manually set the goal
+                  position as ``(x, y)`` pixel coordinates. If omitted or ``None``,
+                  a random goal is chosen.
+        """
         super().reset(seed=seed)
         logger.info("Resetting environment.")
         self._episode = 0
@@ -173,7 +199,17 @@ class RemoteWorldEnv(gym.Env):
             self._disconnect()
             raise RuntimeError(f"Server connection error: {e}")
 
-        self.set_random_goal()
+        # Set goal position – manual override, fixed centre, or random
+        manual_goal: tuple[int, int] | None = options.get("goal_position", None) if options is not None else None
+        if manual_goal is not None:
+            self.goal_position = (int(manual_goal[0]), int(manual_goal[1]))
+            logger.debug(f"Goal position manually set to: {self.goal_position}")
+        elif self._fixed_goal:
+            h, w = self.observation_space.shape[:2]
+            self.goal_position = (w // 2, h // 2)
+            logger.debug(f"Goal position fixed to centre: {self.goal_position}")
+        else:
+            self.set_random_goal()
 
         try:
             actions = []
@@ -184,6 +220,7 @@ class RemoteWorldEnv(gym.Env):
             data: ResetResponse = self.iface.reset(actions)
             logger.info(f"reset data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
+            self._raw_image = data.observation
             self.obs = draw_goal(data.observation, self.goal_position)
             info = data.info
             return self.obs, info
@@ -193,8 +230,7 @@ class RemoteWorldEnv(gym.Env):
             raise RuntimeError(f"Failed to reset environment: {e}")
 
     def step(self, action) -> tuple[np.ndarray, float, bool, bool, dict]:
-        """
-        Make a step in the environment with the given action.
+        """Make a step in the environment with the given action.
 
         Attributes:
             - action: The action to take in the environment (format depends on action_space_type).
@@ -220,6 +256,8 @@ class RemoteWorldEnv(gym.Env):
             data: StepResponseJSON | StepResponseMultipart = self.iface.step_json(transformed_action) # self.iface.step_multipart(transformed_action)
             logger.debug(f"step_json data: {data.model_dump(exclude={'observation'})} | observation shape: {data.observation.shape}")
 
+            self._raw_image = data.observation
+
             # Ball localisation before draw_goal
             terminated, reward = self.calculate_reward(observation=data.observation)
 
@@ -230,6 +268,7 @@ class RemoteWorldEnv(gym.Env):
             truncated = data.truncated or (self._max_episode_steps is not None and self._episode >= self._max_episode_steps)
             info = data.info
             info["episode"] = f"{self._episode}/{self._max_episode_steps if self._max_episode_steps is not None else '∞'}"
+            info["is_success"] = terminated
             return self.obs, reward, terminated, truncated, info
         except Exception as e:
             logger.exception("Failed to step environment")
@@ -244,10 +283,12 @@ class RemoteWorldEnv(gym.Env):
             if self.obs is not None:
                 show_image = self.obs.copy()
                 if visualize:
-                    show_image = annotate_image(show_image, self.ball_location, self.goal_position, common_cfg.GOAL_RADIUS)
+                    show_image = annotate_image(show_image, self.ball_location, self.goal_position,
+                                               compute_goal_radius(self.observation_space.shape))
                 show_image = cv.cvtColor(show_image, cv.COLOR_RGB2BGR)
                 res_show_image = cv.resize(show_image, dsize=None, fx=scale, fy=scale)
                 cv.imshow("Environment", res_show_image)
+
                 cv.waitKey(1)
 
     def close(self) -> None:
@@ -270,39 +311,87 @@ class RemoteWorldEnv(gym.Env):
             - goal_reached (bool): Whether the ball has reached the goal.
             - reward (float): The calculated reward.
         """
+        # TODO: Create a common reward caluclation for remote_env and simulation_env
         if self.goal_position is None:
             logger.warning("Goal position not set, returning zero reward")
             raise RuntimeError("Goal position not set, cannot calculate reward")
 
         # Locate the ball in the observation
-        # Note: observation might be RGB, convert to BGR for OpenCV
-        bgr_image = cv.cvtColor(observation, cv.COLOR_RGB2BGR)
-        self.ball_location = self.localiser.get_position(bgr_image)
+        self.ball_location = self.localiser.get_position(observation)
 
         if self.ball_location is None:
             logger.debug("Ball not detected in observation")
+            if self._save_failed_detections:
+                self._save_failed_detection(observation)
             raise RuntimeError("Ball not detected in observation")
 
-        # Check if goal is reached
-        goal_reached = self.ball_location.is_within_radius(self.goal_position, common_cfg.GOAL_RADIUS) # TODO: radius as Env option.
+        # Check if goal is reached – radius scales with image diagonal by default
+        goal_radius = compute_goal_radius(observation.shape)
+        goal_reached = self.ball_location.is_within_radius(self.goal_position, goal_radius)
         logger.debug(f"Ball location: {self.ball_location.as_tuple()}, Goal position: {self.goal_position}, Goal reached: {goal_reached}")
 
         if self.reward_mode == "sparse":
             # Sparse reward: +1.0 only when goal is reached
             reward = 1.0 if goal_reached else 0.0
         else:
-            # Dense reward: higher reward when closer to goal
+            # Dense reward: based on distance + bonus for reaching goal
             distance = self.ball_location.distance_to(self.goal_position)
-            reward = 1.0 - (distance / self._max_distance) # FIXME: Normalized or in px?
-
-            # Bonus reward for reaching the goal
+            reward =  - distance / self._max_distance
             if goal_reached:
-                reward += 1.0 # FIXME: Does this make's sense?
+                reward += 1.0
 
         logger.debug(f"Ball at {self.ball_location.as_tuple()}, goal at {self.goal_position}, "
                      f"reward={reward:.3f}, goal_reached={goal_reached}")
 
         return goal_reached, reward
+
+    def _save_failed_detection(self, rgb_image: np.ndarray) -> None:
+        """Save a collage image to disk when ball detection fails, for later debugging.
+
+        Stacks raw frame, pipeline output and extractor debug side-by-side into a
+        single PNG so each failure is a single file.
+
+        Colour legend in the extractor panel:
+        - Gray   — contours below ``min_contour_area`` (with A= label)
+        - Orange — in area range but failing circularity (with C= / A= labels)
+        - Green  — passed all filters
+        - Red    — selected detection
+
+        Args:
+            rgb_image: The RGB observation received from the server.
+        """
+        self._failed_detections_dir.mkdir(parents=True, exist_ok=True)
+        self._failed_detection_count += 1
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        filename = self._failed_detections_dir / f"{self._failed_detection_count:04d}_{ts}.png"
+
+        target_h, target_w = rgb_image.shape[:2]
+
+        def _to_bgr(img: np.ndarray) -> np.ndarray:
+            """Normalise any panel to a 3-channel BGR image at target size."""
+            if len(img.shape) == 2:
+                img = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+            elif img.shape[2] == 3:
+                img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
+            return cv.resize(img, (target_w, target_h))
+
+        def _labeled(img: np.ndarray, label: str) -> np.ndarray:
+            bar = np.zeros((22, target_w, 3), dtype=np.uint8)
+            cv.putText(bar, label, (4, 16), cv.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
+            return np.vstack([bar, img])
+
+        panels = [_labeled(_to_bgr(rgb_image), "raw (RGB→BGR)")]
+
+        last = self.localiser.last_result
+        if last is not None:
+            if last.debug_image is not None:
+                panels.append(_labeled(_to_bgr(last.debug_image), "pipeline"))
+            if last.extractor_debug_image is not None:
+                panels.append(_labeled(_to_bgr(last.extractor_debug_image), "extractor"))
+
+        collage = np.hstack(panels)
+        cv.imwrite(str(filename), collage)
+        logger.info(f"Saved failed-detection collage ({len(panels)} panels) → {filename}")
 
     def set_random_goal(self):
         """Set a random goal position that is fully visible in the observation.
@@ -312,11 +401,14 @@ class RemoteWorldEnv(gym.Env):
         """
         height, width, _ = self.observation_space.shape
 
+        # Radius scales with the image diagonal so the goal is proportional to resolution
+        goal_radius = compute_goal_radius(self.observation_space.shape)
+
         # Ensure goal is fully visible by constraining it away from borders
-        min_x = common_cfg.GOAL_RADIUS
-        max_x = width - common_cfg.GOAL_RADIUS
-        min_y = common_cfg.GOAL_RADIUS
-        max_y = height - common_cfg.GOAL_RADIUS
+        min_x = goal_radius
+        max_x = width - goal_radius
+        min_y = goal_radius
+        max_y = height - goal_radius
 
         x = int(self.np_random.integers(min_x, max_x))
         y = int(self.np_random.integers(min_y, max_y))

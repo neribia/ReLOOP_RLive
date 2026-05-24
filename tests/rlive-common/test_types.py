@@ -3,7 +3,7 @@ import base64
 import json
 import numpy as np
 
-from rlive_common.core.types import (
+from rlive_common.core.custom_types import (
     _encode_image,
     _decode_image,
     _ndarray_serializer,

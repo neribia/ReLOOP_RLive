@@ -57,6 +57,8 @@ if sapien is not None:
 # --- SAPIEN WINDOWS PATCH END ---
 
 from rlive_sim.config import RESOURCES_DIR
+from rlive_sim.config.bolt_config import BOLT_DEFAULTS, BoltDefaults
+from rlive_sim.config.eurobox_config import EUROBOX_DEFAULTS, EuroBoxDefaults
 from rlive_sim.engine.sapien.sapianrobot import SapianRobot, SimpleSphereRobot, KinematicSpheroRobot
 
 SAPIAN_DIR = RESOURCES_DIR / "sapian"
@@ -77,7 +79,10 @@ class WorldLoaderType(str, Enum):
     
     GLB = "glb"
     """Load from GLB/GLTF file with ground plane or as world (resources/sapian/bolt_shell.glb or euro_box.glb)."""
-    
+
+    GLB_FLAT = "glb_flat"
+    """KinematicSpheroRobot on a flat ground plane (no euro box). Used for calibration."""
+
     def __str__(self) -> str:
         """Return the string value of the enum."""
         return self.value
@@ -212,7 +217,7 @@ class SapienWorldStrategy(WorldLoadingStrategy):
         
         # Load ground plane
         scene.add_ground(altitude=0)
-        
+
         robot = SimpleSphereRobot(scene, config)
         robot.load()
         
@@ -256,18 +261,25 @@ class GLBWorldStrategy(WorldLoadingStrategy):
         scene.add_ground(altitude=0)
         
         # 1. Load Euro Box Environment (Static)
-        self._load_euro_box_env(scene)
+        self._load_euro_box_env(scene, config)
         
         # 2. Load Robot based on configuration        
         return self._load_robot(scene, config)
 
-    def _load_euro_box_env(self, scene: "sapien.Scene") -> None:
+    def _load_euro_box_env(self, scene: "sapien.Scene", config: Dict[str, Any]) -> None:
         """Load euro box as static world environment."""
         glb_path = SAPIAN_DIR / "euro_box.glb"
         
         if not glb_path.exists():
             logger.warning(f"⚠ Warning: Euro box GLB not found at {glb_path}")
             return
+
+        eurobox_cfg: EuroBoxDefaults = config.get('eurobox_config', EUROBOX_DEFAULTS)
+        env_mat = scene.create_physical_material(
+            static_friction=eurobox_cfg.static_friction,
+            dynamic_friction=eurobox_cfg.dynamic_friction,
+            restitution=eurobox_cfg.restitution,
+        )
 
         builder = scene.create_actor_builder()
         
@@ -276,7 +288,7 @@ class GLBWorldStrategy(WorldLoadingStrategy):
         
         try:
             # Try SAPIEN 3 naming first
-            builder.add_nonconvex_collision_from_file(str(glb_path))
+            builder.add_nonconvex_collision_from_file(str(glb_path), material=env_mat)
         except AttributeError:
             logger.warning(f"⚠ Warning: Could not create mesh collision for euro box")
         
@@ -288,6 +300,38 @@ class GLBWorldStrategy(WorldLoadingStrategy):
         shell_path = str(SAPIAN_DIR / "spheroboltplus_shell.glb")
         robot_path = str(SAPIAN_DIR / "spheroboltplus_robot_simple.glb")
 
+        robot_instance = KinematicSpheroRobot(scene, config, shell_path, robot_path)
+        robot_instance.load()
+
+        return robot_instance
+
+
+@register_world_loader(WorldLoaderType.GLB_FLAT)
+class GLBFlatWorldStrategy(WorldLoadingStrategy):
+    """KinematicSpheroRobot on a flat ground plane — no euro box.
+
+    Identical to GLBWorldStrategy but skips the euro_box.glb load.
+    The ground plane uses the friction/restitution from config so the
+    physics match what the real euro box floor produces.
+
+    Use this for calibration runs where you want the same robot but an
+    unbounded flat ground.
+    """
+
+    def load(self, scene: "sapien.Scene", config: Dict[str, Any]) -> SapianRobot:
+        if sapien is None:
+            raise ImportError("SAPIEN is not installed")
+
+        eurobox_cfg: EuroBoxDefaults = config.get('eurobox_config', EUROBOX_DEFAULTS)
+        ground_mat = scene.create_physical_material(
+            static_friction=eurobox_cfg.static_friction,
+            dynamic_friction=eurobox_cfg.dynamic_friction,
+            restitution=eurobox_cfg.restitution,
+        )
+        scene.add_ground(altitude=0, material=ground_mat)
+
+        shell_path = str(SAPIAN_DIR / "spheroboltplus_shell.glb")
+        robot_path = str(SAPIAN_DIR / "spheroboltplus_robot_simple.glb")
         robot_instance = KinematicSpheroRobot(scene, config, shell_path, robot_path)
         robot_instance.load()
         

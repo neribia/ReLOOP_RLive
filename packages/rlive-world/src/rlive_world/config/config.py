@@ -34,11 +34,11 @@ default: 8000
 """
 
 # --- Hardware config ---------------------------------------------------------
-USE_DUMMY_HARDWARE: bool = os.getenv("USE_DUMMY_HARDWARE", "true").lower() in ["true", "yes", "1"]
+USE_DUMMY_HARDWARE: bool = os.getenv("USE_DUMMY_HARDWARE", "false").lower() in ["true", "yes", "1"]
 """
 Use dummy hardware (DummyFinder, DummySpheroEduAPI) instead of real hardware.
 
-default: true
+default: false
 """
 
 # --- Camera config -----------------------------------------------------

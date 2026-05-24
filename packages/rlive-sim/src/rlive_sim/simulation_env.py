@@ -17,10 +17,12 @@ from rlive_common.utils import get_logger
 from rlive_common.core.action_space import get_action_transformer, ActionSpaceType, BaseActionTransformer
 from rlive_common.core.ball_location import BallLocation
 from rlive_common.config import config as common_cfg
-from rlive_common.utils.visualisation_utils import draw_goal, annotate_image
+from rlive_common.utils.visualisation_utils import draw_goal, annotate_image, compute_goal_radius
 from rlive_sim.config import SimulationConfig, BOLT_DEFAULTS
-from rlive_sim.config import config as cfg
+from rlive_sim.config import config as sim_cfg
+import rlive_sim.config.config as cfg
 from rlive_sim.engine import SimulationEngine
+from rlive_sim.engine.core.base_physics_engine import PhysicsState
 from rlive_sim.engine.core.factories import SimulationEngineFactory
 
 logger = get_logger(__name__)
@@ -95,10 +97,11 @@ class SimulationEnv(gym.Env):
         self,
         engine: SimulationEngine | None = None,
         config: SimulationConfig | None = None,
-        max_episode_steps: int | None = cfg.MAX_STEPS_PER_EPISODE,
+        max_episode_steps: int | None = sim_cfg.MAX_STEPS_PER_EPISODE,
         render_mode: str | None = None,
         action_space_type: ActionSpaceType | str = ActionSpaceType.CARTESIAN,
         options: dict[str, Any] | None = None,
+        fixed_goal: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize the simulation environment.
@@ -132,14 +135,11 @@ class SimulationEnv(gym.Env):
         # Action space transformer
         logger.info(f"Setting up action space transformer: {action_space_type}")
         try:
-            # Use default speed and duration from physics config or reasonable defaults
-            speed = 100  # Default speed
-            duration = float(1.0)
-
             self.action_transformer = get_action_transformer(
                 action_space_type,
-                speed=speed,
-                duration=duration
+                speed=cfg.SPHEROBOLTPLUS_SPEED,
+                duration=cfg.SPHEROBOLTPLUS_DURATION,
+                speed_factor=cfg.SPHEROBOLTPLUS_SPEED_FACTOR,
             )
 
             # Explicitly validate the returned object
@@ -167,6 +167,7 @@ class SimulationEnv(gym.Env):
         self.action_space = self.action_transformer.get_action_space()
 
         # Goal variables
+        self._fixed_goal = fixed_goal
         self.goal_position: tuple[int, int] | None = None
         self.ball_location: BallLocation | None = None
         self._max_distance = (obs_shape[0] ** 2 + obs_shape[1] ** 2) ** 0.5
@@ -179,22 +180,42 @@ class SimulationEnv(gym.Env):
 
         Args:
             seed: Optional random seed for reproducibility.
-            options: Optional reset options.
+            options: Optional reset options. Supported keys:
+                - ``"initial_state"`` (PhysicsState | None): Place the robot at a
+                  specific position/orientation instead of the engine's default.
+                - ``"goal_position"`` (tuple[int, int] | None): Manually set the goal
+                  position as ``(x, y)`` pixel coordinates. If omitted or ``None``,
+                  a random goal is chosen.
 
         Returns:
             tuple[np.ndarray, dict[str, Any]]: Initial observation and info dict.
         """
         super().reset(seed=seed)
-        logger.info("Resetting environment.")
+        logger.debug("Resetting environment.")
+
+        # Extract options
+        initial_state: PhysicsState | None = None
+        manual_goal: tuple[int, int] | None = None
+        if options is not None:
+            initial_state = options.get("initial_state", None)
+            manual_goal = options.get("goal_position", None)
 
         # Reset the simulation engine
-        state, self.obs = self.engine.reset()
+        state, self.obs = self.engine.reset(initial_state)
 
         self._current_step = 0
         self._episode += 1
 
-        # Set random goal
-        self.set_random_goal()
+        # Set goal position – manual override, fixed centre, or random
+        if manual_goal is not None:
+            self.goal_position = tuple(manual_goal)
+            logger.debug(f"Goal position manually set to: {self.goal_position}")
+        elif self._fixed_goal:
+            h, w = self.obs.shape[:2]
+            self.goal_position = (w // 2, h // 2)
+            logger.debug(f"Goal position fixed to centre: {self.goal_position}")
+        else:
+            self.set_random_goal()
 
         self.obs = draw_goal(self.obs, self.goal_position)
 
@@ -222,7 +243,7 @@ class SimulationEnv(gym.Env):
                 - truncated (bool): Whether episode was truncated (e.g., max steps).
                 - info (dict[str, Any]): Additional information.
         """
-        logger.info(f"Making a step with action: {action}")
+        logger.debug(f"Making a step with action: {action}")
 
         # Transform action using the configured action space transformer
         try:
@@ -242,6 +263,7 @@ class SimulationEnv(gym.Env):
         truncated = self._current_step >= self._max_episode_steps
 
         info: dict[str, Any] = {
+            "is_success": terminated,
             "status": "ok",
             "step": self._current_step,
             "physics_state": physics_state.model_dump() if physics_state else None,
@@ -303,8 +325,14 @@ class SimulationEnv(gym.Env):
 
         self.ball_location = BallLocation(x=ball_pos_tuple[0], y=ball_pos_tuple[1])
 
-        # Check if goal is reached
-        goal_radius = self.options.get("goal_radius", common_cfg.GOAL_RADIUS)
+        # Check if goal is reached – radius scales with image diagonal by default
+        goal_radius = self.options.get(
+            "goal_radius",
+            compute_goal_radius(
+                self.observation_space.shape,
+                self.options.get("goal_radius_factor", common_cfg.GOAL_RADIUS_FACTOR),
+            ),
+        )
         goal_reached = self.ball_location.is_within_radius(self.goal_position, goal_radius)
 
         reward_mode = self.options.get("reward_mode", "dense")
@@ -313,11 +341,9 @@ class SimulationEnv(gym.Env):
             # Sparse reward: +1.0 only when goal is reached
             reward = 1.0 if goal_reached else 0.0
         else:
-            # Dense reward: based on distance
+            # Dense reward: based on distance + bonus for reaching goal
             distance = self.ball_location.distance_to(self.goal_position)
-            reward = 1.0 - (distance / self._max_distance)
-
-            # Bonus reward for reaching the goal
+            reward = - distance / self._max_distance
             if goal_reached:
                 reward += 1.0
 
@@ -329,7 +355,13 @@ class SimulationEnv(gym.Env):
     def set_random_goal(self) -> None:
         """Set a random goal position within the observation space."""
         height, width, _ = self.observation_space.shape
-        goal_radius = self.options.get("goal_radius", common_cfg.GOAL_RADIUS)
+        goal_radius = self.options.get(
+            "goal_radius",
+            compute_goal_radius(
+                self.observation_space.shape,
+                self.options.get("goal_radius_factor", common_cfg.GOAL_RADIUS_FACTOR),
+            ),
+        )
 
         min_x, min_y, max_x, max_y = self.engine.get_reachable_bounds()
         
