@@ -137,6 +137,7 @@ def make_real_env(
     max_episode_steps: int = 20,
     render_mode: str | None = None,
     action_space_type: ActionSpaceType = ActionSpaceType.CARTESIAN,
+    fixed_goal: bool = False,
 ) -> RemoteWorldEnv:
     """Create a real RemoteWorldEnv with configurable parameters.
 
@@ -150,6 +151,7 @@ def make_real_env(
         max_episode_steps: Maximum steps per episode (default: 20).
         render_mode: Render mode passed to RemoteWorldEnv (default: "opencv").
         action_space_type: Action space type (default: CARTESIAN).
+        fixed_goal: If True, the goal is always placed at the centre of the image (default: False).
 
     Returns:
         RemoteWorldEnv: Configured environment instance.
@@ -167,5 +169,6 @@ def make_real_env(
         render_mode=render_mode,
         action_space_type=action_space_type,
         world_config=world_config,
+        fixed_goal=fixed_goal,
     )
 

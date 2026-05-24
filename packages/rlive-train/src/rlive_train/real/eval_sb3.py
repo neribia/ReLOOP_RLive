@@ -25,6 +25,7 @@ from stable_baselines3.common.evaluation import evaluate_policy  # noqa: E402
 from rlive_common.utils import get_logger  # noqa: E402
 from rlive_train.utils.make_envs import make_env_factory, make_real_env  # noqa: E402
 from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_env  # noqa: E402
+from rlive_train.utils.utils import RandomAgent  # noqa: E402
 
 logger = get_logger(__name__)
 
@@ -34,37 +35,43 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 def evaluate(  # noqa: PLR0913
-    model_path: str | Path,
+    model_path: str | Path | None,
     base_url: str = "http://127.0.0.1:8000",
     bolt_name: str = "BP-D217",
     camera_id: int = 1,
+    agent_type: str = "ppo",
     n_episodes: int = 10,
     max_episode_steps: int = 20,
     n_stack: int = 4,
+    fixed_goal: bool = False,
     render: bool = False,
     run_name: str | None = None,
 ) -> None:
-    """Evaluate a trained PPO model on the real RemoteWorldEnv and log to W&B.
+    """Evaluate a trained PPO model (or random agent) on the real RemoteWorldEnv and log to W&B.
 
     Args:
-        model_path: Path to the model .zip file.
+        model_path: Path to the model .zip file. Required when agent_type='ppo',
+            ignored when agent_type='random'.
         base_url: Base URL of the world server.
         bolt_name: Sphero Bolt device name.
         camera_id: OpenCV camera index.
+        agent_type: Agent to evaluate — 'ppo' (loads model_path) or 'random'
+            (samples uniformly from the action space).
         n_episodes: Number of deterministic evaluation episodes.
         max_episode_steps: Max steps per episode (must match training).
         n_stack: Number of frames to stack — must match the model (default: 4).
+        fixed_goal: Whether the goal is fixed at the image centre.
         render: If True, render the environment observation during evaluation.
         run_name: Custom W&B run name. When None, defaults to ``eval_real``.
     """
-    model_path = Path(model_path)
-
-    if not model_path.exists():
-        logger.error(f"Model not found: {model_path}")
-        return
+    if agent_type == "ppo":
+        model_path = Path(model_path)
+        if not model_path.exists():
+            logger.error(f"Model not found: {model_path}")
+            return
 
     if run_name is None:
-        run_name = "eval_real"
+        run_name = f"eval_{agent_type}_real"
 
     # ------------------------------------------------------------------
     # Build evaluation environment — same wrapper pipeline as sim so
@@ -76,6 +83,7 @@ def evaluate(  # noqa: PLR0913
         bolt_name=bolt_name,
         camera_id=camera_id,
         max_episode_steps=max_episode_steps,
+        fixed_goal=fixed_goal,
         render_mode="opencv" if render else None,
     )
     # DummyVecEnv → VecFrameStack(n_stack) → VecTransposeImage
@@ -85,12 +93,14 @@ def evaluate(  # noqa: PLR0913
     # W&B run — linked to the training run via group
     # ------------------------------------------------------------------
     eval_params = {
-        "model_path": str(model_path),
+        "model_path": str(model_path) if agent_type == "ppo" else "N/A (random agent)",
+        "agent_type": agent_type,
         "base_url": base_url,
         "bolt_name": bolt_name,
         "n_episodes": n_episodes,
         "max_episode_steps": max_episode_steps,
         "n_stack": n_stack,
+        "fixed_goal": fixed_goal,
     }
 
     with wandb.init(
@@ -102,10 +112,14 @@ def evaluate(  # noqa: PLR0913
         logger.info(f"W&B run: {run.url}")
 
         # ------------------------------------------------------------------
-        # Load model
+        # Load model or build random agent
         # ------------------------------------------------------------------
-        logger.info(f"Loading model from {model_path}")
-        model = PPO.load(model_path, env=env)
+        if agent_type == "ppo":
+            logger.info(f"Loading PPO model from {model_path}")
+            model = PPO.load(model_path, env=env)
+        else:
+            logger.info("Using RandomAgent — sampling from action_space")
+            model = RandomAgent(env)
 
         # ------------------------------------------------------------------
         # Run evaluation — collect per-episode rewards, lengths & success
@@ -198,16 +212,17 @@ def main() -> None:
     # CONFIG — edit these defaults, then run:  uv run eval_sb3.py
     # All values can still be overridden via CLI flags.
     # ===========================================================================
-    MODEL_PATH    = MODELS_DIR / "simple_1160000_steps.zip"          # required — path to .zip
+    MODEL_PATH    = MODELS_DIR / "sapien_1120000_steps.zip"          # required — path to .zip
     BASE_URL      = os.getenv("WORLD_BASE_URL", "http://127.0.0.1:8000")
     BOLT_NAME     = "BP-D217"
-    BOLT_DUMMY    = False                    # True = no physical hardware
+    AGENT_TYPE    = "random"                    # options: ppo | random
     CAMERA_ID     = 2
     N_EPISODES    = 20                       # recommended: 20–30
     MAX_STEPS     = 50                       # must match training!
     N_STACK       = 4                        # must match training!
-    RENDER        = False                    # True = show OpenCV window during eval
-    RUN_NAME      = "Simple_on_Real"         # None = auto → "eval_real"
+    FIXED_GOAL    = True                    # True to fix goal at image centre
+    RENDER        = True                    # True = show OpenCV window during eval
+    RUN_NAME      = "RandomWalk_on_Real"         # None = auto → "eval_real"
     # ===========================================================================
 
     parser = argparse.ArgumentParser(
@@ -215,8 +230,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--model-path", type=str, default=MODEL_PATH,
-        required=not bool(MODELS_DIR),
-        help="Path to the model .zip file.",
+        required=False,
+        help="Path to the model .zip file. Required when --agent=ppo.",
+    )
+    parser.add_argument(
+        "--agent", choices=("ppo", "random"), default=AGENT_TYPE,
+        help=f"Agent type: 'ppo' (loads --model-path) or 'random' (action_space.sample). (default: {AGENT_TYPE})",
     )
     parser.add_argument(
         "--base-url", type=str, default=BASE_URL,
@@ -244,6 +263,10 @@ def main() -> None:
         help=f"Number of frames to stack — must match the model (default: {N_STACK})",
     )
     parser.add_argument(
+        "--fixed-goal", action="store_true", default=FIXED_GOAL,
+        help="Fix the goal at the centre of the image",
+    )
+    parser.add_argument(
         "--run-name", type=str, default=RUN_NAME,
         help="Custom W&B run name (default: eval_real)",
     )
@@ -253,14 +276,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.agent == "ppo" and not args.model_path:
+        parser.error("--model-path is required when --agent=ppo")
+
     evaluate(
         model_path=args.model_path,
         base_url=args.base_url,
         bolt_name=args.bolt_name,
         camera_id=args.camera_id,
+        agent_type=args.agent,
         n_episodes=args.n_episodes,
         max_episode_steps=args.max_episode_steps,
         n_stack=args.n_stack,
+        fixed_goal=args.fixed_goal,
         render=args.render,
         run_name=args.run_name,
     )

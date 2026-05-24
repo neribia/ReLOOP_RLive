@@ -25,10 +25,12 @@ from stable_baselines3.common.evaluation import evaluate_policy  # noqa: E402
 from rlive_common.utils import get_logger  # noqa: E402
 from rlive_train.utils.make_envs import make_env_factory, make_sapiens_env, make_simple_env  # noqa: E402
 from rlive_train.utils.sb3_env import EvalVecBackend, build_sim_env  # noqa: E402
+from rlive_train.utils.utils import RandomAgent  # noqa: E402
 
 logger = get_logger(__name__)
 
 ENV_CHOICES = ("sapien", "simple")
+AGENT_CHOICES = ("ppo", "random")
 
 
 # ---------------------------------------------------------------------------
@@ -36,32 +38,36 @@ ENV_CHOICES = ("sapien", "simple")
 # ---------------------------------------------------------------------------
 
 def evaluate(  # noqa: PLR0913
-    model_path: str | Path,
+    model_path: str | Path | None,
     env_type: str = "sapien",
+    agent_type: str = "ppo",
     n_episodes: int = 10,
     max_episode_steps: int = 50,
     fixed_goal: bool = False,
     run_name: str | None = None,
 ) -> None:
-    """Evaluate a trained PPO model and log results to Weights & Biases.
+    """Evaluate a trained PPO model (or random agent) and log results to W&B.
 
     Args:
-        model_path: Path to the model .zip file.
+        model_path: Path to the model .zip file. Required when agent_type='ppo',
+            ignored when agent_type='random'.
         env_type: Simulation backend — 'sapien' or 'simple'.
+        agent_type: Agent to evaluate — 'ppo' (loads model_path) or 'random'
+            (samples uniformly from the action space).
         n_episodes: Number of deterministic evaluation episodes.
         max_episode_steps: Max steps per episode (must match training).
         fixed_goal: Whether the goal is fixed at the image centre.
         run_name: Custom W&B run name. When None, defaults to
-            ``eval_<env_type>``.
+            ``eval_<agent_type>_<env_type>``.
     """
-    model_path = Path(model_path)
-
-    if not model_path.exists():
-        logger.error(f"Model not found: {model_path}")
-        return
+    if agent_type == "ppo":
+        model_path = Path(model_path)
+        if not model_path.exists():
+            logger.error(f"Model not found: {model_path}")
+            return
 
     if run_name is None:
-        run_name = f"eval_{env_type}"
+        run_name = f"eval_{agent_type}_{env_type}"
 
     # ------------------------------------------------------------------
     # Build evaluation environment (identical setup to training)
@@ -74,7 +80,8 @@ def evaluate(  # noqa: PLR0913
     # W&B run — linked to the training run via group
     # ------------------------------------------------------------------
     eval_params = {
-        "model_path": str(model_path),
+        "model_path": str(model_path) if agent_type == "ppo" else "N/A (random agent)",
+        "agent_type": agent_type,
         "env_type": env_type,
         "n_episodes": n_episodes,
         "max_episode_steps": max_episode_steps,
@@ -90,10 +97,14 @@ def evaluate(  # noqa: PLR0913
         logger.info(f"W&B run: {run.url}")
 
         # ------------------------------------------------------------------
-        # Load model
+        # Load model or build random agent
         # ------------------------------------------------------------------
-        logger.info(f"Loading model from {model_path}")
-        model = PPO.load(model_path, env=env)
+        if agent_type == "ppo":
+            logger.info(f"Loading PPO model from {model_path}")
+            model = PPO.load(model_path, env=env)
+        else:
+            logger.info("Using RandomAgent — sampling from action_space")
+            model = RandomAgent(env)
 
         # ------------------------------------------------------------------
         # Run evaluation — collect per-episode rewards, lengths & success
@@ -172,10 +183,11 @@ def main() -> None:
 
     MODEL_PATH = MODELS_DIR / "simple_1160000_steps.zip"        # required — e.g. r"C:\Downloads\best_model.zip"
     ENV_TYPE   = "simple"  # options: sapien | simple
+    AGENT_TYPE = "ppo"     # options: ppo | random
     N_EPISODES = 20        # recommended: 20–30
     MAX_STEPS  = 50        # must match training!
     FIXED_GOAL = True     # True to fix goal at image centre
-    RUN_NAME   = "Simple_on_Simple"      # None = auto  e.g. "PPO_v1_sim_sapien"
+    RUN_NAME   = "Simple_on_Sapien"      # None = auto  e.g. "PPO_v1_sim_sapien"
     # ===========================================================================
 
     parser = argparse.ArgumentParser(
@@ -183,8 +195,12 @@ def main() -> None:
     )
     parser.add_argument(
         "--model-path", type=str, default=MODEL_PATH,
-        required=not bool(MODEL_PATH),
-        help="Path to the model .zip file.",
+        required=False,
+        help="Path to the model .zip file. Required when --agent=ppo.",
+    )
+    parser.add_argument(
+        "--agent", choices=AGENT_CHOICES, default=AGENT_TYPE,
+        help=f"Agent type: 'ppo' (loads --model-path) or 'random' (action_space.sample). (default: {AGENT_TYPE})",
     )
     parser.add_argument(
         "--env", choices=ENV_CHOICES, default=ENV_TYPE,
@@ -208,9 +224,13 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.agent == "ppo" and not args.model_path:
+        parser.error("--model-path is required when --agent=ppo")
+
     evaluate(
         model_path=args.model_path,
         env_type=args.env,
+        agent_type=args.agent,
         n_episodes=args.n_episodes,
         max_episode_steps=args.max_episode_steps,
         fixed_goal=args.fixed_goal,
