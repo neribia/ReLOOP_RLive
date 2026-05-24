@@ -42,10 +42,10 @@ def main() -> None:
     # Configure world settings
     world_config = WorldConfig(
         camera_type=CameraType.WEBCAM,
-        camera_id=1,
+        camera_id=2,
         camera_resolution=CameraResolution.RES_640x480,  # Can use custom tuple or CameraResolution.RES_640x480
         bolt_name="BP-D217",
-        bolt_use_dummy=False
+        # bolt_use_dummy=False
     )
 
     env = RemoteWorldEnv(
@@ -54,13 +54,14 @@ def main() -> None:
         render_mode="opencv",
         action_space_type=ActionSpaceType.CARTESIAN,
         world_config=world_config,
+        decay=0,
     )
 
     for episode in range(NUM_EPISODES):
         # Episode 0: random goal (default behaviour)
         # Episode 1: manually fix the goal at pixel position (x=320, y=240)
         reset_options = None
-        if episode == 1:
+        if episode == 2:
             reset_options = {"goal_position": (320, 240)}
 
         obs, info = env.reset(options=reset_options)

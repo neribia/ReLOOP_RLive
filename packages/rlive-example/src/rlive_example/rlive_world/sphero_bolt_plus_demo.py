@@ -122,7 +122,7 @@ def demo_movement(robot: SpheroBoltPlus) -> None:
     robot.move(heading=0, speed=50, duration=1)
 
     logger.info("Moving backward...")
-    robot.move(heading=180, speed=50, duration=1)
+    robot.move(heading=90, speed=50, duration=1)
 
     logger.info("Turning right...")
     robot.move(heading=90, speed=30, duration=0.5)
@@ -158,11 +158,11 @@ def main():
         logger.info(f"Connected to {robot.name}!\n")
 
         # Run demos
-        demo_display_arrows(robot)
+        #demo_display_arrows(robot)
         #demo_display_characters(robot)
         #demo_scroll_text(robot)
-        demo_custom_bitmap(robot)
-        # demo_movement(robot)  # Uncomment to enable movement
+        #demo_custom_bitmap(robot)
+        demo_movement(robot)  # Uncomment to enable movement
         #demo_sensors(robot)
 
         logger.info("=" * 50)

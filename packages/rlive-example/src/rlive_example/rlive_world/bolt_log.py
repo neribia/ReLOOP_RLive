@@ -170,8 +170,8 @@ if __name__ == "__main__":
     data_dir.mkdir(parents=True, exist_ok=True)
     # Example connection with auto-connect in context manager
     toy_name = "BP-D217"
-    speed = 255  # Speed command (0-255)
-    duration_s = 2.0
+    speed = 150  # Speed command (0-255)
+    duration_s = 1.0
 
 
 
@@ -183,5 +183,5 @@ if __name__ == "__main__":
             idle_s=0.5,                 # Log for 0.5s BEFORE issuing speed command
             steady_s=duration_s,        # Hold speed command for 1.0s
             ramp_down_s=5.0,            # Log deceleration for 0.5s
-            csv_path= str(data_dir / f"exp_speed_{speed:03}.csv"),
+            csv_path= str(data_dir / f"exp_speed_1s_{speed:03}.csv"),
         )
