@@ -106,6 +106,57 @@ default: 0.25
 """
 
 
+# --- Ball Localisation -------------------------------------------------------
+
+BALL_THRESHOLD_VALUE: int = int(os.getenv("BALL_THRESHOLD_VALUE", "65"))
+"""
+Binary threshold value used in the default localisation pipeline (0-255).
+
+default: 65
+"""
+
+BALL_DILATION_KERNEL_WIDTH: int = int(os.getenv("BALL_DILATION_KERNEL_WIDTH", "7"))
+"""
+Dilation kernel width used in the default localisation pipeline.
+
+default: 7
+"""
+
+BALL_DILATION_KERNEL_HEIGHT: int = int(os.getenv("BALL_DILATION_KERNEL_HEIGHT", "7"))
+"""
+Dilation kernel height used in the default localisation pipeline.
+
+default: 7
+"""
+
+BALL_DILATION_ITERATIONS: int = int(os.getenv("BALL_DILATION_ITERATIONS", "2"))
+"""
+Number of dilation iterations used in the default localisation pipeline.
+
+default: 2
+"""
+
+BALL_MIN_CONTOUR_AREA: int = int(os.getenv("BALL_MIN_CONTOUR_AREA", "1500"))
+"""
+Minimum contour area for a valid ball detection.
+
+default: 1500
+"""
+
+BALL_MAX_CONTOUR_AREA: int = int(os.getenv("BALL_MAX_CONTOUR_AREA", "10000"))
+"""
+Maximum contour area for a valid ball detection.
+
+default: 10000
+"""
+
+BALL_MIN_CIRCULARITY: float = float(os.getenv("BALL_MIN_CIRCULARITY", "0.25"))
+"""
+Minimum circularity score (0.0–1.0) for a contour to be accepted as the ball.
+
+default: 0.25
+"""
+
 # --- debug config ------------------------------------------------------------
 
 DEBUG: bool = os.getenv("DEBUG", "").lower() in ["true", "yes", "1"]

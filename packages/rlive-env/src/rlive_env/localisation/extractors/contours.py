@@ -224,7 +224,22 @@ class ContourExtractor(AbstractBallExtractor):
             if not contours:
                 return debug_img
 
-            # Draw ALL contours (area in [min, max]) in orange so rejected ones are still visible
+            # ── Tier 1: sub-threshold contours (gray) — too small, shown for tuning ──
+            tiny = [c for c in contours if cv.contourArea(c) < self.min_contour_area]
+            cv.drawContours(debug_img, tiny, -1, (90, 90, 90), 1)
+            for c in tiny:
+                area = int(cv.contourArea(c))
+                circ = self._circularity(c)
+                M = cv.moments(c)
+                if M["m00"] != 0:
+                    cx = int(M["m10"] / M["m00"])
+                    cy = int(M["m01"] / M["m00"])
+                    cv.putText(debug_img, f"A={area}", (cx - 20, cy - 4),
+                               cv.FONT_HERSHEY_SIMPLEX, 0.38, (140, 140, 140), 1)
+                    cv.putText(debug_img, f"C={circ:.2f}", (cx - 20, cy + 10),
+                               cv.FONT_HERSHEY_SIMPLEX, 0.38, (140, 140, 140), 1)
+
+            # ── Tier 2: in area range but may still fail circularity (orange) ──
             area_filtered = [
                 c for c in contours
                 if cv.contourArea(c) >= self.min_contour_area
@@ -232,28 +247,30 @@ class ContourExtractor(AbstractBallExtractor):
             ]
             cv.drawContours(debug_img, area_filtered, -1, (255, 140, 0), 1)
 
-            # Filter by area and circularity
+            # ── Tier 3: passed all filters (green) ──
             valid_contours = self._filter_contours(contours)
-
-            # Draw accepted contours in green
             cv.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 2)
 
-            # Draw C value on every area-filtered contour (green = accepted, orange = rejected)
+            # Build a set of object ids so membership checks don't trigger
+            # NumPy broadcast errors (contours are arrays with differing shapes)
+            valid_ids = {id(c) for c in valid_contours}
+
+            # Label every area-filtered contour with C and A
             for c in area_filtered:
                 circ = self._circularity(c)
+                area = int(cv.contourArea(c))
                 M = cv.moments(c)
                 if M["m00"] != 0:
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])
-                    accepted = circ >= self.min_circularity or self.min_circularity == 0.0
+                    accepted = id(c) in valid_ids
                     colour = (0, 220, 0) if accepted else (255, 140, 0)
-                    area = int(cv.contourArea(c))
                     cv.putText(debug_img, f"C={circ:.2f}", (cx - 28, cy + 8),
                                cv.FONT_HERSHEY_SIMPLEX, 0.45, colour, 1)
                     cv.putText(debug_img, f"A={area}", (cx - 28, cy + 22),
                                cv.FONT_HERSHEY_SIMPLEX, 0.45, colour, 1)
 
-            # Highlight the selected (largest valid) contour in red
+            # ── Tier 4: selected contour (red outline + centre dot) ──
             if valid_contours:
                 largest = max(valid_contours, key=cv.contourArea)
                 cv.drawContours(debug_img, [largest], 0, (255, 0, 0), 3)

@@ -1,15 +1,15 @@
 """Main ball localization orchestrator."""
 
-from typing import Optional
 
 import cv2 as cv
 import numpy as np
 
 from rlive_common.core.ball_location import BallLocation
 from rlive_env.localisation.extractors.base import AbstractBallExtractor
-from rlive_env.localisation.extractors import *
+from rlive_env.localisation.extractors import ContourExtractor
 from rlive_env.localisation.processors.pipeline import ImagePipeline
-from rlive_env.localisation.processors import *
+from rlive_env.localisation.processors import GrayscaleProcessor, ThresholdProcessor, InvertProcessor, DilationProcessor
+from rlive_env.config import config
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -20,9 +20,9 @@ class DetectionResult:
 
     def __init__(
         self,
-        location: Optional[BallLocation] = None,
-        debug_image: Optional[np.ndarray] = None,
-        extractor_debug_image: Optional[np.ndarray] = None,
+        location: BallLocation | None = None,
+        debug_image: np.ndarray | None = None,
+        extractor_debug_image: np.ndarray | None = None,
     ):
         """Initialize detection result.
 
@@ -82,10 +82,11 @@ class BallLocalisator:
 
     def __init__(
         self,
-        extractor: Optional[AbstractBallExtractor] = None,
-        pipeline: Optional[ImagePipeline] = None,
+        extractor: AbstractBallExtractor | None = None,
+        pipeline: ImagePipeline | None = None,
         target_width: int = 640,
         target_height: int = 480,
+        debug: bool = False,
     ):
         """Initialize the BallLocalisator with dependency injection.
 
@@ -96,12 +97,15 @@ class BallLocalisator:
                      If None, uses default pipeline with standard processors.
             target_width: Fixed width to resize images to. Default 640.
             target_height: Fixed height to resize images to. Default 480.
+            debug: If True, shows pipeline and extractor debug images in
+                   OpenCV windows after every detection call. Default False.
         """
         self.extractor = extractor or self._create_default_extractor()
         self.pipeline = pipeline or self._create_default_pipeline()
-        self.last_result: Optional[DetectionResult] = None
+        self.last_result: DetectionResult | None = None
         self.target_width = target_width
         self.target_height = target_height
+        self.debug = debug
 
     @staticmethod
     def _create_default_extractor() -> AbstractBallExtractor:
@@ -110,7 +114,11 @@ class BallLocalisator:
         Returns:
             AbstractBallExtractor instance.
         """
-        return ContourExtractor()
+        return ContourExtractor(
+            min_contour_area=config.BALL_MIN_CONTOUR_AREA,
+            max_contour_area=config.BALL_MAX_CONTOUR_AREA,
+            min_circularity=config.BALL_MIN_CIRCULARITY,
+        )
 
     @staticmethod
     def _create_default_pipeline() -> ImagePipeline:
@@ -120,14 +128,17 @@ class BallLocalisator:
             ImagePipeline with standard processors.
         """
         processors = [
-            HSVProcessor(
-                apply_mask=True,
+            GrayscaleProcessor(),
+            ThresholdProcessor(threshold_value=config.BALL_THRESHOLD_VALUE),
+            InvertProcessor(),
+            DilationProcessor(
+                kernel_size=(config.BALL_DILATION_KERNEL_WIDTH, config.BALL_DILATION_KERNEL_HEIGHT),
+                iterations=config.BALL_DILATION_ITERATIONS,
             ),
-            DilationProcessor(kernel_size=(7, 7), iterations=3),
         ]
         return ImagePipeline(processors)
 
-    def get_position(self, image: np.ndarray) -> Optional[BallLocation]:
+    def get_position(self, image: np.ndarray) -> BallLocation | None:
         """Get the ball position from an image.
 
         Executes the pipeline to process the image, then uses the injected
@@ -191,7 +202,6 @@ class BallLocalisator:
                     debug_image=processed,
                     extractor_debug_image=extractor_debug_img,
                 )
-                return location
             else:
                 logger.debug(f"{self.extractor.name} returned None")
                 self.last_result = DetectionResult(
@@ -199,14 +209,35 @@ class BallLocalisator:
                     debug_image=processed,
                     extractor_debug_image=extractor_debug_img,
                 )
-                return None
+
+            if self.debug:
+                self._show_debug_windows()
+
+            # location is None when else-branch was taken — both paths correct
+            return location
 
         except Exception as e:
             logger.error(f"Ball localization failed: {e}")
             self.last_result = DetectionResult(location=None, debug_image=None)
             return None
 
-    def get_position_with_debug(self, image: np.ndarray) -> DetectionResult:
+    def _show_debug_windows(self) -> None:
+        """Display pipeline and extractor debug images in OpenCV windows.
+
+        Called automatically after each detection when ``self.debug`` is True.
+        Windows are non-blocking (waitKey(1)).
+        """
+        if self.last_result is None:
+            return
+        if self.last_result.debug_image is not None:
+            cv.imshow("Localiser: pipeline", self.last_result.debug_image)
+        if self.last_result.extractor_debug_image is not None:
+            # extractor image is RGB — convert to BGR for correct colours
+            bgr = cv.cvtColor(self.last_result.extractor_debug_image, cv.COLOR_RGB2BGR)
+            cv.imshow("Localiser: extractor", bgr)
+        cv.waitKey(1)
+
+    def get_position_with_debug(self, image: np.ndarray) -> DetectionResult | None:
         """Get ball position and debug information.
 
         Args:

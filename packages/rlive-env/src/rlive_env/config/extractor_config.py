@@ -46,10 +46,28 @@ default: 100
 """
 
 # --- Contour Detection ---
-MIN_CONTOUR_AREA: int = int(os.getenv("BALL_MIN_CONTOUR_AREA", "100"))
+MIN_CONTOUR_AREA: int = int(os.getenv("BALL_MIN_CONTOUR_AREA", "2000"))
 """
 Minimum contour area for valid detection.
-default: 100
+default: 2000
+"""
+
+MAX_CONTOUR_AREA: int | None = int(os.getenv("BALL_MAX_CONTOUR_AREA", "5000"))
+"""
+Maximum contour area for valid detection. Contours larger than this are rejected
+(e.g. arena border, large shadows). Set BALL_MAX_CONTOUR_AREA=0 to disable.
+default: 5000
+"""
+
+MIN_CIRCULARITY: float = float(os.getenv("BALL_MIN_CIRCULARITY", "0.3"))
+"""
+Minimum circularity score (0.0–1.0) for a contour to be accepted as the ball.
+C = (4π·A) / P²  where A=area, P=perimeter.
+  0.0        → disabled (default)
+  0.5        → lenient, removes most blobs
+  0.6        → good default for real camera footage
+  0.75       → strict, stable lighting only
+default: 0.0 (disabled)
 """
 
 # --- Logging ---

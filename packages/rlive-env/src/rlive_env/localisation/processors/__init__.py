@@ -17,6 +17,7 @@ from rlive_env.localisation.processors.pipeline import ImagePipeline
 from rlive_env.localisation.processors.image_absdiff import ImageAbsDiff
 from rlive_env.localisation.processors.channel_range import ChannelRangeProcessor
 from rlive_env.localisation.processors.invert import InvertProcessor
+from rlive_env.localisation.processors.mask_intersection import MaskIntersectionProcessor
 
 __all__ = [
     "AbstractProcessor",
@@ -35,5 +36,6 @@ __all__ = [
     "CLAHEProcessor",
     "ImagePipeline",
     "InvertProcessor",
+    "MaskIntersectionProcessor",
 ]
 
