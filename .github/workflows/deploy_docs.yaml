@@ -1,12 +1,7 @@
 name: deploy_docs
 
 on:
-  push:
-    branches:
-      - '**'
-    paths:
-      - 'docs/**'
-      - '!docs/drafts/**'
+  workflow_dispatch:
 
 permissions:
   contents: write
