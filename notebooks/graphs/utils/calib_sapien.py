@@ -181,6 +181,7 @@ def grid_search_sapien(
     max_accel_range: np.ndarray,
     use_percent_error: bool = False,
     cache_path: str | Path | None = None,
+    duration_s: float | None = None,
 ) -> tuple[float, float, np.ndarray]:
     """Grid search using SapienIntegratedEngine — drop-in for ``calib_search.grid_search``.
 
@@ -206,6 +207,8 @@ def grid_search_sapien(
     if cache_path is not None and Path(cache_path).exists():
         best_speed, best_accel, rmse_grid, _, _ = load_grid_results(cache_path)
         return best_speed, best_accel, rmse_grid
+
+    _duration_s = STEADY_S if duration_s is None else duration_s
 
     # ── Cache miss — run the full SAPIEN search ───────────────────────────────
 
@@ -233,10 +236,10 @@ def grid_search_sapien(
                     simulate_sapien_run(
                         engine=engine,
                         speed_255=r.speed_cmd,
-                        duration_s=STEADY_S,
+                        duration_s=_duration_s,
                         max_speed_ms=max_speed,
                         max_accel_ms2=max_accel,
-                        total_time_s=STEADY_S + 2.0,  # only run until robot stops + small buffer
+                        total_time_s=_duration_s + 2.0,
                     )["final_distance"]
                     for r in runs
                 ])

@@ -101,6 +101,7 @@ def grid_search(
     max_accel_range: np.ndarray,
     use_percent_error: bool = False,
     cache_path: str | Path | None = None,
+    duration_s: float | None = None,
 ) -> tuple[float, float, np.ndarray]:
     """Grid search over ``(max_speed_ms, max_accel_ms2)`` to minimise RMSE.
 
@@ -116,8 +117,9 @@ def grid_search(
     Progress is printed every 10 % of the total combinations.
 
     Args:
-        runs:              Real-robot data; ``STEADY_S`` is used as the
-                           ``duration_s`` argument to every simulation call.
+        runs:              Real-robot data.
+        duration_s:        Cruise duration for each simulation call (s).
+                           Defaults to ``STEADY_S`` (2.0 s) when ``None``.
         max_speed_range:   1-D array of candidate ``max_speed_ms`` values.
         max_accel_range:   1-D array of candidate ``max_accel_ms2`` values.
         use_percent_error: If ``False`` (default) minimise absolute distance
@@ -141,6 +143,7 @@ def grid_search(
         return best_speed, best_accel, rmse_grid
 
     # ── Cache miss — run the full search ──────────────────────────────────────
+    _duration_s = STEADY_S if duration_s is None else duration_s
     n_speed = len(max_speed_range)
     n_accel = len(max_accel_range)
     rmse_grid = np.zeros((n_accel, n_speed), dtype=float)
@@ -161,7 +164,7 @@ def grid_search(
             sim_dists = np.array([
                 simulate_run(
                     speed_255=r.speed_cmd,
-                    duration_s=STEADY_S,
+                    duration_s=_duration_s,
                     max_speed_ms=max_speed,
                     max_accel_ms2=max_accel,
                 )["final_distance"]
@@ -314,11 +317,11 @@ def save_best_params(
 
 # ── Speed → Distance factor plot ──────────────────────────────────────────────
 
-def fit_speed_distance_factor(runs: list[RunMetrics]) -> float:
+def fit_speed_distance_factor(runs: list[RunMetrics], duration_s: float | None = None) -> float:
     """Fit a through-origin linear model ``distance_per_s = factor × speed_cmd``.
 
-    Distances are divided by ``STEADY_S`` so the factor represents metres
-    travelled **per 1 second of rolling** per speed-unit.  To recover the
+    Distances are divided by *duration_s* (default: ``STEADY_S``) so the factor
+    represents metres travelled **per 1 second of rolling** per speed-unit.  To recover the
     actual distance use: ``distance = factor × speed × time``.
 
     Uses the ordinary-least-squares solution for a no-intercept model:
@@ -332,13 +335,15 @@ def fit_speed_distance_factor(runs: list[RunMetrics]) -> float:
     """
     speeds    = np.array([r.speed_cmd      for r in runs], dtype=float)
     dists     = np.array([r.real_final_dist for r in runs], dtype=float)
-    dists_per_s = dists / STEADY_S
+    _ds = STEADY_S if duration_s is None else duration_s
+    dists_per_s = dists / _ds
     return float(np.dot(speeds, dists_per_s) / np.dot(speeds, speeds))
 
 
 def plot_speed_distance_factor(
     runs: list[RunMetrics],
     out_path: str | Path | None = None,
+    duration_s: float | None = None,
 ) -> float:
     """Plot ``distance_per_s = factor × speed_cmd`` fitted through the origin.
 
@@ -365,42 +370,41 @@ def plot_speed_distance_factor(
     """
     speeds      = np.array([r.speed_cmd      for r in runs], dtype=float)
     dists       = np.array([r.real_final_dist for r in runs], dtype=float)
-    dists_per_s = dists / STEADY_S
+    _ds = STEADY_S if duration_s is None else duration_s
+    dists_per_s = dists / _ds
 
-    factor = fit_speed_distance_factor(runs)
+    factor = fit_speed_distance_factor(runs, duration_s=duration_s)
 
     s_line = np.linspace(0, speeds.max() * 1.05, 300)
     d_line = factor * s_line
 
     fig, ax = plt.subplots(figsize=(8, 5))
 
-    ax.scatter(speeds, dists_per_s, s=60, zorder=3, label="Measured data  (dist / STEADY_S)")
+    ax.scatter(speeds, dists_per_s, s=60, zorder=3, label=f"Measured data  (dist / {_ds:.1f} s)")
     ax.plot(
         s_line, d_line,
         color="tab:red", lw=2,
         label=f"Fit: d/s = {factor:.5f} × speed  (R²={_r2(speeds, dists_per_s, factor):.4f})",
     )
-    ax.plot(0, 0, "ko", ms=6, zorder=4, label="Origin (0, 0)")
 
-    # Annotate each data point with its speed command
-    for s, d in zip(speeds, dists_per_s):
-        ax.annotate(
-            f"{int(s)}",
-            (s, d),
-            textcoords="offset points",
-            xytext=(4, 4),
-            fontsize=8,
-            alpha=0.7,
-        )
+    # Annotate each data point with its speed command (below the point)
+    # for s, d in zip(speeds, dists_per_s):
+    #     ax.annotate(
+    #         f"{int(s)}",
+    #         (s, d),
+    #         textcoords="offset points",
+    #         xytext=(0, -14),
+    #         ha="center",
+    #         fontsize=8,
+    #         alpha=0.7,
+    #     )
 
-    ax.set_xlabel("Speed command (0-255)")
-    ax.set_ylabel(f"Distance per second of rolling (m/s)  [dist / {STEADY_S:.1f} s]")
-    ax.set_title(
-        f"Speed-to-Distance factor  (through-origin fit, ÷ STEADY_S={STEADY_S:.1f} s)\n"
-        "Usage:  distance = factor × speed × time"
-    )
+    ax.set_xlabel("Speed cmd")
+    ax.set_ylabel(f"Distance per second of rolling (m/s)  [dist / {_ds:.1f} s]")
+    ax.set_title(f"Speed-to-Distance Calibration of the Sphero BOLT+")
     ax.legend(loc="upper left")
     ax.grid(True, linestyle="--", alpha=0.4)
+    ax.set_xticks(np.arange(speeds.min(), speeds.max() + 25, 25))
     ax.set_xlim(left=0)
     ax.set_ylim(bottom=0)
 

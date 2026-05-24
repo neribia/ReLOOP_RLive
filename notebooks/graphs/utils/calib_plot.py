@@ -21,6 +21,8 @@ Public API
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.gridspec import GridSpec
@@ -123,29 +125,29 @@ def plot_rmse_heatmap(
     plt.colorbar(im, ax=ax, label=metric_label)
 
 
-def _fill_distance_comparison(ax, speed_cmds, real_dists, sim_dists) -> None:
-    ax.plot(speed_cmds, real_dists, "o-", label="Real", color="steelblue")
-    ax.plot(speed_cmds, sim_dists, "s--", label="Sim (best)", color="tomato")
-    ax.set_xlabel("Speed cmd (0–255)")
-    ax.set_ylabel("Final distance (m)")
-    ax.set_title("Final Distance: Real vs Sim")
-    # ax.set_title("③ Final Distance: Real vs Sim")
-    ax.legend()
+def _fill_distance_comparison(ax, speed_cmds, real_dists, sim_dists, fontsize: int = 10) -> None:
+    ax.plot(speed_cmds, real_dists, "o-", label="Real", color="steelblue", rasterized=True)
+    ax.plot(speed_cmds, sim_dists, "s--", label="Sim (best)", color="tomato", rasterized=True)
+    ax.set_xlabel("Speed cmd", fontsize=fontsize)
+    ax.set_ylabel("Final distance (m)", fontsize=fontsize)
+    ax.set_title("Final Distance: Real vs Sim", fontsize=fontsize + 1)
+    ax.legend(fontsize=fontsize)
+    ax.tick_params(labelsize=fontsize - 1)
     ax.grid(True, alpha=0.3)
 
 
-def _fill_distance_gap(ax, speed_cmds, real_dists, sim_dists) -> None:
+def _fill_distance_gap(ax, speed_cmds, real_dists, sim_dists, fontsize: int = 10) -> None:
     gaps = [
-        (r - s) / r * 100 if r != 0 else 0.0
+        (s - r) / r * 100 if r != 0 else 0.0
         for r, s in zip(real_dists, sim_dists)
     ]
     bar_colors = ["tomato" if g > 0 else "steelblue" for g in gaps]
-    ax.bar(speed_cmds, gaps, color=bar_colors, width=8)
+    ax.bar(speed_cmds, gaps, color=bar_colors, width=8, rasterized=True)
     ax.axhline(0, color="black", linewidth=0.8)
-    ax.set_xlabel("Speed cmd")
-    ax.set_ylabel("Gap %  (real − sim) / real")
-    ax.set_title("Sim2Real Distance Gap")
-    # ax.set_title("④ Sim2Real Distance Gap")
+    ax.set_xlabel("Speed cmd", fontsize=fontsize)
+    ax.set_ylabel("Gap %  (sim − real) / real", fontsize=fontsize)
+    ax.set_title("Sim2Real Distance Gap", fontsize=fontsize + 1)
+    ax.tick_params(labelsize=fontsize - 1)
     ax.grid(True, alpha=0.3)
 
 
@@ -158,7 +160,7 @@ def _fill_metrics_table(ax, runs: list[RunMetrics], print_table: bool = True) ->
     for r in runs:
         sim_d = getattr(r, "sim_final_dist", None) or float("nan")
         gap = (
-            (r.real_final_dist - sim_d) / r.real_final_dist * 100
+            (sim_d - r.real_final_dist) / r.real_final_dist * 100
             if r.real_final_dist != 0 and not np.isnan(sim_d) else 0.0
         )
         rows.append([
@@ -178,10 +180,11 @@ def _fill_metrics_table(ax, runs: list[RunMetrics], print_table: bool = True) ->
     # ax.set_title("⑤ Per-Run Metrics", pad=12)
 
 
-def _fill_peak_speed(ax, speed_cmds, runs, best_speed, best_accel, simulate_fn=None) -> None:
+def _fill_peak_speed(ax, speed_cmds, runs, best_speed, best_accel, simulate_fn=None, duration_s=None) -> None:
     _sim = simulate_fn or _default_simulate_run
+    _ds = STEADY_S if duration_s is None else duration_s
     real_peak  = [r.real_max_speed for r in runs]
-    sim_peak   = [_sim(r.speed_cmd, STEADY_S, best_speed, best_accel)["max_speed"] for r in runs]
+    sim_peak   = [_sim(r.speed_cmd, _ds, best_speed, best_accel)["max_speed"] for r in runs]
     linear_ref = [(c / 255.0) * best_speed for c in speed_cmds]
     ax.plot(speed_cmds, real_peak, "o-", label="Real", color="steelblue")
     ax.plot(speed_cmds, sim_peak, "s--", label="Sim", color="tomato")
@@ -219,13 +222,15 @@ def _fill_sim_dists(
     best_speed: float,
     best_accel: float,
     simulate_fn=None,
+    duration_s: float | None = None,
 ) -> list[float]:
     """Simulate all runs with best params, cache ``sim_final_dist``, return list."""
     if simulate_fn is None:
         simulate_fn = _default_simulate_run
+    _ds = STEADY_S if duration_s is None else duration_s
     sim_dists = []
     for r in runs:
-        res = simulate_fn(r.speed_cmd, STEADY_S, best_speed, best_accel)
+        res = simulate_fn(r.speed_cmd, _ds, best_speed, best_accel)
         r.sim_final_dist = res["final_distance"]
         sim_dists.append(r.sim_final_dist)
     return sim_dists
@@ -245,6 +250,8 @@ def plot_panel(
     rmse_unit: str = "m",
     out_path: str | None = None,
     figsize: tuple[float, float] = (7, 5),
+    duration_s: float | None = None,
+    dpi: int = 300,
 ) -> None:
     """Create a standalone figure for a single calibration panel.
 
@@ -262,21 +269,16 @@ def plot_panel(
         simulate_fn:     Optional SAPIEN-backed simulate function; defaults to
                          the pure-Python ``calib_sim.simulate_run``.
         rmse_unit:       ``"m"`` or ``"%"`` — used by RMSE panels.
-        out_path:        If given, save the figure to this path (PNG).
+        out_path:        If given, save the figure to this path.
+            Format is inferred from the extension (e.g. ``.pdf``, ``.png``).
         figsize:         Figure size ``(width, height)`` in inches.
-
-    Example::
-
-        plot_panel("distance", runs_metrics, best_speed, best_accel,
-                   out_path="fig_distance.png")
-        plot_panel(7, runs_metrics, best_speed, best_accel,
-                   out_path="fig_accel_decel.png", figsize=(10, 5))
+        dpi:             Rasterisation DPI for data artists (relevant for PDF).
     """
     panel_num = _resolve_panel(panel)
 
     speed_cmds = [r.speed_cmd for r in runs]
     real_dists = [r.real_final_dist for r in runs]
-    sim_dists  = _fill_sim_dists(runs, best_speed, best_accel, simulate_fn=simulate_fn)
+    sim_dists  = _fill_sim_dists(runs, best_speed, best_accel, simulate_fn=simulate_fn, duration_s=duration_s)
 
     is_3d      = panel_num == 1
     needs_rmse = panel_num in (1, 2)
@@ -305,13 +307,15 @@ def plot_panel(
     elif panel_num == 5:
         _fill_metrics_table(ax, runs, print_table=True)
     elif panel_num == 6:
-        _fill_peak_speed(ax, speed_cmds, runs, best_speed, best_accel, simulate_fn=simulate_fn)
+        _fill_peak_speed(ax, speed_cmds, runs, best_speed, best_accel, simulate_fn=simulate_fn, duration_s=duration_s)
     elif panel_num == 7:
         _fill_accel_decel(ax, speed_cmds, runs, best_accel)
 
     plt.tight_layout()
     if out_path:
-        fig.savefig(out_path, dpi=150, bbox_inches="tight")
+        out_path = Path(out_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out_path, dpi=dpi, bbox_inches="tight")
         print(f"Panel '{_PANEL_IDS[panel_num]}' saved → {out_path}")
     plt.show()
 
@@ -329,6 +333,7 @@ def plot_results(
     rmse_unit: str = "m",
     simulate_fn=None,
     panels: list[str | int] | None = None,
+    duration_s: float | None = None,
 ) -> None:
     """Build and optionally save the full 7-panel calibration figure.
 
@@ -358,7 +363,7 @@ def plot_results(
 
     speed_cmds = [r.speed_cmd for r in runs]
     real_dists = [r.real_final_dist for r in runs]
-    sim_dists  = _fill_sim_dists(runs, best_speed, best_accel, simulate_fn=simulate_fn)
+    sim_dists  = _fill_sim_dists(runs, best_speed, best_accel, simulate_fn=simulate_fn, duration_s=duration_s)
 
     # Layout: row 0 = ①②③   row 1 = ④⑤⑥
     fig = plt.figure(figsize=(18, 10))
@@ -387,11 +392,11 @@ def plot_results(
         ax4 = fig.add_subplot(gs[1, 0])
         _fill_distance_gap(ax4, speed_cmds, real_dists, sim_dists)
 
-    # ── ⑤ Peak speed ─────────────────────────────────────────────────────
+    # ── ⑤ Peak speed ─────────────────────────────────────────────────────────
     if 5 in active:
         ax5 = fig.add_subplot(gs[1, 1])
         _fill_peak_speed(ax5, speed_cmds, runs, best_speed, best_accel,
-                         simulate_fn=simulate_fn)
+                         simulate_fn=simulate_fn, duration_s=duration_s)
 
     # ── ⑥ Accel / decel ───────────────────────────────────────────────────
     if 6 in active:
@@ -401,6 +406,41 @@ def plot_results(
     if out_path:
         plt.savefig(out_path, dpi=150, bbox_inches="tight")
         print(f"Plot saved → {out_path}")
+    plt.show()
+
+
+def save_validation_figure(
+    fill_fn,
+    ax_args: tuple,
+    title: str,
+    out_path,
+    figsize: tuple[float, float] = (8, 5),
+    fontsize: int = 11,
+    dpi: int = 300,
+) -> None:
+    """Create, style, save, and display a single validation figure.
+
+    Wraps the repetitive ``subplots → fill → title → savefig → show`` pattern
+    used for every validation plot.
+
+    Args:
+        fill_fn: Ax-filling function, e.g. ``_fill_distance_comparison``.
+            Must accept ``(ax, *ax_args, fontsize=fontsize)``.
+        ax_args: Positional arguments forwarded to ``fill_fn`` after ``ax``.
+        title: Figure title (rendered bold, fontsize + 2).
+        out_path: Destination path for the saved PDF/PNG.
+        figsize: Figure size ``(width, height)`` in inches.
+        fontsize: Base font size for axis labels, ticks, and legend.
+        dpi: Rasterisation DPI for data artists (only relevant for PDF).
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+    fill_fn(ax, *ax_args, fontsize=fontsize)
+    ax.set_title(title, fontsize=fontsize + 2, fontweight='bold')
+    plt.tight_layout()
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=dpi, bbox_inches='tight')
+    print(f"Saved → {out_path}")
     plt.show()
 
 
@@ -432,6 +472,7 @@ def print_metrics_table_with_sim(
     best_speed: float,
     best_accel: float,
     simulate_fn=None,
+    duration_s: float | None = None,
 ) -> None:
     """Print a per-run metrics table comparing real robot vs simulation.
 
@@ -451,7 +492,7 @@ def print_metrics_table_with_sim(
         print_metrics_table_with_sim(runs_metrics, best_speed, best_accel)
     """
     # Populate sim_final_dist on each run
-    _fill_sim_dists(runs, best_speed, best_accel, simulate_fn=simulate_fn)
+    _fill_sim_dists(runs, best_speed, best_accel, simulate_fn=simulate_fn, duration_s=duration_s)
 
     header = (
         f"{'Cmd':>5} | {'Real (m)':>8} | {'Sim (m)':>8} | {'Gap %':>7} | "
@@ -465,7 +506,7 @@ def print_metrics_table_with_sim(
     print("-" * len(header))
     for r in runs:
         sim_d = r.sim_final_dist
-        gap   = (r.real_final_dist - sim_d) / r.real_final_dist * 100 if r.real_final_dist != 0 else 0.0
+        gap   = (sim_d - r.real_final_dist) / r.real_final_dist * 100 if r.real_final_dist != 0 else 0.0
         print(
             f"{r.speed_cmd:>5} | {r.real_final_dist:>8.3f} | {sim_d:>8.3f} | "
             f"{gap:>+7.1f}% | {r.real_max_speed:>8.3f} | {r.real_max_accel:>8.3f} | "
