@@ -19,6 +19,7 @@ Resources are located at:
 import os
 import sys
 from pathlib import Path
+from importlib.resources import files
 
 from rlive_common.utils.path_utils import find_project_root
 
@@ -34,7 +35,7 @@ BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", PROJECT_ROOT))
 
 APP_HOME = os.getenv("APP_HOME", str(BUNDLE_DIR))
 
-RESOURCES_DIR = Path(__file__).parents[3] / "resources"
+RESOURCES_DIR = files("rlive_sim") / "resources"
 """Root resources directory for rlive-sim package.
 
 Location: packages/rlive-sim/resources/
