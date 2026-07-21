@@ -217,7 +217,7 @@ class SimulationEnv(gym.Env):
         else:
             self.set_random_goal()
 
-        self.obs = draw_goal(self.obs, self.goal_position)
+        self.obs = draw_goal(self.obs, self.goal_position, goal_radius=self.options.get("goal_radius"))
 
         info: dict[str, Any] = {
             "status": "ok",
@@ -255,7 +255,7 @@ class SimulationEnv(gym.Env):
 
         # Apply transformed action and step physics and rendering
         physics_state, self.obs = self.engine.update_and_render(transformed_action)
-        self.obs = draw_goal(self.obs, self.goal_position)
+        self.obs = draw_goal(self.obs, self.goal_position, goal_radius=self.options.get("goal_radius"))
         self._current_step += 1
 
         # Calculate reward and check termination
