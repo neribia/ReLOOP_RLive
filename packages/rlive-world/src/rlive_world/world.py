@@ -64,6 +64,21 @@ class World:
         logger.debug(f"Resolved bolt config: name={bolt_resolved['name']}, scanning_time={bolt_resolved['scanning_time']}s, color=({bolt_resolved['color_r']},{bolt_resolved['color_g']},{bolt_resolved['color_b']}), use_dummy={bolt_resolved['use_dummy']}")
 
         try:
+            # Setup Robot/Bolt -- must stay BEFORE the camera. On Windows, opening a
+            # DirectShow capture puts this thread into a COM single-threaded apartment
+            # (MAINSTA); bleak's WinRT backend then refuses to scan with "Thread is
+            # configured for Windows GUI but callbacks are not working", because a
+            # FastAPI threadpool thread has no Windows message loop. Connecting the
+            # Bolt first leaves COM uninitialised, so bleak sets MTA itself.
+            if bolt_resolved['use_dummy']:
+                logger.info("Setting up dummy hardware...")
+                self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)
+                self.robot.connect(bolt_name="DummyBolt", timeout=0.01)
+            else:
+                logger.info(f"Setting up real hardware: bolt_name={bolt_resolved['name']}...")
+                self.robot = SpheroBoltPlus()
+                self.robot.connect(bolt_name=bolt_resolved['name'], timeout=bolt_resolved['scanning_time'])
+
             # Setup Camera
             self.camera = CameraService(
                 WorldCameraConfig(
@@ -75,16 +90,6 @@ class World:
                 )
             )
             self.camera.setup()
-
-            # Setup Robot/Bolt
-            if bolt_resolved['use_dummy']:
-                logger.info("Setting up dummy hardware...")
-                self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)
-                self.robot.connect(bolt_name="DummyBolt", timeout=0.01)
-            else:
-                logger.info(f"Setting up real hardware: bolt_name={bolt_resolved['name']}...")
-                self.robot = SpheroBoltPlus()
-                self.robot.connect(bolt_name=bolt_resolved['name'], timeout=bolt_resolved['scanning_time'])
         except Exception:
             logger.exception("Hardware attachment failed; rolling back partial connections.")
             self.disconnect_all_hardware()

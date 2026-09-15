@@ -180,27 +180,12 @@ class TestWorldHardwareCleanup(unittest.TestCase):
             world_config=WorldConfig(bolt_use_dummy=True, camera_type="dummy")
         )
 
-    def test_attach_rolls_back_camera_when_bolt_fails(self):
-        """A bolt failure must release the camera that was already set up."""
-        world = ToyWorld()
+    def test_attach_rolls_back_bolt_when_camera_fails(self):
+        """A camera failure must disconnect the bolt that already connected.
 
-        with (
-            patch.object(CameraService, "release", autospec=True) as mock_release,
-            patch("rlive_world.world.SpheroBoltPlus") as mock_bolt,
-        ):
-            mock_bolt.return_value.connect.side_effect = RuntimeError("Sphero 'DummyBolt' not found")
-
-            with self.assertRaises(RuntimeError):
-                world.attach_hardware(self._dummy_request())
-
-            mock_release.assert_called_once()
-
-        self.assertIsNone(world.camera)
-        self.assertIsNone(world.robot)
-        self.assertFalse(world._hardware_attached)
-
-    def test_attach_rolls_back_when_camera_fails(self):
-        """A camera failure must leave no bolt connected behind it."""
+        This is the originally reported bug: Bolt connects, camera fails, Bolt stays
+        connected in the background.
+        """
         world = ToyWorld()
 
         camera_error = RuntimeError("Camera 0 could not be opened!")
@@ -211,8 +196,32 @@ class TestWorldHardwareCleanup(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 world.attach_hardware(self._dummy_request())
 
-            # The camera is set up first, so the bolt must never even be contacted.
-            mock_bolt.return_value.connect.assert_not_called()
+            mock_bolt.return_value.connect.assert_called_once()
+            mock_bolt.return_value.disconnect.assert_called_once()
+
+        self.assertIsNone(world.camera)
+        self.assertIsNone(world.robot)
+        self.assertFalse(world._hardware_attached)
+
+    def test_attach_stops_before_camera_when_bolt_fails(self):
+        """A bolt failure must abort before the camera is ever opened.
+
+        The bolt is connected first (see the COM-apartment note in
+        `World.attach_hardware`), so a bolt failure leaves nothing to roll back.
+        """
+        world = ToyWorld()
+
+        with (
+            patch.object(CameraService, "setup", autospec=True) as mock_setup,
+            patch("rlive_world.world.SpheroBoltPlus") as mock_bolt,
+        ):
+            mock_bolt.return_value.connect.side_effect = RuntimeError("Sphero 'DummyBolt' not found")
+
+            with self.assertRaises(RuntimeError):
+                world.attach_hardware(self._dummy_request())
+
+            mock_setup.assert_not_called()
+            mock_bolt.return_value.disconnect.assert_called_once()
 
         self.assertIsNone(world.camera)
         self.assertIsNone(world.robot)
