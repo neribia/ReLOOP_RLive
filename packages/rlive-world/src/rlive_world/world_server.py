@@ -19,17 +19,16 @@ resources = SimpleNamespace()
 async def lifespan(app: FastAPI):
     resources.world = World()
 
-    yield
+    try:
+        yield
 
     # Graceful cleanup
-    try:
-        if resources.world._hardware_attached:
-            logger.info("Shutting down: detaching hardware...")
-            resources.world.detach_hardware(DetachHardwareRequest())
-    except Exception:
-        logger.exception("Error during shutdown")
     finally:
-        resources.world.close()
+        logger.info("Shutting down: releasing hardware...")
+        try:
+            resources.world.close()
+        except Exception:
+            logger.exception("Error during shutdown")
 
 
 app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)

@@ -1,9 +1,12 @@
 """Tests for the World API server endpoints."""
 
 import unittest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 from fastapi.testclient import TestClient
 
+from rlive_world.camera import CameraService
 from rlive_world.world_server import app, resources  # adjust import to where your app lives
 
 
@@ -123,3 +126,70 @@ class TestWorldAPI(unittest.TestCase):
             self.assertIsInstance(data["camera_active"], bool)
             self.assertIsInstance(data["robot_connected"], bool)
 
+
+DUMMY_ATTACH_BODY = {"world_config": {"bolt_use_dummy": True, "camera_type": "dummy"}}
+
+
+class TestWorldServerHardwareCleanup(unittest.TestCase):
+    """Regression tests for hardware cleanup on server shutdown."""
+
+    def test_shutdown_detaches_attached_hardware(self):
+        """Leaving the lifespan must release hardware that is attached."""
+        with TestClient(app) as client:
+            world = resources.world
+            resp = client.post("/attach_hardware", json=DUMMY_ATTACH_BODY)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertTrue(world._hardware_attached)
+
+        # Exiting the TestClient context runs the lifespan shutdown.
+        self.assertFalse(world._hardware_attached)
+        self.assertIsNone(world.robot)
+        self.assertIsNone(world.camera)
+
+    def test_shutdown_releases_orphaned_hardware(self):
+        """Hardware left live by a failed attach must still be released on shutdown.
+
+        The shutdown hook used to be gated on `_hardware_attached`, which a failed
+        attach never sets, so orphaned connections survived until the process died.
+        """
+        with TestClient(app):
+            world = resources.world
+            world.robot = MagicMock()
+            world.camera = MagicMock()
+            world._hardware_attached = False  # the state a failed attach leaves behind
+            robot, camera = world.robot, world.camera
+
+        robot.disconnect.assert_called_once()
+        camera.release.assert_called_once()
+        self.assertIsNone(world.robot)
+        self.assertIsNone(world.camera)
+
+    def test_failed_attach_reports_503_and_clean_status(self):
+        """A failed attach must surface as 503 and leave nothing connected."""
+        with TestClient(app) as client:
+            with patch.object(CameraService, "setup", side_effect=RuntimeError("Camera 0 could not be opened!")):
+                resp = client.post("/attach_hardware", json=DUMMY_ATTACH_BODY)
+
+            self.assertEqual(resp.status_code, 503)
+
+            status = client.get("/status").json()
+            self.assertFalse(status["hardware_attached"])
+            self.assertFalse(status["camera_active"])
+            self.assertFalse(status["robot_connected"])
+
+    def test_detach_after_failed_attach_is_recoverable(self):
+        """A failed attach must not wedge the server: detach then attach must work."""
+        with TestClient(app) as client:
+            world = resources.world
+
+            with patch.object(CameraService, "setup", side_effect=RuntimeError("Camera 0 could not be opened!")):
+                client.post("/attach_hardware", json=DUMMY_ATTACH_BODY)
+
+            detach = client.post("/detach_hardware", json={})
+            self.assertEqual(detach.status_code, 200)
+            self.assertTrue(detach.json()["success"])
+
+            retry = client.post("/attach_hardware", json=DUMMY_ATTACH_BODY)
+            self.assertEqual(retry.status_code, 200)
+            self.assertTrue(world._hardware_attached)
