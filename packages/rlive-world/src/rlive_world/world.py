@@ -90,8 +90,11 @@ class World:
                 )
             )
             self.camera.setup()
-        except Exception:
-            logger.exception("Hardware attachment failed; rolling back partial connections.")
+        except Exception as exc:
+            # One line, not logger.exception: this re-raises immediately and the
+            # server's hardware-error handler logs the failure downstream. Logging a
+            # full traceback here only duplicates it.
+            logger.warning(f"Hardware attachment failed ({type(exc).__name__}: {exc}); rolling back.")
             self.disconnect_all_hardware()
             raise
 

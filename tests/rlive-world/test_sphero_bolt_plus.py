@@ -436,3 +436,52 @@ class TestSpheroBoltPlus(unittest.TestCase):
         robot.scroll_text("RED", color=custom_color, wait=False)
 
         robot.disconnect()
+
+
+class TestSpheroBoltPlusFailedHandshake(unittest.TestCase):
+    """Regression tests for a connect that fails partway through the BLE handshake."""
+
+    @staticmethod
+    def _api_class_failing_on_enter(error: Exception):
+        """Build an api_class whose __enter__ raises, like a BLE connect timeout."""
+        api = MagicMock()
+        api.__enter__.side_effect = error
+        return MagicMock(return_value=api), api
+
+    def test_connect_does_not_keep_a_half_opened_api(self):
+        """A failed __enter__ must leave `api` unset rather than half-built.
+
+        SpheroEduAPI.__enter__ starts its background thread only after the BLE link
+        is open, so a session kept from a failed __enter__ blows up during cleanup
+        with "cannot join thread before it is started", masking the real error.
+        """
+        api_class, api = self._api_class_failing_on_enter(TimeoutError("BLE connect timed out"))
+        robot = SpheroBoltPlus(
+            scanner_class=DummyFinder,
+            api_class=api_class,  # type: ignore
+            register_handlers=False,
+        )
+
+        with self.assertRaises(TimeoutError):
+            robot.connect("DummyBolt", timeout=0.01)
+
+        api.__enter__.assert_called_once()
+        self.assertIsNone(robot.api)
+
+    def test_disconnect_after_failed_connect_is_quiet(self):
+        """Cleanup after a failed connect must not raise a second, misleading error."""
+        api_class, api = self._api_class_failing_on_enter(TimeoutError("BLE connect timed out"))
+        robot = SpheroBoltPlus(
+            scanner_class=DummyFinder,
+            api_class=api_class,  # type: ignore
+            register_handlers=False,
+        )
+
+        with self.assertRaises(TimeoutError):
+            robot.connect("DummyBolt", timeout=0.01)
+
+        robot.disconnect()  # must not raise
+
+        api.__exit__.assert_not_called()
+        self.assertIsNone(robot.api)
+

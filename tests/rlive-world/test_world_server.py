@@ -193,3 +193,31 @@ class TestWorldServerHardwareCleanup(unittest.TestCase):
             retry = client.post("/attach_hardware", json=DUMMY_ATTACH_BODY)
             self.assertEqual(retry.status_code, 200)
             self.assertTrue(world._hardware_attached)
+
+    def test_timeout_error_reports_503_not_500(self):
+        """A hardware timeout must read as a retryable 503, not an opaque 500.
+
+        TimeoutError subclasses OSError, not RuntimeError, so it used to miss the
+        hardware handler entirely -- costing a 500 plus two extra tracebacks (the
+        catch-all handler, then Starlette re-raising into uvicorn).
+        """
+        with TestClient(app) as client:
+            with patch.object(CameraService, "setup", side_effect=TimeoutError("BLE connect timed out")):
+                resp = client.post("/attach_hardware", json=DUMMY_ATTACH_BODY)
+
+            self.assertEqual(resp.status_code, 503)
+
+            body = resp.json()
+            self.assertEqual(body["error"], "HardwareError")
+            self.assertTrue(body["recoverable"])
+            self.assertIn("BLE connect timed out", body["message"])
+
+    def test_runtime_error_still_reports_503(self):
+        """The original RuntimeError path must keep its 503 contract."""
+        with TestClient(app) as client:
+            with patch.object(CameraService, "setup", side_effect=RuntimeError("Camera 2 could not be opened!")):
+                resp = client.post("/attach_hardware", json=DUMMY_ATTACH_BODY)
+
+            self.assertEqual(resp.status_code, 503)
+            self.assertEqual(resp.json()["error"], "HardwareError")
+

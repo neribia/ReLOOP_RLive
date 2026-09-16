@@ -34,27 +34,46 @@ async def lifespan(app: FastAPI):
 app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
 
 
-@app.exception_handler(RuntimeError)
-async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
-    """Handle RuntimeError with structured error response."""
-    logger.warning(f"RuntimeError at {request.url.path}: {exc}")
+# Failures that mean "the hardware did not cooperate" rather than "the server is
+# broken". They answer with a structured, retryable 503 and a single warning line;
+# anything not listed here falls through to the 500 handler, which logs a full
+# traceback and is then re-raised by Starlette and logged again by uvicorn.
+#
+# TimeoutError subclasses OSError, so registering OSError covers BLE connect
+# timeouts and camera device errors alike. BleakError only exists when the optional
+# `bolt` extra is installed.
+HARDWARE_ERRORS: list[type[Exception]] = [RuntimeError, OSError]
 
-    # Determine if error is recoverable and provide suggestion
+try:
+    from bleak.exc import BleakError
+except ImportError:
+    pass
+else:
+    HARDWARE_ERRORS.append(BleakError)
+
+
+async def hardware_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Answer a hardware failure with a structured, retryable 503."""
+    logger.warning(f"{type(exc).__name__} at {request.url.path}: {exc}")
+
     message = str(exc)
-    recoverable = "attach_hardware" in message.lower() or "not attached" in message.lower()
-    suggestion = "Call attach_hardware() first" if recoverable else None
+    needs_attach = "attach_hardware" in message.lower() or "not attached" in message.lower()
 
     return JSONResponse(
         status_code=503,
         content={
             "error": "HardwareError",
             "message": message,
-            "recoverable": recoverable,
-            "suggestion": suggestion,
+            "recoverable": True,
+            "suggestion": "Call attach_hardware() first" if needs_attach else "Check the hardware and retry",
             "endpoint": request.url.path,
             "method": request.method
         }
     )
+
+
+for _exc_type in HARDWARE_ERRORS:
+    app.add_exception_handler(_exc_type, hardware_error_handler)
 
 
 @app.exception_handler(Exception)
