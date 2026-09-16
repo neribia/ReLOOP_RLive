@@ -88,7 +88,7 @@ class RemoteWorldEnv(gym.Env):
             raise ValueError(f"Invalid action_space_type '{action_space_type}': {e}") from e
 
         # Ball localisation
-        self.localiser = BallLocalisator(debug=True)
+        self.localiser = BallLocalisator(debug=cfg.DEBUG)
         self.ball_location: BallLocation | None = None
 
         self.observation_space = gym.spaces.Box(low=0, high=255, shape=(480, 640, 3), dtype=np.uint8)
