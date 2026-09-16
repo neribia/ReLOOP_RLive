@@ -14,6 +14,7 @@ from rlive_world.bolt.base_robot import BaseRobot
 from rlive_world.bolt.sphero_finder import SpheroFinder
 from rlive_world.bolt.bitmaps import Bitmap, ARROW_BITMAPS
 from rlive_world.config import config as cfg
+from rlive_world.errors import TransientHardwareError
 from rlive_common.utils import get_logger
 
 logger = get_logger(__name__)
@@ -66,12 +67,32 @@ class SpheroBoltPlus(BaseRobot):
 
         self.toy = self.scanner.select_toy(bolt_name)
         if not self.toy:
-            raise RuntimeError(f"Sphero '{bolt_name}' not found, available Toys: {[toy.name for toy in toys]}")
+            # Transient: the Bolt sleeps and a single scan often misses it, so the
+            # next attempt may well find it.
+            raise TransientHardwareError(
+                f"Sphero '{bolt_name}' not found, available Toys: {[toy.name for toy in toys]}"
+            )
 
         self.name = str(self.toy.name)
-        # If api was not injected, create it now
-        self.api = self.api_class(self.toy)
-        self.api.__enter__()
+        # If api was not injected, create it now. Only commit it to self.api once
+        # __enter__ succeeds: SpheroEduAPI.__enter__ creates its background thread
+        # *before* opening the BLE link, so a failure there leaves a session whose
+        # thread was never started, and calling __exit__ on it raises "cannot join
+        # thread before it is started" -- masking the real error during cleanup. The
+        # underlying BleakAdapter already tears down its own event loop on failure,
+        # so dropping the reference is the correct cleanup.
+        api = self.api_class(self.toy)
+        try:
+            api.__enter__()
+        except Exception as exc:
+            name = self.name
+            self.toy = None
+            self.name = None
+            if isinstance(exc, TimeoutError):
+                # Transient: the BLE link dropped or the Bolt did not answer in time.
+                raise TransientHardwareError(f"Timed out connecting to Sphero '{name}'") from exc
+            raise
+        self.api = api
 
         logger.info(f"Connected to {self.name}")
 

@@ -63,23 +63,23 @@ class World:
         logger.debug(f"Resolved camera config: type={camera_resolved['type']}, id={camera_resolved['id']}, resolution={camera_resolved['width']}x{camera_resolved['height']}, exposure={camera_resolved['exposure_time_ms']}ms")
         logger.debug(f"Resolved bolt config: name={bolt_resolved['name']}, scanning_time={bolt_resolved['scanning_time']}s, color=({bolt_resolved['color_r']},{bolt_resolved['color_g']},{bolt_resolved['color_b']}), use_dummy={bolt_resolved['use_dummy']}")
 
-        # Setup Robot/Bolt
-        if bolt_resolved['use_dummy']:
-            logger.info("Setting up dummy hardware...")
-            self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)
-            self.robot.connect(bolt_name="DummyBolt", timeout=0.01)
-            self.camera = CameraService(WorldCameraConfig(
-                type="webcam",
-                id=camera_resolved['id'],
-                width=camera_resolved['width'],
-                height=camera_resolved['height'],
-                exposure_time_ms=camera_resolved['exposure_time_ms']
-            ))
-            self.camera.setup()
-        else:
-            logger.info(f"Setting up real hardware: bolt_name={bolt_resolved['name']}...")
-            self.robot = SpheroBoltPlus()
-            self.robot.connect(bolt_name=bolt_resolved['name'], timeout=bolt_resolved['scanning_time'])
+        try:
+            # Setup Robot/Bolt -- must stay BEFORE the camera. On Windows, opening a
+            # DirectShow capture puts this thread into a COM single-threaded apartment
+            # (MAINSTA); bleak's WinRT backend then refuses to scan with "Thread is
+            # configured for Windows GUI but callbacks are not working", because a
+            # FastAPI threadpool thread has no Windows message loop. Connecting the
+            # Bolt first leaves COM uninitialised, so bleak sets MTA itself.
+            if bolt_resolved['use_dummy']:
+                logger.info("Setting up dummy hardware...")
+                self.robot = SpheroBoltPlus(scanner_class=DummyFinder, api_class=DummySpheroEduAPI)
+                self.robot.connect(bolt_name="DummyBolt", timeout=0.01)
+            else:
+                logger.info(f"Setting up real hardware: bolt_name={bolt_resolved['name']}...")
+                self.robot = SpheroBoltPlus()
+                self.robot.connect(bolt_name=bolt_resolved['name'], timeout=bolt_resolved['scanning_time'])
+
+            # Setup Camera
             self.camera = CameraService(
                 WorldCameraConfig(
                     type=camera_resolved['type'],
@@ -90,32 +90,66 @@ class World:
                 )
             )
             self.camera.setup()
+        except Exception as exc:
+            # One line, not logger.exception: this re-raises immediately and the
+            # server's hardware-error handler logs the failure downstream. Logging a
+            # full traceback here only duplicates it.
+            logger.warning(f"Hardware attachment failed ({type(exc).__name__}: {exc}); rolling back.")
+            self.disconnect_all_hardware()
+            raise
 
         self._hardware_attached = True
         logger.info("Hardware successfully attached.")
 
         return AttachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
 
+    def disconnect_all_hardware(self) -> None:
+        """Release every peripheral, whatever state the world is in.
+
+        Unconditional and idempotent: it inspects the peripherals themselves instead
+        of `_hardware_attached`, so it also cleans up after a partially completed
+        `attach_hardware()`, where hardware is live but the flag was never set. A
+        failure on one peripheral is logged and does not stop the others from being
+        released.
+        """
+        if self.camera is not None:
+            logger.debug("Releasing camera.")
+            try:
+                self.camera.release()
+            except Exception:
+                logger.exception("Error releasing camera; continuing cleanup.")
+            finally:
+                self.camera = None
+
+        if self.robot is not None:
+            logger.debug("Disconnecting robot.")
+            try:
+                self.robot.disconnect()
+            except Exception:
+                logger.exception("Error disconnecting robot; continuing cleanup.")
+            finally:
+                self.robot = None
+
+        self._hardware_attached = False
+
     def detach_hardware(self, request: DetachHardwareRequest) -> DetachHardwareResponse:
         logger.debug("Detaching hardware from the world.")
         logger.info(f"request: {request}")
 
-        if not self._hardware_attached:
-            logger.debug("Hardware not attached, skipping detach.")
+        was_attached = self._hardware_attached
+
+        # Runs unconditionally. A failed attach leaves peripherals live while
+        # `_hardware_attached` is still False, and those must still be released --
+        # gating the cleanup on the flag is what made such a state unrecoverable.
+        self.disconnect_all_hardware()
+
+        if not was_attached:
+            logger.debug("Hardware was not attached; released any leftover connections.")
             return DetachHardwareResponse(
                 success=True,
                 info={"status": "not_attached", "msg": "Hardware was not attached"}
             )
 
-        if self.camera:
-            self.camera.release()
-            self.camera = None
-
-        if self.robot:
-            self.robot.disconnect()
-            self.robot = None
-
-        self._hardware_attached = False
         logger.info("Hardware successfully detached.")
 
         return DetachHardwareResponse(success=True, info={"status": "ok", "msg": ""})
@@ -186,6 +220,6 @@ class World:
         )
 
     def close(self) -> None:
-        """Placeholder/stub: would close the world and disconnect still open connections."""
+        """Close the world, releasing any hardware that is still connected."""
         logger.debug("Closing the world.")
-        pass
+        self.disconnect_all_hardware()

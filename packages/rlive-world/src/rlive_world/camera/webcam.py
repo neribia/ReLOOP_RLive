@@ -4,6 +4,7 @@ import platform
 import time
 
 from rlive_world.camera.base_camera import BaseCamera
+from rlive_world.errors import PermanentHardwareError
 
 
 class Webcam(BaseCamera):
@@ -25,7 +26,11 @@ class Webcam(BaseCamera):
 
         self.cam = cv.VideoCapture(self.cam_index, backend) if backend else cv.VideoCapture(self.cam_index)
         if not self.cam.isOpened():
-            raise RuntimeError(f"Camera {self.cam_index} could not be opened!")
+            self.cam.release()
+            self.cam = None
+            available = self._available_indices(backend)
+            detail = f"available indices: {available}" if available else "no capture devices found"
+            raise PermanentHardwareError(f"Camera {self.cam_index} could not be opened ({detail})")
 
         self.cam.set(cv.CAP_PROP_FRAME_WIDTH, self._width)
         self.cam.set(cv.CAP_PROP_FRAME_HEIGHT, self._height)
@@ -43,6 +48,29 @@ class Webcam(BaseCamera):
         self.cam.set(cv.CAP_PROP_AUTOFOCUS, 0)
         # Optionally set a fixed focus value (0.0 = infinity, adjust as needed)
         #self.cam.set(cv.CAP_PROP_FOCUS, 0)
+
+    @staticmethod
+    def _available_indices(backend: int | None, max_index: int = 5) -> list[int]:
+        """Probe which capture indices can actually be opened.
+
+        Only runs on the failure path, to turn "Camera 2 could not be opened" into
+        something the caller can act on. OpenCV emits its own warning for each index
+        that is not there; that noise is left alone rather than silenced, because the
+        log-level API moved between OpenCV versions and this must never be the reason
+        an attach fails. Any error here degrades to "no list available".
+        """
+        found: list[int] = []
+        try:
+            for index in range(max_index):
+                probe = cv.VideoCapture(index, backend) if backend else cv.VideoCapture(index)
+                try:
+                    if probe.isOpened():
+                        found.append(index)
+                finally:
+                    probe.release()
+        except Exception:
+            return found
+        return found
 
     def release(self) -> None:
         """Releases the camera."""

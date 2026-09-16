@@ -1,11 +1,12 @@
 from types import SimpleNamespace
 
-from fastapi import FastAPI, Response, Request
+from fastapi import FastAPI, Response, Request, status
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from rlive_common.core.response import ResetResponse, StepResponseJSON, StepResponseMultipart, AttachHardwareResponse, DetachHardwareResponse
 from rlive_common.core.request import ResetRequest, StepRequest, AttachHardwareRequest, DetachHardwareRequest
+from rlive_world.errors import PermanentHardwareError, TransientHardwareError
 from rlive_world.world import World
 from rlive_common.utils import get_logger
 
@@ -19,43 +20,94 @@ resources = SimpleNamespace()
 async def lifespan(app: FastAPI):
     resources.world = World()
 
-    yield
+    try:
+        yield
 
     # Graceful cleanup
-    try:
-        if resources.world._hardware_attached:
-            logger.info("Shutting down: detaching hardware...")
-            resources.world.detach_hardware(DetachHardwareRequest())
-    except Exception:
-        logger.exception("Error during shutdown")
     finally:
-        resources.world.close()
+        logger.info("Shutting down: releasing hardware...")
+        try:
+            resources.world.close()
+        except Exception:
+            logger.exception("Error during shutdown")
 
 
 app: FastAPI = FastAPI(title="World API", version="1.0.0", lifespan=lifespan)
 
 
-@app.exception_handler(RuntimeError)
-async def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
-    """Handle RuntimeError with structured error response."""
-    logger.warning(f"RuntimeError at {request.url.path}: {exc}")
+# Failures that mean "the hardware did not cooperate" rather than "the server is
+# broken". They answer with a structured error and a single warning line; anything
+# not listed here falls through to the 500 handler, which logs a full traceback and
+# is then re-raised by Starlette and logged again by uvicorn.
+#
+# The status code carries the retry policy, because the client's
+# is_retryable_status() only retries 502/503/504:
+#
+#   503 - retrying may work (a sleeping Bolt the BLE scan missed).
+#   422 - retrying is pointless; the request named hardware that is not there.
+#
+# TimeoutError subclasses OSError, so registering OSError also covers BLE timeouts
+# that were never classified. BleakError only exists with the optional `bolt` extra.
+# Starlette resolves handlers along the exception's MRO, so the specific
+# Transient/Permanent classes win over the RuntimeError fallback they inherit from.
+RETRYABLE_ERRORS: list[type[Exception]] = [TransientHardwareError, RuntimeError, OSError]
+NON_RETRYABLE_ERRORS: list[type[Exception]] = [PermanentHardwareError]
 
-    # Determine if error is recoverable and provide suggestion
+try:
+    from bleak.exc import BleakError
+except ImportError:
+    pass
+else:
+    RETRYABLE_ERRORS.append(BleakError)
+
+
+def _hardware_error_response(
+    request: Request,
+    exc: Exception,
+    status_code: int,
+    retryable: bool,
+    suggestion: str,
+) -> JSONResponse:
+    """Build the structured body shared by both hardware handlers."""
+    logger.warning(f"{type(exc).__name__} at {request.url.path}: {exc}")
+
     message = str(exc)
-    recoverable = "attach_hardware" in message.lower() or "not attached" in message.lower()
-    suggestion = "Call attach_hardware() first" if recoverable else None
+    if "attach_hardware" in message.lower() or "not attached" in message.lower():
+        suggestion = "Call attach_hardware() first"
 
     return JSONResponse(
-        status_code=503,
+        status_code=status_code,
         content={
             "error": "HardwareError",
             "message": message,
-            "recoverable": recoverable,
+            "recoverable": retryable,
+            "retryable": retryable,
             "suggestion": suggestion,
             "endpoint": request.url.path,
             "method": request.method
         }
     )
+
+
+async def retryable_hardware_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Answer a transient hardware failure with a retryable 503."""
+    return _hardware_error_response(
+        request, exc, status.HTTP_503_SERVICE_UNAVAILABLE, True, "Check the hardware and retry"
+    )
+
+
+async def permanent_hardware_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Answer an unsatisfiable hardware request with a 422 the client will not retry."""
+    return _hardware_error_response(
+        request, exc, status.HTTP_422_UNPROCESSABLE_CONTENT, False, "Fix the hardware or the request, then try again"
+    )
+
+
+for _exc_type in RETRYABLE_ERRORS:
+    app.add_exception_handler(_exc_type, retryable_hardware_error_handler)
+
+for _exc_type in NON_RETRYABLE_ERRORS:
+    app.add_exception_handler(_exc_type, permanent_hardware_error_handler)
 
 
 @app.exception_handler(Exception)
