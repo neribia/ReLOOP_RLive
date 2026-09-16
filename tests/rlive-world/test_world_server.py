@@ -7,6 +7,7 @@ import numpy as np
 from fastapi.testclient import TestClient
 
 from rlive_world.camera import CameraService
+from rlive_world.errors import PermanentHardwareError, TransientHardwareError
 from rlive_world.world_server import app, resources  # adjust import to where your app lives
 
 
@@ -220,4 +221,47 @@ class TestWorldServerHardwareCleanup(unittest.TestCase):
 
             self.assertEqual(resp.status_code, 503)
             self.assertEqual(resp.json()["error"], "HardwareError")
+
+
+class TestHardwareErrorRetryPolicy(unittest.TestCase):
+    """The status code carries the retry policy: 503 retries, 422 does not.
+
+    The client only retries 502/503/504, so a permanent failure must not answer 503
+    or every missing camera costs four Bolt scans and connects before failing.
+    """
+
+    def _attach_with(self, error: Exception):
+        with TestClient(app) as client:
+            with patch.object(CameraService, "setup", side_effect=error):
+                return client.post("/attach_hardware", json=DUMMY_ATTACH_BODY)
+
+    def test_permanent_error_is_not_retryable(self):
+        """A missing camera answers 422 so the client gives up immediately."""
+        resp = self._attach_with(PermanentHardwareError("Camera 2 could not be opened (available indices: [0, 1])"))
+
+        self.assertEqual(resp.status_code, 422)
+        body = resp.json()
+        self.assertFalse(body["retryable"])
+        self.assertIn("available indices", body["message"])
+
+    def test_transient_error_is_retryable(self):
+        """A sleeping Bolt answers 503 so the client tries again."""
+        resp = self._attach_with(TransientHardwareError("Sphero 'BP-D217' not found, available Toys: []"))
+
+        self.assertEqual(resp.status_code, 503)
+        self.assertTrue(resp.json()["retryable"])
+
+    def test_unclassified_runtime_error_still_retries(self):
+        """Anything not yet classified keeps the old retryable 503 behaviour."""
+        resp = self._attach_with(RuntimeError("something unclassified"))
+
+        self.assertEqual(resp.status_code, 503)
+        self.assertTrue(resp.json()["retryable"])
+
+    def test_client_retry_policy_agrees_with_the_status_codes(self):
+        """Guard the contract across the package boundary."""
+        from rlive_env.world_client import WorldInterface
+
+        self.assertTrue(WorldInterface.is_retryable_status(503))
+        self.assertFalse(WorldInterface.is_retryable_status(422))
 

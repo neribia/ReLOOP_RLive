@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from rlive_world.bolt.sphero_bolt_plus import SpheroBoltPlus
+from rlive_world.errors import TransientHardwareError
 from rlive_world.bolt.boltdummys import (
     DummyFinder,
     DummyToy,
@@ -462,9 +463,11 @@ class TestSpheroBoltPlusFailedHandshake(unittest.TestCase):
             register_handlers=False,
         )
 
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(TransientHardwareError) as ctx:
             robot.connect("DummyBolt", timeout=0.01)
 
+        # Rewrapped as transient so the client retries, but the cause is preserved.
+        self.assertIsInstance(ctx.exception.__cause__, TimeoutError)
         api.__enter__.assert_called_once()
         self.assertIsNone(robot.api)
 
@@ -477,7 +480,7 @@ class TestSpheroBoltPlusFailedHandshake(unittest.TestCase):
             register_handlers=False,
         )
 
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(TransientHardwareError):
             robot.connect("DummyBolt", timeout=0.01)
 
         robot.disconnect()  # must not raise
